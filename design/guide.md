@@ -22,6 +22,14 @@ If you define it in code, then:
   add = (a, b)
     return a + b
 ```
+Parameters can have a default value. They remain positional arguments:
+```lango
+greet(name, prefix = "Hello")
+  return "${prefix}, ${name}"
+
+greet("Savaş")
+greet("Savaş", "Merhaba")
+```
 As a parameter to an existing function:
 ```lango
 setInterval(1000, ()

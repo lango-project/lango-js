@@ -357,3 +357,17 @@ non-coercive equality.
 When a dynamically obtained or imported JavaScript value is used where a
 Boolean or number is required, the transpiled program raises a Lango runtime
 type error instead of applying JavaScript coercion.
+
+## D-025: Default parameters are positional JavaScript-compatible arguments
+
+**Status:** Accepted
+
+A function or method parameter may declare a default value with `name =
+expression`. When the caller omits that argument or supplies `undefined`, the
+default expression is evaluated using JavaScript-compatible default-parameter
+semantics. Arguments remain positional; this feature does not introduce named
+arguments.
+
+Defaulted parameters may appear in any parameter position, matching JavaScript;
+a later required parameter must still receive an argument in its own position.
+The interaction with rest parameters and overloads remains open work.
