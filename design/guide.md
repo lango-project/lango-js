@@ -32,7 +32,8 @@ greet("Savaş", "Merhaba")
 ```
 There are no rest parameters or argument-spread syntax. Pass a variable number
 of values as one array argument instead. Parameters without a default value are
-required.
+required. Functions cannot be overloaded; use a different name, a default
+parameter, or an object argument for a different calling shape.
 As a parameter to an existing function:
 ```lango
 setInterval(1000, ()

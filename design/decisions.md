@@ -382,4 +382,14 @@ invoke Lango callbacks with additional callback arguments. Calling a JavaScript
 variadic API with an array remains possible through its ordinary JavaScript
 `apply` method.
 
-Overloads remain open work.
+Function overloads are excluded by D-026.
+
+## D-026: Functions do not overload by signature
+
+**Status:** Accepted
+
+Two functions or methods with the same name in the same declaration scope are a
+compile-time error, regardless of their parameter lists. Lango does not select
+an implementation by argument count or value type. A different calling shape
+uses a distinct name, D-025 default parameters, or one positional object
+argument.
