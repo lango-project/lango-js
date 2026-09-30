@@ -60,11 +60,13 @@ argument convention does not replace these positional-call rules.
 
 ### Number model and arbitrary precision
 
-The guide gives numbers decimal semantics but deliberately leaves their runtime
-details open. Choose an actual representation: JavaScript `number`, a BigDecimal
-runtime, a compiler rewrite, or a restricted subset. Specify precision, rounding,
-literals, division, NaN/infinity behavior, JSON conversion, and conversion at
-JavaScript library boundaries.
+D-038 defines native Numbers by default and explicit Decimal values through a
+transpiler-selected backend. Specify Decimal precision and rounding context,
+division behavior, exponent and literal grammar, NaN/infinity behavior for
+native Numbers, exact Decimal JSON parsing/serialization, conversion overflow
+or precision-loss diagnostics, math-library functions, SQL parameter mapping,
+and the adapter semantic test suite. Define Decimal-flow analysis for mixed
+return paths, recursion, closures, higher-order functions, and module exports.
 
 ### Context execution model
 

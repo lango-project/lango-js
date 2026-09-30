@@ -155,7 +155,8 @@ Lango has one equality spelling: `==`. It never performs JavaScript's coercive
 `==` comparison. For ordinary values it transpiles to JavaScript strict equality
 (`===`). JavaScript `===` is not valid Lango source.
 
-Text equality follows the text comparison policy described in D-011.
+Text equality follows the text comparison policy described in D-011. Decimal
+equality follows D-038.
 
 ## D-011: Quote style carries text intent
 
@@ -363,11 +364,11 @@ must evaluate to a Boolean. Lango does not apply JavaScript truthiness: numbers,
 programmatic strings, texts, objects, arrays, null, and undefined are not
 implicitly accepted as conditions.
 
-There are no implicit value conversions. Arithmetic operators, including `+`,
-operate on numbers only. Text is composed with interpolation rather than string
-concatenation. `and`, `or`, and `not` require Boolean operands; `and` and `or`
-short-circuit and produce a Boolean result. D-010 continues to define `==` as
-non-coercive equality.
+There are no implicit value conversions, except for the numeric promotion that
+D-038 defines inside a Decimal context. Text is composed with interpolation
+rather than string concatenation. `and`, `or`, and `not` require Boolean
+operands; `and` and `or` short-circuit and produce a Boolean result. D-010
+continues to define `==` as non-coercive equality.
 
 When a dynamically obtained or imported JavaScript value is used where a
 Boolean or number is required, the transpiled program raises a Lango runtime
@@ -579,3 +580,41 @@ also produces `null`.
 Optional chaining is not part of the language. D-010's strict `==` equality
 means `value == null` is the explicit and sufficient absence test, so the
 standard library provides no `is_null()` helper.
+
+## D-038: `$` marks explicit Decimal bindings and contexts
+
+**Status:** Accepted
+
+An ordinary Lango number is a native JavaScript `Number`. A `$name` binding,
+parameter, or property is a Decimal value. The marker composes with existing
+property sigils: `@$name`, `@@$name`, and `_$name` are Decimal instance, static,
+and protected properties. `global $name = value` declares a Decimal global.
+Decimal values are backed by a decimal runtime selected by the transpiler, not
+by a package name exposed in Lango source.
+
+A numeric literal assigned to a `$` binding is emitted directly as a Decimal
+literal, without first becoming a JavaScript floating-point value. An expression
+that contains a `$` Decimal value or supplies an argument to a `$` parameter is
+a Decimal context. Its native Number operands and numeric literals are promoted
+to Decimal by the selected runtime. Arithmetic, ordering, and numeric equality
+in that context are lowered to the library-independent decimal protocol:
+
+```lango
+$total = $price + quantity + 2.5
+```
+
+The result of Decimal arithmetic is Decimal. It may be assigned only to a `$`
+binding/property, returned from a Decimal-returning function, or passed to a
+`$` parameter. Assigning it to an unmarked binding/property is a compile-time
+error, so Decimal values do not become invisible after an expression.
+
+Functions that accept Decimal values declare `$` parameters. The compiler
+infers a Decimal return from Decimal return expressions, and a call with that
+result must be used in a Decimal-compatible position. Passing a Decimal to an
+unmarked Lango parameter is a compile-time error. `to_js_number($decimal)` is
+the explicit escape to native Number and may lose precision; it is intended for
+JavaScript-library boundaries. `is_number(value)` is true for both Number and
+Decimal values.
+
+Each transpiler backend must implement the same numeric protocol and pass the
+same semantic test suite.

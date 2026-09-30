@@ -323,6 +323,7 @@ is_string(value)
 is_bool(value)
 is_object(value)
 is_array(value)
+to_js_number($decimal)
 get_class(value) # Can be used as get_class(value) == MyClass
 is_kindof(value, Class) 
 ```
@@ -372,8 +373,18 @@ TODO should it be closed properly? Or just relax and accept any chunk?
 
 ## Numbers
 
-Numbers use decimal semantics. Precision, range, and JavaScript interoperation
-are defined by the runtime.
+Numbers are normal JavaScript `Number` values by default. Use an explicit
+Decimal binding when exact decimal arithmetic is needed:
+```lango
+$price = 12.50
+$tax = 2.50
+$total = $price + $tax
+
+chart.plot(to_js_number($total))
+```
+When an expression contains a `$` Decimal value, its other numeric operands are
+Decimal values too. A Decimal result must be stored in a `$` binding. Use
+`to_js_number($decimal)` only when a JavaScript library needs a native Number.
 
 ## Closure
 
