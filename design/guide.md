@@ -8,6 +8,9 @@
   * Or function implementations.
   * Indented structure.
   * Line oriented. Operators or paranthesis imbalance denotes line continuation.
+  * A closing parenthesis, bracket, or brace may dedent to the start of its
+    enclosing expression. This keeps chained calls aligned without ending the
+    expression.
   * \# for comments
 
 ## Function Definition
@@ -410,9 +413,32 @@ k()
   console.log(pi) # prints 3.14
 ```
 
+## Promises
+
+Promises use ordinary method calls and closures.
+```lango
+fetch(input).then((output)
+  if not output.ok
+    throw {
+      type: "HttpError"
+      status: output.status
+    }
+
+  return output.json()
+).then((data)
+  println("${data.name}")
+).catch((err)
+  println("Request failed: ${err.message}")
+)
+```
+`then`, `catch`, and `finally` are the standard JavaScript Promise methods.
+HTTP error responses are handled by checking `output.ok`; they do not normally
+reject `fetch` on their own.
+
 ## Unwanted Features
 
-*async* have no place. If an async function should be called, it is awaited automatically.
+*async* and *await* have no place. Promise operations are handled explicitly
+with their methods.
 
 Continuation is complicated.
 

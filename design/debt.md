@@ -48,19 +48,11 @@ removed, and whether a first/last blank line is retained.
 Define Lango's relationship to JavaScript `null`, `undefined`, optional object
 properties, and optional chaining. D-024 already excludes JavaScript truthiness.
 
-### Errors and asynchronous code
+### Promise and error integration edge cases
 
-Design `try`/`catch`/`finally`, `throw`, promises, `async`/`await`, and their
-interaction with definite assignment and stack traces.
-
-### Automatic awaiting and promise propagation
-
-The guide intentionally hides `async` and `await` from source code. Define how
-a call that returns a JavaScript Promise is recognized, how its caller becomes
-asynchronous, and what a JavaScript caller receives. Cover callbacks, event
-handlers, promise rejection, concurrency, and context propagation. Do not
-implement automatic awaiting by making every Lango function `async` without an
-explicit interoperability contract.
+Specify Promise rejection stack traces, unhandled-rejection reporting, the
+interaction between Promise `catch` and ordinary `try`/`catch`, cancellation,
+concurrency, and context propagation.
 
 ### Function invocation contract
 

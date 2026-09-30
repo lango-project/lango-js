@@ -35,6 +35,11 @@ file has one unambiguous visual structure.
 An unclosed parenthesis, bracket, or brace continues the current logical line.
 Inside an object literal, a newline separates entries just as a comma would.
 
+Within an explicitly grouped expression, a closing `)`, `]`, or `}` may dedent
+to the indentation of the expression that opened the group. That dedent closes
+any indentation blocks inside the group but does not end the grouped expression;
+a following `.method(...)` therefore remains part of the same chain.
+
 The precise indentation rule for `else` is deliberately not accepted yet; see
 `debt.md`.
 
@@ -433,3 +438,22 @@ only through its parameters, `capture` declarations, `global` declarations, or
 `context` declarations. The transpiler lowers Lango closures with lexical
 receiver semantics so JavaScript callback invocation cannot introduce an implicit
 receiver.
+
+## D-029: Promise control flow is explicit and JavaScript-native
+
+**Status:** Accepted
+
+Lango has no `async` or `await` keyword. A function that returns a JavaScript
+Promise returns that Promise to its caller; the caller handles it through
+ordinary method calls and closures. The compiler does not infer or propagate an
+asynchronous effect through Lango functions.
+
+Promise chaining uses the standard JavaScript `then`, `catch`, and `finally`
+methods with existing Lango closure syntax. A `return` from a `then` closure
+supplies the next chain value; returning a Promise follows JavaScript Promise
+flattening semantics. A `throw` inside a chain closure produces a rejection
+that a later `catch` can receive. HTTP status failures remain normal responses
+unless application code checks a response such as `output.ok` and throws.
+
+Lango does not introduce special Promise-chain block syntax or a separate
+Promise type.
