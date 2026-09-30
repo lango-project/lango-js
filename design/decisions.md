@@ -474,3 +474,17 @@ once and never reassigned in its emitted lexical scope. Object/property mutation
 does not prevent this optimization because the binding's reference is unchanged.
 Otherwise it emits a mutable JavaScript binding. This choice has no observable
 Lango-language effect and does not make the source binding immutable.
+
+## D-031: Resources are released with explicit `try`/`finally`
+
+**Status:** Accepted
+
+Lango has no core `defer`, `using`, or resource-scope construct. Code releases
+files, database transactions, subscriptions, locks, and similar resources by
+calling the resource's own cleanup method in a `finally` block. Libraries define
+their cleanup surface, such as `close()` or `dispose()`; the language does not
+impose one universal resource interface.
+
+`finally` runs whether the protected block completes normally, returns, or
+throws, subject to the ordinary JavaScript `finally` behavior when the `finally`
+block itself changes control flow.

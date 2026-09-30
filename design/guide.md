@@ -563,3 +563,13 @@ throw statement can throw anything you want and the err parameter holds it.
       code: 666
       message: "Syntax Error"
     }
+
+Use `finally` to release a resource explicitly:
+```lango
+connection = database.open()
+
+try
+  connection.execute()
+finally
+  connection.close()
+```

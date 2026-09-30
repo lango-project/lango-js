@@ -101,14 +101,6 @@ switching, serialization, or enumeration APIs. If none of these are wanted,
 replace it with ordinary static class constants rather than maintaining a
 near-duplicate feature.
 
-### Mutability and resource lifetime
-
-D-030 makes bindings and properties mutable and excludes an immutable-binding
-form. Specify how resources such as files, database transactions, subscriptions,
-and locks are reliably released. Decide whether `try`/`finally` is the only
-mechanism or whether a small `defer`/resource-scope construct belongs in the
-language.
-
 ### Collection and iteration boundary
 
 Define which JavaScript collection values receive first-class Lango behavior:
