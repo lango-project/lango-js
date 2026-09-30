@@ -61,12 +61,13 @@ argument convention does not replace these positional-call rules.
 ### Number model and arbitrary precision
 
 D-038 defines native Numbers by default and explicit Decimal values through a
-transpiler-selected backend. Specify Decimal precision and rounding context,
-division behavior, exponent and literal grammar, NaN/infinity behavior for
-native Numbers, exact Decimal JSON parsing/serialization, conversion overflow
-or precision-loss diagnostics, math-library functions, SQL parameter mapping,
-and the adapter semantic test suite. Define Decimal-flow analysis for mixed
-return paths, recursion, closures, higher-order functions, and module exports.
+transpiler-selected backend, and D-039 defines exact arithmetic and division
+rounding. Design an optional explicit per-operation rounding API, exponent and
+literal grammar, NaN/infinity behavior for native Numbers, exact Decimal JSON
+parsing/serialization, conversion overflow or precision-loss diagnostics,
+math-library functions, SQL parameter mapping, and the adapter semantic test
+suite. Define Decimal-flow analysis for mixed return paths, recursion, closures,
+higher-order functions, and module exports.
 
 ### Context execution model
 

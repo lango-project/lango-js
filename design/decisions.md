@@ -618,3 +618,21 @@ Decimal values.
 
 Each transpiler backend must implement the same numeric protocol and pass the
 same semantic test suite.
+
+## D-039: Decimal division uses a configured fractional scale
+
+**Status:** Accepted
+
+Decimal addition, subtraction, and multiplication preserve an exact arbitrary-
+precision decimal result. Decimal division rounds its result to the
+`decimal_division_scale` compiler-profile setting, measured in digits after the
+decimal separator. The default scale is six, so `$one / $three` produces
+`3.333333`. Division uses `half_even` rounding. A finite result with more than
+the configured fractional digits is rounded by the same rule. Division by zero
+is a runtime error.
+
+The compiler profile records its division scale and is used unchanged by builds
+and tests, so a program's numeric result is reproducible. A future
+standard-library API may provide an explicit per-operation rounding scale; it
+does not change the configured behavior of `/`. Native JavaScript Number
+arithmetic continues to follow JavaScript semantics.

@@ -385,6 +385,9 @@ chart.plot(to_js_number($total))
 When an expression contains a `$` Decimal value, its other numeric operands are
 Decimal values too. A Decimal result must be stored in a `$` binding. Use
 `to_js_number($decimal)` only when a JavaScript library needs a native Number.
+Decimal addition, subtraction, and multiplication are exact. Division is valid
+at the configured number of fractional digits, which defaults to six. It uses
+half-even rounding.
 
 ## Closure
 
