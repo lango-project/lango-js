@@ -546,3 +546,9 @@ If `main` returns a JavaScript Promise, the host follows that Promise to
 completion before applying these outcome rules to its resolved value. A rejected
 `main` Promise is a failed program outcome. This is an entry-host lifecycle
 rule; it does not alter how Promise-returning calls behave in Lango source code.
+
+A Promise created by `main` but not returned from it is detached work. The host
+does not track it, wait for it, use it to determine the exit code, or convert
+its rejection into the `main` outcome. Whether detached work keeps a process
+alive follows the underlying host runtime. Its lifecycle and rejection handling
+are the program author's responsibility.

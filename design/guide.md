@@ -11,6 +11,8 @@
     exit code for command-line hosts.
   * If `main` returns a Promise, the host waits for its completion before
     determining the program outcome.
+  * A Promise that `main` does not return is detached work. It does not delay
+    the program outcome.
   * Root level has no free executable statements. Executable code belongs in a
     function, method, test, or macro body.
   * A file can have class, function, macro, global, context, and test
