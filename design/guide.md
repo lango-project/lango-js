@@ -5,6 +5,8 @@
   * A file has imports and exports at the start, followed by declarations.
   * An entry file exports `main(args)`. The host starts the program by calling
     it with its argument array.
+  * `args` is an array of programmatic strings supplied by the host; it does
+    not include the executable or entry-file name.
   * Root level has no free executable statements. Executable code belongs in a
     function, method, test, or macro body.
   * A file can have class, function, macro, global, context, and test

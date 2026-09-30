@@ -519,5 +519,15 @@ statement at root indentation is a compile-time error. Executable code belongs
 inside a function, method, test, or macro body. A declaration may contain an
 initializer where its own syntax permits one, such as `global name = value`.
 
-The precise host contract for arguments, environment configuration, returned
-Promises, and exit codes remains open work.
+The precise host contract for environment configuration, returned Promises, and
+exit codes remains open work.
+
+## D-034: Entry arguments are a host-supplied string array
+
+**Status:** Accepted
+
+The `args` parameter of exported `main(args)` is an array of programmatic
+strings supplied by the host. It contains only program arguments and excludes
+the executable name and entry-source/module name. A Node host maps this to the
+equivalent of `process.argv.slice(2)`; a browser or embedded host supplies its
+own array. Lango has no global argument variable.
