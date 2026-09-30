@@ -390,6 +390,8 @@ at the configured number of fractional digits, which defaults to six. It uses
 half-even rounding.
 `NaN`, `Infinity`, and `-Infinity` are not Lango numbers; producing or receiving
 one is a runtime error.
+Numeric literals support decimal (`12`, `12.50`), scientific notation (`1.2e3`),
+and hexadecimal integers (`0xFF`).
 
 ## Closure
 

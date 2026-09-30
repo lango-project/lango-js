@@ -649,3 +649,18 @@ raises the same error before becoming observable to Lango code.
 
 Decimal values are finite by their runtime contract. `is_number(value)` is true
 only for a finite native Number or a valid Decimal value.
+
+## D-041: Numeric literals are decimal, scientific, or hexadecimal
+
+**Status:** Accepted
+
+Lango supports base-10 integer and fractional literals such as `12` and
+`12.50`, scientific-notation literals such as `1.2e3`, and hexadecimal integer
+literals such as `0xFF`. The `e` exponent marker and hexadecimal digits are
+case-insensitive. A leading sign is the ordinary unary operator rather than
+part of a literal.
+
+Binary and octal literals, numeric separators, and other JavaScript numeric
+literal forms are not part of Lango. A literal assigned to a `$` Decimal binding
+is converted from its source spelling directly by the Decimal backend; a
+hexadecimal Decimal literal therefore becomes its exact base-10 integer value.
