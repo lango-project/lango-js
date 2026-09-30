@@ -370,6 +370,9 @@ arguments.
 
 Defaulted parameters may appear in any parameter position, matching JavaScript;
 a later required parameter must still receive an argument in its own position.
+Omitting a required parameter is an error: the compiler reports it for a
+statically known Lango call, and the generated function raises a Lango runtime
+arity error when invoked dynamically from JavaScript or a callback.
 
 Lango has no rest-parameter or argument-spread syntax. A variable number of
 values is represented by one array positional argument; an array is never
