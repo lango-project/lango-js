@@ -17,6 +17,8 @@
     function, method, test, or macro body.
   * A file can have class, function, macro, global, context, and test
     declarations.
+  * The compiler or host selects Node, browser, test, and database environments.
+    Host services are accessed through explicit libraries, `args`, or `context`.
   * Indented structure.
   * Line oriented. Operators or paranthesis imbalance denotes line continuation.
   * A closing parenthesis, bracket, or brace may dedent to the start of its

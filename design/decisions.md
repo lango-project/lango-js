@@ -552,3 +552,17 @@ does not track it, wait for it, use it to determine the exit code, or convert
 its rejection into the `main` outcome. Whether detached work keeps a process
 alive follows the underlying host runtime. Its lifecycle and rejection handling
 are the program author's responsibility.
+
+## D-036: Host selection is outside Lango source
+
+**Status:** Accepted
+
+The compiler invocation or embedding host selects the target environment, such
+as Node, browser, test runner, or database adapter. Lango source does not select
+or branch on its host through a core keyword, and the language provides no
+implicit `env`, `process`, `window`, or equivalent host global.
+
+Programs access host services through explicitly imported libraries, the
+`main(args)` argument array, or explicitly declared context bindings. Host
+configuration belongs to the compiler, host, or library layer rather than the
+core language.
