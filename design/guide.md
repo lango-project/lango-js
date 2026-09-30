@@ -131,6 +131,9 @@ Variables are defined when first assigned:
 
     i = 0
 
+Variables and properties are mutable. There is no `const`, `readonly`, or
+immutable-binding declaration.
+
 It is a compiler error to read it before defined.
 
 It may be defined like this:

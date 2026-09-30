@@ -457,3 +457,20 @@ unless application code checks a response such as `output.ok` and throws.
 
 Lango does not introduce special Promise-chain block syntax or a separate
 Promise type.
+
+## D-030: Bindings and properties are mutable by default
+
+**Status:** Accepted
+
+Local bindings, file globals, context bindings within their dynamic scope, and
+object or class properties may be reassigned after their first assignment.
+Lango has no `const`, `readonly`, or immutable-binding declaration. Immutability
+is expressed by program convention or by using an immutable value supplied by a
+library, not by core language syntax.
+
+As a JavaScript output optimization, the transpiler may emit `const` for a
+local or file-level binding when it can prove that the binding is initialized
+once and never reassigned in its emitted lexical scope. Object/property mutation
+does not prevent this optimization because the binding's reference is unchanged.
+Otherwise it emits a mutable JavaScript binding. This choice has no observable
+Lango-language effect and does not make the source binding immutable.
