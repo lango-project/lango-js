@@ -1,0 +1,511 @@
+# Lango Programming Guide
+
+## Code Structure
+
+  * A file has imports and exports at the start.
+  * Can have a class implementation.
+    * 
+  * Or function implementations.
+  * Indented structure.
+  * Line oriented. Operators or paranthesis imbalance denotes line continuation.
+  * \# for comments
+
+## Function Definition
+
+Leftmost definiton denotes a function.
+```lango
+add(a, b)
+  return a + b
+```
+If you define it in code, then:
+```lango
+  add = (a, b)
+    return a + b
+```
+As a parameter to an existing function:
+```lango
+setInterval(1000, ()
+  console.log("Hello")
+  )
+```
+_Function parameters should be the last one. Legacy functions like setInterval() get special treatment from the transpiler._
+
+## Class and Method Definitions
+
+```lango
+class Manager
+
+Manager() # Constructor
+  @surprise = 10
+  
+Manager:add(a, b) # Method
+  return a + b + @surprise
+
+fn Manager::CreateInstance() # Static method
+  return Manager()
+```
+
+### Properties
+
+Variables starting with @ are instance properties. They are private.
+
+Variables starting with @@ are static properties.
+
+Variables starting with _ (underscore) are protected instance properties.
+
+For example:
+
+```lango
+class Manager
+
+Manager:do_it()
+  @prop = 3
+  _name = "Savaş"
+  @@statik = true
+```
+
+
+### Public
+
+To make classes, properties and methods public, they should be exported at the start of the file. All classes are reachable within themselves at the same file.
+
+Public methods are listed at the start of the class:
+```lango
+export class Manager
+  properties
+    length
+    quality
+    _name # Protected
+  methods
+    add(a, b)
+    kill()
+```
+
+Will be used as @length, @quality in the class implementation.
+
+### Inheritance
+
+Inheritance can be used as expected.
+```lango
+class Manager : HumanBeing
+  
+```
+Each method can be overriden by defining again.
+
+*super* keyword is used to access ancestor class.
+
+### Enums
+
+There is no separate enum structure. Enums are encapsulated in classes.
+```lango
+class Color
+  enum
+    White = Color(255, 255, 255)
+    Black = Color(0, 0, 0)
+```
+Each enum member's value should be explicitly specified.
+
+## Variables
+
+Variables are defined when first assigned:
+
+    i = 0
+
+It is a compiler error to read it before defined.
+
+It may be defined like this:
+```lango
+if blabla
+  n = 333
+ else
+    n = 666 # If all paths are defining it, then it is no error to use it later
+```
+### Global Variables
+
+They are explicitly defined at the file level and *global* keyword is used for using it inside a function or method.
+```lango
+surprise = 10
+
+add(a, b)
+  global surprise
+  return a + b + surprise
+```
+## Objects
+A flexible object can be defined like this:
+
+    o = {}
+
+And properties can be assigned freely:
+
+    o.name = "Savaş"
+
+Relaxed JSON notation can be used:
+```lango
+data = {
+  name: "Savaş"
+  surname: "Alparslan"
+  children: ["Özgür"]
+}
+
+console.log(data.name)
+console.log(data["name"]) # Same with the above
+```
+## Arrays
+
+Arrays can also be defined freely.
+```lango
+a = ["Bill", "Elon"]
+a.add("Savaş") # instead of push()
+
+console.log(a[2])
+
+a.length
+```
+## 
+## Control Structures
+
+### If
+```lango
+  if n == 5
+      console.log("Five")
+    else # This is not an indentation bug.
+        console.log("Not five")
+```
+_Else_ is indented differently to make it clear (and a little ugly)
+
+No elseif. Use _switch_ for it.
+
+### Switch
+
+First usage:
+```lango
+switch n
+  case 3
+  case 5
+    console.log("Hello")
+  case 6
+    console.log("Six")
+  else
+    console.log("Good bye")
+```
+Or
+```lango
+switch
+  case n == 5
+    console.log("Five")
+  case n > 100
+    console.log("Big")
+  else
+    console.log("Not five")
+
+```
+### Loop
+```lango
+n = 0
+loop while n < 100
+  console.log(n)
+  n++
+```
+```lango
+n = 0
+loop until n == 100
+  console.log(n)
+  n++
+```
+```lango
+n = 0
+loop 
+  console.log(n)
+  n++
+  if n == 100
+    break
+```
+####  Leveled break and continue
+
+You can use the following to break from a 3 level inner loop:
+
+    break 3 # Cannot use a variable here
+
+### For (Iterator)
+```lango
+for array as n
+  console.log(n)
+```
+```lango
+for obj as name: value
+  console.log("${name}=${value}")
+
+```
+### Return
+
+*return* returns a value (or not) from a function or method as expected.
+
+## Operators
+
+Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be used alongside &&, || and !.
+
+There should be space before and after an operator, except unary operators.
+
+## Strings and Text
+
+There are two kinds of strings. Programmatic strings like 'code', and texts like "Elon Gates".
+
+Texts can have interpolation like "My name is ${name}".
+
+Texts can be subject to translation.
+
+### Multiline
+```lango
+text = """
+  Here is a 
+  multiline text.
+"""
+```
+### Comparison
+
+Comparisons are case-sensitive in strings. It is case-insensitive for texts.
+
+### As an Array
+
+Strings and texts are character arrays. Individual characters are accessed with [].
+
+## Standard Lib
+
+The standard library provides the absolute minimum functions.
+```lango
+from_json(text)
+to_json(object)
+is_number(value)
+is_string(value)
+is_bool(value)
+is_null(value)
+is_object(value)
+is_array(value)
+get_class(value) # Can be used as get_class(value) == MyClass
+is_kindof(value, Class) 
+```
+
+## Embedded SQL
+
+Here's an example:
+```lango
+rs = SQL
+         select name, surname
+         from students
+         where birth_year > @year
+rs.year = 2011
+rs.execute()
+loop while rs.next()
+  console.log("${rs.name} ${rs.surname}")
+```
+`@year` is a named query parameter. Set it through the result before execution;
+it is bound as data rather than inserted into the SQL text.
+
+The actual database connection and appropriate library calls are managed by the environment.
+
+TODO syntax for multiple database 
+
+If a SQL statement returns multiple result sets, *NextResult()* method is used to switch to the next one.
+
+Use named `@parameter` values for dynamic SQL values. Text interpolation is not
+used inside SQL.
+
+## Embedded XML
+
+XML is detected when the syntax is encountered.
+```lango
+xml = <student name="Savas" />
+
+xml = <records>
+        <item />
+        <item />
+      </records>
+
+call(333, <item/>)
+```
+XML literals evaluate to text and normal `${expression}` interpolation can be
+used in text or attribute values.
+
+TODO should it be closed properly? Or just relax and accept any chunk?
+
+## Numbers
+
+Numbers use decimal semantics. Precision, range, and JavaScript interoperation
+are defined by the runtime.
+
+## Closure
+
+Outside variables to be captured inside the closure should be explicitly specified by the *capture* keyword:
+```lango
+  number = 666
+
+  return (a, b)
+    capture number
+    return a + b + number
+```
+## Context
+
+Context variables are used for dependency injection or not to carry specific variables through all functions or methods.
+
+To create a context variable:
+
+    context pi = 3.14
+
+In anywhere below the call stack, you can use this variable whenever you want:
+
+    context pi
+
+Context variables are read through their bare name and cannot be assigned with
+a normal assignment.
+
+You can only assign it inside the *context* statement. This creates a scoped
+value: all calls below the current stack frame use it, and leaving that frame
+restores the previous value.
+```lango
+f()
+  context pi = 3
+  g()
+  console.log(pi) # prints 3
+
+g()
+  context pi
+  console.log(pi) # prints 3
+  h()
+  console.log(pi) # still prints 3 even though h() changes it to 3.14
+
+h()
+  context pi = 3.14
+  j()
+
+j()
+  k()
+
+k()
+  context pi
+  console.log(pi) # prints 3.14
+```
+
+## Unwanted Features
+
+*async* have no place. If an async function should be called, it is awaited automatically.
+
+Continuation is complicated.
+
+No destructuring. No named parameters. Still parameters can be sent as relaxed JSON. For example:
+
+```lango
+register_student({
+  name: "Savaş"
+  surname: "Alparslan"
+})
+
+```
+
+
+Setters and getters are confusing.
+
+## Test
+
+Unit tests are defined with test keyword in any source code. Some examples:
+```lango
+test 
+  assert add(3, 5) == 8
+```
+```lango
+test "addition test 1"
+  assert add(3, 5) == 8
+```
+Assert should report the whole failed expression as text.
+
+## Macros
+
+Macros generate source code while during the compilation. They are distinguished from the normal code by being all caps.
+
+Some examples:
+```lango
+PI = 3.14
+
+f()
+  return PASTE(PI)
+```
+```lango
+WARN()
+  PASTE("console.log(\"WARNING!\")")
+
+f()
+  WARN()
+```
+```lango
+MYMACRO(A)
+  IF A == 5
+    PASTE("FIVE")
+  
+f()
+  A = 5
+  console.log("${MYMACRO(A)}")
+```
+At the start of the compilation, all macro calls are evaluated and all PASTE's are pasted into the code until all are resolved.
+
+A PASTE() may paste another macro call. But recursion is not encouraged; the macro expansion fails after 16 rounds.
+
+## Import/Export
+
+Functions, classes and macros can be exported and imported within source codes.
+
+Class export syntax is mentioned above. Let's repeat it here:
+```lango
+export class Manager
+  properties
+    length
+    quality
+  methods
+    add(a, b)
+    kill()
+```
+Functions, macros and global, context variables are exported with full headers:
+```lango
+export add(a, b)
+
+export # export multiple
+  add(a, b)
+  subtract(a, b)
+  MYMACRO(a)
+  global surprise
+  global
+    another_surprise
+  context ctx
+```
+Imports are also specified with full headers:
+```lango
+import another_file
+  add(a, b)
+  MYMACRO(a)
+  alias surp = global surprise
+  alias Admin = class Manager
+    properties
+      length
+    methods
+      add(a, b)
+```
+*alias* keyword is used to avoid name clashes. Properties and methods cannot be aliased.
+
+Two or more source files may import/export each other. Dependency loops are resolved by the compiler. Infinite loops are not allowed since iteration is failed after 16 rounds.
+
+## Throw and Try/Catch/Finally
+
+This feature is as usual, except catch cannot catch specific exceptions.
+```lango
+try
+  ...
+catch err # err or anything else
+  ...  
+finally
+  ...
+```
+throw statement can throw anything you want and the err parameter holds it.
+
+    throw {
+      type: "Runtime"
+      code: 666
+      message: "Syntax Error"
+    }
