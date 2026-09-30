@@ -242,7 +242,7 @@ for obj as name: value
 
 ## Operators
 
-Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be used alongside &&, || and !.
+Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be used alongside &&, || and !. Conditions require `true` or `false`; Lango does not use JavaScript truthiness or implicit conversion. Arithmetic operators work on numbers, and text is composed with interpolation.
 
 There should be space before and after an operator, except unary operators.
 

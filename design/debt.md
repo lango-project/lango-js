@@ -46,15 +46,7 @@ removed, and whether a first/last blank line is retained.
 ### Nullability and missing values
 
 Define Lango's relationship to JavaScript `null`, `undefined`, optional object
-properties, optional chaining, and truthiness.
-
-### Value model, conversions, and operators
-
-Define boolean literals and truthiness; the behavior of `+`, arithmetic,
-comparison, and logical operators across numbers, programmatic strings, texts,
-objects, arrays, null, and undefined; and whether any implicit conversion is
-permitted. Preserve D-010's no-coercive-equality rule while specifying how
-values reach JavaScript APIs with different expectations.
+properties, and optional chaining. D-024 already excludes JavaScript truthiness.
 
 ### Errors and asynchronous code
 
@@ -114,13 +106,6 @@ semantics, constructor restrictions, identity/equality rules, exhaustive
 switching, serialization, or enumeration APIs. If none of these are wanted,
 replace it with ordinary static class constants rather than maintaining a
 near-duplicate feature.
-
-### Static types and annotations
-
-Make an explicit language-level choice about static types: no type annotations,
-optional annotations, inference, generics, or a later type system. If the
-language remains dynamic, define the intended role of runtime predicates such
-as `is_number` and `is_kindof` so each new feature does not reopen the question.
 
 ### Mutability and resource lifetime
 

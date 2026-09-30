@@ -333,3 +333,27 @@ analogous to JavaScript `instanceof`.
 
 The behavior for null, undefined, primitive values, altered `constructor`
 properties, and cross-realm JavaScript values remains open work.
+
+## D-024: Dynamic values use explicit, non-coercive operations
+
+**Status:** Accepted
+
+Lango is dynamically typed. It has Boolean literals `true` and `false`, and no
+type annotations, generic syntax, or static type system in the current language.
+Runtime predicates such as `is_number` and `is_kindof` are the explicit way to
+inspect a value's kind.
+
+Conditions in `if`, `loop while`, `loop until`, and condition-only `switch`
+must evaluate to a Boolean. Lango does not apply JavaScript truthiness: numbers,
+programmatic strings, texts, objects, arrays, null, and undefined are not
+implicitly accepted as conditions.
+
+There are no implicit value conversions. Arithmetic operators, including `+`,
+operate on numbers only. Text is composed with interpolation rather than string
+concatenation. `and`, `or`, and `not` require Boolean operands; `and` and `or`
+short-circuit and produce a Boolean result. D-010 continues to define `==` as
+non-coercive equality.
+
+When a dynamically obtained or imported JavaScript value is used where a
+Boolean or number is required, the transpiled program raises a Lango runtime
+type error instead of applying JavaScript coercion.
