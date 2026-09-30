@@ -636,3 +636,16 @@ and tests, so a program's numeric result is reproducible. A future
 standard-library API may provide an explicit per-operation rounding scale; it
 does not change the configured behavior of `/`. Native JavaScript Number
 arithmetic continues to follow JavaScript semantics.
+
+## D-040: Lango numbers are always finite
+
+**Status:** Accepted
+
+`NaN`, `Infinity`, and `-Infinity` are not Lango number values and have no
+Lango literal spelling. A native Number arithmetic operation that produces a
+non-finite result raises a `NonFiniteNumber` runtime error. A non-finite Number
+returned by JavaScript interoperation, or produced by `to_js_number($decimal)`,
+raises the same error before becoming observable to Lango code.
+
+Decimal values are finite by their runtime contract. `is_number(value)` is true
+only for a finite native Number or a valid Decimal value.

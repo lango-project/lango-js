@@ -388,6 +388,8 @@ Decimal values too. A Decimal result must be stored in a `$` binding. Use
 Decimal addition, subtraction, and multiplication are exact. Division is valid
 at the configured number of fractional digits, which defaults to six. It uses
 half-even rounding.
+`NaN`, `Infinity`, and `-Infinity` are not Lango numbers; producing or receiving
+one is a runtime error.
 
 ## Closure
 
