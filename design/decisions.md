@@ -370,4 +370,13 @@ arguments.
 
 Defaulted parameters may appear in any parameter position, matching JavaScript;
 a later required parameter must still receive an argument in its own position.
-The interaction with rest parameters and overloads remains open work.
+
+Lango has no rest-parameter or argument-spread syntax. A variable number of
+values is represented by one array positional argument; an array is never
+expanded automatically into multiple arguments. A Lango function ignores excess
+arguments, matching JavaScript function calls and allowing JavaScript APIs to
+invoke Lango callbacks with additional callback arguments. Calling a JavaScript
+variadic API with an array remains possible through its ordinary JavaScript
+`apply` method.
+
+Overloads remain open work.

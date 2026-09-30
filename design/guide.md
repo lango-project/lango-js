@@ -30,6 +30,8 @@ greet(name, prefix = "Hello")
 greet("Savaş")
 greet("Savaş", "Merhaba")
 ```
+There are no rest parameters or argument-spread syntax. Pass a variable number
+of values as one array argument instead.
 As a parameter to an existing function:
 ```lango
 setInterval(1000, ()

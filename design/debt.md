@@ -64,10 +64,11 @@ explicit interoperability contract.
 
 ### Function invocation contract
 
-Specify arity errors, rest/vararg parameters, overloads, method receiver
-binding, callback invocation, and calls into ordinary JavaScript functions.
-D-025 defines positional default parameters. The relaxed-JSON object-argument
-convention does not replace these positional-call rules.
+Specify missing-argument errors, overloads, method receiver binding, callback
+invocation, and calls into ordinary JavaScript functions. D-025 defines
+positional default parameters, excludes rest/spread syntax, and defines excess
+arguments. The relaxed-JSON object-argument convention does not replace these
+positional-call rules.
 
 ### Number model and arbitrary precision
 
