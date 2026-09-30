@@ -531,3 +531,13 @@ strings supplied by the host. It contains only program arguments and excludes
 the executable name and entry-source/module name. A Node host maps this to the
 equivalent of `process.argv.slice(2)`; a browser or embedded host supplies its
 own array. Lango has no global argument variable.
+
+## D-035: `main` completion determines program outcome
+
+**Status:** Accepted
+
+When `main(args)` completes without throwing, the program succeeds. If it
+returns a number, a command-line host uses that number as its exit code; a host
+without an exit-code concept ignores the numeric result. A value of any other
+kind has no special host meaning. An uncaught error from `main` is a failed
+program outcome and is reported by the host.

@@ -7,6 +7,8 @@
     it with its argument array.
   * `args` is an array of programmatic strings supplied by the host; it does
     not include the executable or entry-file name.
+  * Normal completion means success. A numeric value returned from `main` is an
+    exit code for command-line hosts.
   * Root level has no free executable statements. Executable code belongs in a
     function, method, test, or macro body.
   * A file can have class, function, macro, global, context, and test
