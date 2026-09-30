@@ -566,3 +566,16 @@ Programs access host services through explicitly imported libraries, the
 `main(args)` argument array, or explicitly declared context bindings. Host
 configuration belongs to the compiler, host, or library layer rather than the
 core language.
+
+## D-037: `null` is Lango's sole absence value
+
+**Status:** Accepted
+
+Lango has one absence value, `null`. It does not expose JavaScript `undefined`
+as a separate Lango value. At a JavaScript interoperability boundary, an
+`undefined` result is normalized to `null`; reading a missing object property
+also produces `null`.
+
+Optional chaining is not part of the language. D-010's strict `==` equality
+means `value == null` is the explicit and sufficient absence test, so the
+standard library provides no `is_null()` helper.

@@ -149,6 +149,9 @@ immutable-binding declaration.
 
 It is a compiler error to read it before defined.
 
+`null` is the only absence value. JavaScript `undefined` and a missing object
+property are seen as `null` in Lango. Use `value == null` to test for absence.
+
 It may be defined like this:
 ```lango
 if blabla
@@ -318,7 +321,6 @@ to_json(object)
 is_number(value)
 is_string(value)
 is_bool(value)
-is_null(value)
 is_object(value)
 is_array(value)
 get_class(value) # Can be used as get_class(value) == MyClass

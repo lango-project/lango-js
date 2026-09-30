@@ -43,11 +43,6 @@ translation.
 Specify whether the indentation shared with the closing `"""` delimiter is
 removed, and whether a first/last blank line is retained.
 
-### Nullability and missing values
-
-Define Lango's relationship to JavaScript `null`, `undefined`, optional object
-properties, and optional chaining. D-024 already excludes JavaScript truthiness.
-
 ### Promise and error integration edge cases
 
 Specify Promise rejection stack traces, unhandled-rejection reporting, the
