@@ -14,6 +14,11 @@
   * Javascipt transpiler.
   * Connect seamlessly with existing libraries.
 
+## Version Control
+
+  * Commits are user-owned checkpoints.
+  * Codex must not create git commits; the user reviews and commits changes.
+
 ## Documents
 
   * **guide.md:** Quick guide for programmers.
