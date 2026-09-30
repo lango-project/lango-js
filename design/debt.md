@@ -119,8 +119,7 @@ whether a runtime helper package is permitted.
 
 D-033 defines exported `main(args)` as the entry point and excludes free
 root-level executable statements. Specify how a program selects or receives its host environment
-(Node, browser, test runner, database adapter), environment configuration,
-and returned Promises.
+(Node, browser, test runner, database adapter) and environment configuration.
 
 ### Imports and exports
 

@@ -541,3 +541,8 @@ returns a number, a command-line host uses that number as its exit code; a host
 without an exit-code concept ignores the numeric result. A value of any other
 kind has no special host meaning. An uncaught error from `main` is a failed
 program outcome and is reported by the host.
+
+If `main` returns a JavaScript Promise, the host follows that Promise to
+completion before applying these outcome rules to its resolved value. A rejected
+`main` Promise is a failed program outcome. This is an entry-host lifecycle
+rule; it does not alter how Promise-returning calls behave in Lango source code.
