@@ -56,6 +56,8 @@ Manager:add(a, b) # Method
 fn Manager::CreateInstance() # Static method
   return Manager()
 ```
+Instance methods are called through their receiver. To use one as a callback,
+write a closure that calls it; `callback = manager.add` is not valid Lango.
 
 ### Properties
 

@@ -402,3 +402,18 @@ compile-time error, regardless of their parameter lists. Lango does not select
 an implementation by argument count or value type. A different calling shape
 uses a distinct name, D-025 default parameters, or one positional object
 argument.
+
+## D-027: Instance methods are not detachable callbacks
+
+**Status:** Accepted
+
+An instance method call has an explicit receiver: `manager.add(1, 2)` invokes
+`add` with `manager` as its instance. Taking an instance method as a bare value,
+such as `callback = manager.add`, is a compile-time error. Lango never silently
+creates a bound callback or exposes JavaScript's unbound-`this` behavior.
+
+To pass instance behavior as a callback, source code creates an explicit
+closure, captures any outer local bindings and properties it uses, and calls the
+method through its receiver. This makes callback dependencies and receiver
+lifetime visible in source. The behavior of methods on imported JavaScript
+objects remains part of the JavaScript-interoperability contract.
