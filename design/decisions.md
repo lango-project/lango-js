@@ -488,3 +488,18 @@ impose one universal resource interface.
 `finally` runs whether the protected block completes normally, returns, or
 throws, subject to the ordinary JavaScript `finally` behavior when the `finally`
 block itself changes control flow.
+
+## D-032: Built-in collection syntax is deliberately small
+
+**Status:** Accepted
+
+Arrays, plain objects, programmatic strings, and texts are Lango's built-in
+collection surface. `for collection as item` iterates arrays, strings, texts,
+and other ordinary JavaScript iterable values. `for object as key: value`
+iterates the own enumerable entries of a plain object.
+
+`Map`, `Set`, and other JavaScript collection types remain usable through normal
+JavaScript interoperation and their native methods, but receive no special
+Lango literal, member, or iteration syntax. A `Map` used as a generic iterable
+therefore yields its native entry values rather than gaining implicit key/value
+destructuring. Generators and `yield` are not introduced by this decision.

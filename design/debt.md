@@ -101,12 +101,12 @@ switching, serialization, or enumeration APIs. If none of these are wanted,
 replace it with ordinary static class constants rather than maintaining a
 near-duplicate feature.
 
-### Collection and iteration boundary
+### Unicode string indexing and iteration
 
-Define which JavaScript collection values receive first-class Lango behavior:
-arrays, plain objects, Map, Set, iterable values, and strings/texts. Specify
-the `for` behavior for each and Unicode indexing/iteration of strings and
-texts. Explicitly exclude generators if they remain outside the language.
+D-032 defines strings and texts as built-in iterable values. Specify whether
+indexing with `[]` and iteration operate on UTF-16 code units, Unicode code
+points, or grapheme clusters, and keep the choice consistent with string length
+and text comparison.
 
 ## JavaScript interoperability
 
