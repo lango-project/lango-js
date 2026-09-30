@@ -56,9 +56,10 @@ branch assigns it. Function parameters are assigned when the function begins.
 The exact rules for loops, exceptions, closures, and asynchronous code remain
 open work.
 
-File-level bindings are module globals. A function or method accesses one with
-an explicit `global name` declaration. This makes shared mutable state visible
-at the point of use.
+File-level globals use the declaration form `global name = expression`. A
+function or method accesses one with an explicit `global name` declaration.
+This makes shared mutable state visible at both its declaration and point of
+use.
 
 ## D-004: Function and class declaration forms are distinct
 
@@ -503,3 +504,20 @@ JavaScript interoperation and their native methods, but receive no special
 Lango literal, member, or iteration syntax. A `Map` used as a generic iterable
 therefore yields its native entry values rather than gaining implicit key/value
 destructuring. Generators and `yield` are not introduced by this decision.
+
+## D-033: Programs start in an exported `main(args)` function
+
+**Status:** Accepted
+
+An entry source file declares and exports `main(args)` as its program entry
+point. The host starts the program by calling that exported function with its
+argument array. A library source file need not declare `main`.
+
+At source-root indentation, only declarations are valid: imports, exports,
+classes, functions, macros, globals, contexts, and tests. A free executable
+statement at root indentation is a compile-time error. Executable code belongs
+inside a function, method, test, or macro body. A declaration may contain an
+initializer where its own syntax permits one, such as `global name = value`.
+
+The precise host contract for arguments, environment configuration, returned
+Promises, and exit codes remains open work.

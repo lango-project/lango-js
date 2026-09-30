@@ -2,10 +2,13 @@
 
 ## Code Structure
 
-  * A file has imports and exports at the start.
-  * Can have a class implementation.
-    * 
-  * Or function implementations.
+  * A file has imports and exports at the start, followed by declarations.
+  * An entry file exports `main(args)`. The host starts the program by calling
+    it with its argument array.
+  * Root level has no free executable statements. Executable code belongs in a
+    function, method, test, or macro body.
+  * A file can have class, function, macro, global, context, and test
+    declarations.
   * Indented structure.
   * Line oriented. Operators or paranthesis imbalance denotes line continuation.
   * A closing parenthesis, bracket, or brace may dedent to the start of its
@@ -145,9 +148,10 @@ if blabla
 ```
 ### Global Variables
 
-They are explicitly defined at the file level and *global* keyword is used for using it inside a function or method.
+They are explicitly declared at the file level, and the *global* keyword is
+used for accessing them inside a function or method.
 ```lango
-surprise = 10
+global surprise = 10
 
 add(a, b)
   global surprise

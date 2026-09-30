@@ -117,10 +117,10 @@ whether a runtime helper package is permitted.
 
 ### Program entry point and host contract
 
-Decide whether module top-level code is the sole entry mechanism or whether a
-`main()` convention exists. Specify how a program selects or receives its host
-environment (Node, browser, test runner, database adapter), command-line
-arguments, environment configuration, and exit/error behavior.
+D-033 defines exported `main(args)` as the entry point and excludes free
+root-level executable statements. Specify how a program selects or receives its host environment
+(Node, browser, test runner, database adapter), command-line arguments,
+environment configuration, returned Promises, and exit/error behavior.
 
 ### Imports and exports
 
