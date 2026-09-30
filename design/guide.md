@@ -41,6 +41,9 @@ setInterval(1000, ()
   )
 ```
 _Function parameters should be the last one. Legacy functions like setInterval() get special treatment from the transpiler._
+Callbacks receive only their declared positional arguments. A JavaScript API's
+callback `this` is not visible in Lango; use an argument, `context`, or
+`capture` when the callback needs outside state.
 
 ## Class and Method Definitions
 

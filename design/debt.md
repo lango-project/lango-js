@@ -64,12 +64,12 @@ explicit interoperability contract.
 
 ### Function invocation contract
 
-Specify callback invocation and calls into ordinary JavaScript functions,
-including methods on imported JavaScript objects. D-025 defines positional
-default parameters, missing-argument errors, excludes rest/spread syntax, and
-defines excess arguments; D-026 excludes overloads and D-027 defines Lango
-instance-method receivers. The relaxed-JSON object-argument convention does not
-replace these positional-call rules.
+Specify calls into ordinary JavaScript functions, including methods on imported
+JavaScript objects. D-025 defines positional default parameters,
+missing-argument errors, excludes rest/spread syntax, and defines excess
+arguments; D-026 excludes overloads, D-027 defines Lango instance-method
+receivers, and D-028 defines callback invocation. The relaxed-JSON object-
+argument convention does not replace these positional-call rules.
 
 ### Number model and arbitrary precision
 

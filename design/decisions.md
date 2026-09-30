@@ -417,3 +417,19 @@ closure, captures any outer local bindings and properties it uses, and calls the
 method through its receiver. This makes callback dependencies and receiver
 lifetime visible in source. The behavior of methods on imported JavaScript
 objects remains part of the JavaScript-interoperability contract.
+
+## D-028: Callbacks use ordinary Lango closure semantics
+
+**Status:** Accepted
+
+A Lango closure passed to another function is invoked as an ordinary Lango
+function. Its declared positional parameters receive the callback arguments;
+excess arguments are ignored and missing required arguments raise the D-025
+runtime arity error.
+
+A JavaScript API's callback receiver (`this`) is not exposed to Lango code and
+cannot replace a receiver preserved by D-012. A callback receives outside state
+only through its parameters, `capture` declarations, `global` declarations, or
+`context` declarations. The transpiler lowers Lango closures with lexical
+receiver semantics so JavaScript callback invocation cannot introduce an implicit
+receiver.
