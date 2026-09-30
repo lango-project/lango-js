@@ -355,6 +355,14 @@ Outside variables to be captured inside the closure should be explicitly specifi
     capture number
     return a + b + number
 ```
+Instance and static properties used by a closure must also be captured. A
+property capture keeps its owner, not a snapshot of its current value:
+```lango
+return ()
+  capture @count, @@limit
+  @count = @count + 1
+  return @count < @@limit
+```
 ## Context
 
 Context variables are used for dependency injection or not to carry specific variables through all functions or methods.

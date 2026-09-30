@@ -177,10 +177,19 @@ Reading a local binding from an enclosing lexical function requires a
 compile-time dependency declaration; JavaScript's normal closure mechanism
 provides the runtime capture.
 
-`global` bindings, `context` bindings, imports, and instance/static properties
-are not local lexical captures. They follow their own access rules and do not
-need a `capture` declaration. A missing required capture is a compile-time
-error.
+`global` bindings, `context` bindings, and imports follow their own explicit
+access rules and do not need a `capture` declaration. An instance or static
+property used by a closure must be listed as `capture @property` or
+`capture @@property`. A missing required capture is a compile-time error.
+
+Capturing `@property` retains the class instance on which the closure was
+created; it does not copy the property's current value. Capturing `@@property`
+retains its declaring class. The compiler verifies that every captured property
+and every property used in the closure resolves to a valid class member, which
+makes an accidental property name a compile-time error. The generated closure
+therefore safely outlives the method that created it while continuing to access
+the original owner. Access to an instance/static property is invalid outside a
+class-member context.
 
 ## D-013: Context is dynamically scoped, immutable binding state
 
