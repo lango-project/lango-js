@@ -324,17 +324,26 @@ attempt to retain context through uninstrumented asynchronous JavaScript code.
 
 ## D-014: JSON helpers use explicit conversion boundaries
 
-**Status:** Draft
+**Status:** Accepted
 
-`from_json(text)` parses a JSON text and returns ordinary Lango values: plain
-objects, arrays, strings, booleans, null, and numbers according to the Lango
-number model. Invalid JSON raises a parse error; it never returns a sentinel
-value.
+`from_json(text)` accepts a programmatic string or Text and returns plain
+objects, arrays, programmatic strings, Booleans, null, and numbers according to
+the Lango number model. A Text's translation intent is not represented in JSON.
+Normal JSON numbers are native Numbers; D-043 directly parses `$` fields as
+Decimal values. Invalid JSON raises `JsonParseError`, including its input line,
+column, and a short excerpt; it never returns a sentinel value.
 
-`to_json(value)` serializes supported ordinary Lango values to a programmatic
-string. Serialization failures, including unsupported values and cyclic object
-graphs, are errors. The representation of texts and arbitrary-precision
-numbers is not decided yet.
+`to_json(value)` returns a programmatic string and accepts only null, Booleans,
+finite native Numbers, Decimals, strings/Texts, Arrays, and plain objects. A
+Decimal uses D-043's canonical JSON-number spelling, and a Text serializes as
+its ordinary string content. Dates, binary values, Map/Set, class instances,
+functions, Promises, and other custom JavaScript objects raise `JsonUnsupported`;
+call library code to convert them explicitly first. A cycle raises `JsonCycle`.
+
+At JavaScript boundaries, an enumerable `undefined` value is normalized to
+Lango `null` before serialization, as are ordinary missing-property reads under
+D-037. D-040's `NonFiniteNumber` error applies before JSON could substitute
+`null` for a non-finite value.
 
 ## D-015: Embedded SQL uses bound parameters, never textual interpolation
 

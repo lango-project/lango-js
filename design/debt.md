@@ -7,13 +7,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## JavaScript interoperability
 
-### JSON conversion edge cases
-
-Specify `from_json`/`to_json` handling for Text, arbitrary-precision numbers,
-dates, binary data, undefined/missing properties, non-finite numbers, custom
-objects, and cyclic graphs. Decide the error type and source location reported
-for invalid input.
-
 ### Embedded SQL contract
 
 Define SQL-literal recognition, query formatting, identifier quoting, repeated

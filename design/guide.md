@@ -449,6 +449,13 @@ Other JSON numeric fields are native JavaScript Numbers. Assign one to a `$`
 binding when Decimal arithmetic is needed, accepting that JSON parsing may
 already have lost precision; Lango has no separate Decimal-JSON parser or
 field-selection syntax.
+`from_json` accepts a string or Text and returns only plain JSON-shaped values;
+invalid input reports `JsonParseError` with its input location. `to_json` returns
+a programmatic string and accepts only JSON-shaped values, including Decimal.
+Dates, binary data, Map/Set, class instances, functions, Promises, and other
+custom objects require an explicit library conversion first. Cycles raise
+`JsonCycle`, and non-finite numbers raise `NonFiniteNumber` rather than becoming
+JSON `null`.
 
 ## Embedded SQL
 
