@@ -21,11 +21,6 @@ Every accepted decision should gain at least one Lango input, expected JavaScrip
 output, and a runtime assertion. Start with parsing/formatting fixtures before
 the full transpiler exists.
 
-### Diagnostics and formatting
-
-Define error spans, recovery behavior, error codes, formatter output, and the
-policy for comments, blank lines, and line continuation.
-
 ### Test execution model
 
 Specify test discovery order, test isolation, setup/teardown, assertion error

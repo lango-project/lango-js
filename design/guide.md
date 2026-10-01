@@ -33,6 +33,21 @@
     expression.
   * \# for comments
 
+## Diagnostics and formatting
+
+Every compiler diagnostic has a stable code such as `LNG1001`, a severity, and
+a primary source span (file, one-based line and column range). A diagnostic may
+include related spans when another location explains the problem. The compiler
+reports as many independent errors as it can in one run, although errors after
+recovery may be incomplete. Any error, including a semantic error, prevents
+output emission.
+
+The formatter operates only on parseable source. It preserves comments and
+intentional blank-line separation, collapses repeated blank lines to one,
+removes trailing whitespace, rejects TAB characters, and applies the indentation
+and delimiter-alignment rules in this guide. It does not silently reformat an
+invalid file.
+
 ## Function Definition
 
 Leftmost definiton denotes a function.

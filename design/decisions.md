@@ -523,6 +523,24 @@ declarations, keeping the already-resolved module graph stable. Macro
 diagnostics retain both the macro call site and generated-source location where
 possible.
 
+## D-060: Diagnostics are located and formatting is deterministic
+
+**Status:** Accepted
+
+Every compiler diagnostic has a stable `LNG` error code, a severity, and a
+primary source span consisting of file and one-based line/column range. It may
+contain related spans where another source location explains the error, such as
+a declaration related to an invalid use. The compiler attempts to report as many
+independent diagnostics as possible in one invocation, but diagnostics produced
+after parser or analyzer recovery are not guaranteed exhaustive. Any error,
+including a semantic error, prevents compiler output emission.
+
+The formatter accepts only parseable source. It preserves comments and intended
+blank-line separation, collapses repeated blank lines to one, removes trailing
+whitespace, rejects TAB characters, and deterministically applies the existing
+indentation and closing-delimiter alignment rules. It does not attempt to repair
+or silently normalize syntactically invalid source.
+
 ## D-021: Relaxed JSON is an ordinary positional object argument
 
 **Status:** Draft
