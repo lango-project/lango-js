@@ -9,8 +9,8 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ### Embedded SQL contract
 
-Define SQL-literal recognition, query formatting, identifier quoting, repeated
-named parameters, parameter type conversion, statement/result-set API,
+Define SQL-literal recognition, query formatting, repeated named parameters,
+parameter type conversion, statement/result-set API,
 transactions, cancellation, diagnostics, and database adapter registration.
 Decide whether `result.name = value` is exclusively parameter binding or can
 also mutate a row. Add multi-database selection syntax here when it is designed.

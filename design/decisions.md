@@ -345,7 +345,7 @@ Lango `null` before serialization, as are ordinary missing-property reads under
 D-037. D-040's `NonFiniteNumber` error applies before JSON could substitute
 `null` for a non-finite value.
 
-## D-015: Embedded SQL uses bound parameters, never textual interpolation
+## D-015: Embedded SQL separates bound parameters from raw interpolation
 
 **Status:** Draft
 
@@ -354,10 +354,15 @@ template denotes a named parameter, not a textual substitution. Assigning
 `result.name = value` provides the parameter value before `result.execute()`.
 The environment adapts the template and bindings to its database driver.
 
-Interpolating a Lango text expression into SQL source is not permitted. Values
-must be represented by `@name` parameters, so query text and data remain
-separate. The result-set API, statement classification, adapter interface, and
-multiple-database syntax remain open work.
+An `@name` parameter is statically recognized from the SQL literal source and
+is always bound as data. `${expression}` is separately permitted as raw SQL
+string interpolation, using programmatic-string conversion rather than Text
+translation semantics. It may supply any SQL string fragment, including
+identifiers, keywords, or clauses; its contents are not escaped, quoted, or
+re-scanned for additional `@` parameters. The programmer is responsible for
+ensuring interpolated SQL is safe and valid. The result-set API, statement
+classification, adapter interface, and multiple-database syntax remain open
+work.
 
 ## D-016: Embedded XML is a balanced literal form
 

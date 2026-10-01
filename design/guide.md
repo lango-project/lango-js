@@ -485,7 +485,12 @@ TODO syntax for multiple database
 If a SQL statement returns multiple result sets, *NextResult()* method is used to switch to the next one.
 
 Use named `@parameter` values for dynamic SQL values. Text interpolation is not
-used inside SQL.
+used for parameter binding: `@parameter` is always passed to the database as
+data. `${expression}` is also allowed in SQL and is inserted directly into the
+SQL string. It uses programmatic-string semantics, never translatable Text
+semantics. Use it deliberately for dynamic identifiers, keywords, or SQL
+fragments; it is not escaped or parameterized, and interpolated content cannot
+create new `@parameter` bindings.
 
 ## Embedded XML
 
