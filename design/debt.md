@@ -5,13 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Unicode string indexing and iteration
-
-D-032 defines strings and texts as built-in iterable values. Specify whether
-indexing with `[]` and iteration operate on UTF-16 code units, Unicode code
-points, or grapheme clusters, and keep the choice consistent with string length
-and text comparison.
-
 ## JavaScript interoperability
 
 ### Set the emitted JavaScript baseline

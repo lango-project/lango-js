@@ -397,7 +397,11 @@ when the program is shown in Turkish.
 
 ### As an Array
 
-Strings and texts are character arrays. Individual characters are accessed with [].
+Strings and texts are Unicode code-point arrays. `length`, `for ... as`, and
+individual `[]` access all use zero-based code points, so a surrogate-pair emoji
+is one element. Grapheme clusters are not combined: a visually single composed
+emoji may contain several elements. An out-of-range index is `null`. Text
+comparison normalization does not alter a text's stored characters or length.
 
 ## Standard Lib
 

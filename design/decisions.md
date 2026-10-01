@@ -661,6 +661,14 @@ Lango literal, member, or iteration syntax. A `Map` used as a generic iterable
 therefore yields its native entry values rather than gaining implicit key/value
 destructuring. Generators and `yield` are not introduced by this decision.
 
+String and text indexing, `length`, and single-value iteration use Unicode code
+points, not JavaScript UTF-16 code units and not grapheme clusters. Indices are
+zero-based; an out-of-range index produces `null` under D-037. The transpiler
+uses helpers where JavaScript's native string operations would split a surrogate
+pair. Text equality's D-011 normalization and case folding apply only while
+comparing values; they do not rewrite stored text or change its code-point
+length or indexing.
+
 ## D-033: Programs start in an exported `main(args)` function
 
 **Status:** Accepted
