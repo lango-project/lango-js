@@ -7,12 +7,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## JavaScript interoperability
 
-### Standard-library aliases
-
-Inventory every intentional Lango alias such as `Array#add`, state its JavaScript
-equivalent and return value, and decide whether aliases apply only to known
-arrays or to any object exposing the underlying method.
-
 ### Reflection edge cases
 
 Specify `get_class` and `is_kindof` behavior for null, undefined, primitive

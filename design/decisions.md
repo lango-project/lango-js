@@ -175,8 +175,9 @@ mutation follow JavaScript semantics.
 
 Array literals compile to JavaScript arrays. `array.add(value)` is a Lango
 standard-library alias for JavaScript `array.push(value)` and returns the same
-value as `push` (the resulting length). Other JavaScript array methods remain
-available as-is.
+value as `push` (the resulting length). It applies only to actual Array values,
+not to arbitrary objects that happen to expose a `push` method. Other JavaScript
+array methods remain available as-is.
 
 ## D-008: Loop forms lower to structured JavaScript control flow
 
@@ -926,6 +927,22 @@ spelling.
 Number. Precision loss is permitted because this conversion is explicit in
 source. A conversion that cannot produce a finite Number raises the D-040
 `NonFiniteNumber` error.
+
+## D-052: Standard aliases are deliberately minimal
+
+**Status:** Accepted
+
+`println(value)` is Lango's portable standard output function. The selected host
+renders one value in its display form, writes a line terminator, and returns
+`null`; Lango source does not rely on a global `console` object. The host may
+map this operation to its console or another output sink.
+
+`Array#add(value)` is the only collection-method alias. It applies only to real
+Array values, lowers to JavaScript `Array#push(value)`, and returns the resulting
+length. All other JavaScript collection method names remain unchanged. The
+standard functions `from_json`, `to_json`, `is_number`, `is_string`, `is_bool`,
+`is_object`, `is_array`, `to_js_number`, `get_class`, and `is_kindof` are Lango
+functions rather than aliases for a JavaScript method.
 
 ## D-044: Delimiters are line-oriented outside single-line lists
 

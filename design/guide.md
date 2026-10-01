@@ -60,7 +60,7 @@ parameter, or an object argument for a different calling shape.
 As a parameter to an existing function:
 ```lango
 run_later(1000, ()
-    console.log("Hello")
+    println("Hello")
 )
 ```
 An inline closure is convenient as the last argument of a multiline call. This
@@ -248,8 +248,8 @@ data = {
     children: ["Özgür"]
 }
 
-console.log(data.name)
-console.log(data["name"]) # Same with the above
+println(data.name)
+println(data["name"]) # Same with the above
 ```
 Braces always create an object; they never create a code block. An object has
 at most one field per physical line. Its fields are separated by newlines, not
@@ -273,7 +273,7 @@ Arrays can also be defined freely.
 a = ["Bill", "Elon"]
 a.add("Savaş") # instead of push()
 
-console.log(a[2])
+println(a[2])
 
 a.length
 ```
@@ -294,9 +294,9 @@ part of the syntax.
 ### If
 ```lango
 if n == 5
-    console.log("Five")
+    println("Five")
   else # This is not an indentation bug.
-      console.log("Not five")
+      println("Not five")
 ```
 _Else_ is indented two spaces deeper than its `if` to make its relationship
 clear (and a little ugly).
@@ -310,40 +310,40 @@ First usage:
 switch n
   case 3
   case 5
-      console.log("Hello")
+      println("Hello")
   case 6
-      console.log("Six")
+      println("Six")
   else
-      console.log("Good bye")
+      println("Good bye")
 ```
 Or
 ```lango
 switch
   case n == 5
-      console.log("Five")
+      println("Five")
   case n > 100
-      console.log("Big")
+      println("Big")
   else
-      console.log("Not five")
+      println("Not five")
 
 ```
 ### Loop
 ```lango
 n = 0
 loop while n < 100
-    console.log(n)
+    println(n)
     n++
 ```
 ```lango
 n = 0
 loop until n == 100
-    console.log(n)
+    println(n)
     n++
 ```
 ```lango
 n = 0
 loop 
-    console.log(n)
+    println(n)
     n++
     if n == 100
         break
@@ -357,11 +357,11 @@ You can use the following to break from a 3 level inner loop:
 ### For (Iterator)
 ```lango
 for array as n
-    console.log(n)
+    println(n)
 ```
 ```lango
 for obj as name: value
-    console.log("${name}=${value}")
+    println("${name}=${value}")
 
 ```
 Arrays, strings, texts, and other JavaScript iterables can be used with the
@@ -425,6 +425,7 @@ The standard library provides the absolute minimum functions.
 ```lango
 from_json(text)
 to_json(object)
+println(value)
 is_number(value)
 is_string(value)
 is_bool(value)
@@ -434,6 +435,9 @@ to_js_number($decimal)
 get_class(value) # Can be used as get_class(value) == MyClass
 is_kindof(value, Class) 
 ```
+`println(value)` writes the host's display form of one value followed by a line
+break and returns `null`. It is the portable Lango output function; source code
+does not use a host `console` global.
 `from_json` parses a numeric JSON field whose name starts with `$` directly as
 a Decimal. This preserves the numeric token's precision.
 Other JSON numeric fields are native JavaScript Numbers. Assign one to a `$`
@@ -452,7 +456,7 @@ rs = SQL
 rs.year = 2011
 rs.execute()
 loop while rs.next()
-    console.log("${rs.name} ${rs.surname}")
+    println("${rs.name} ${rs.surname}")
 ```
 `@year` is a named query parameter. Set it through the result before execution;
 it is bound as data rather than inserted into the SQL text.
@@ -579,13 +583,13 @@ restores the previous value.
 f()
     context pi = 3
     g()
-    console.log(pi) # prints 3
+    println(pi) # prints 3
 
 g()
     context pi
-    console.log(pi) # prints 3
+    println(pi) # prints 3
     h()
-    console.log(pi) # still prints 3 even though h() changes it to 3.14
+    println(pi) # still prints 3 even though h() changes it to 3.14
 
 h()
     context pi = 3.14
@@ -596,7 +600,7 @@ j()
 
 k()
     context pi
-    console.log(pi) # prints 3.14
+    println(pi) # prints 3.14
 ```
 
 ## Promises
@@ -686,7 +690,7 @@ f()
 ```
 ```lango
 WARN()
-    PASTE("console.log(\"WARNING!\")")
+    PASTE("println(\"WARNING!\")")
 
 f()
     WARN()
@@ -698,7 +702,7 @@ MYMACRO(A)
   
 f()
     A = 5
-    console.log("${MYMACRO(A)}")
+    println("${MYMACRO(A)}")
 ```
 At the start of the compilation, all macro calls are evaluated and all PASTE's are pasted into the code until all are resolved.
 
