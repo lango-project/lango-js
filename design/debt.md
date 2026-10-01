@@ -7,12 +7,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## JavaScript interoperability
 
-### Class construction and JavaScript classes
-
-Specify how imported JavaScript constructors are distinguished from ordinary
-functions, whether subclassing is supported, and how Lango visibility rules
-interact with JavaScript fields and methods.
-
 ### Standard-library aliases
 
 Inventory every intentional Lango alias such as `Array#add`, state its JavaScript

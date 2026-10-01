@@ -121,9 +121,10 @@ anonymous function value. A named function value can be assigned with
 * `Name:method(parameters)` is an instance method.
 * `fn Name::method(parameters)` is a static method.
 
-The transpiler emits JavaScript `class` syntax; constructing `Name()` in
-Lango emits `new Name()` when `Name` resolves to a Lango class. Calls to an
-unknown or imported JavaScript function remain ordinary JavaScript calls.
+The transpiler emits JavaScript `class` syntax. Constructor declarations retain
+the `Name(parameters)` form inside their class implementation, but every class
+construction expression uses `new Name(arguments)`. A bare `Name(arguments)`
+is an ordinary function call and cannot construct a Lango class.
 
 ## D-005: Properties use explicit sigils
 
@@ -436,6 +437,24 @@ Static lookup follows JavaScript `class extends` behavior: a child finds its own
 static member first and otherwise its ancestor's. Assigning a static member in a
 child creates or updates the child's own member and can shadow an inherited one.
 
+## D-051: Construction is explicit for Lango and JavaScript classes
+
+**Status:** Accepted
+
+`new Type(arguments)` is the sole construction syntax. It constructs a Lango
+class or an imported/dynamically obtained JavaScript constructor; the latter is
+not inferred from an ordinary function call. Applying `new` to a value that is
+not constructable raises the runtime error `NotConstructable`. Lango does not
+provide both a bare and a `new` construction spelling.
+
+`class Child : Parent` permits only a Lango class as `Parent`. A Lango class
+cannot subclass an imported JavaScript class, and JavaScript subclassing of a
+Lango class is outside Lango's supported contract. Imported JavaScript objects
+retain their native dynamic fields and methods; Lango's `@`, `_`, `@@`, and
+`properties` visibility rules do not apply to them. A Lango instance passed to
+JavaScript exposes its public fields and methods as ordinary JavaScript members;
+private and protected restrictions remain compiler-enforced Lango rules.
+
 ## D-050: Static values replace enums
 
 **Status:** Accepted
@@ -446,8 +465,8 @@ with a `static` section:
 ```lango
 class Color
     static
-        White = Color(255, 255, 255)
-        Black = Color(0, 0, 0)
+        White = new Color(255, 255, 255)
+        Black = new Color(0, 0, 0)
 ```
 
 Each entry is evaluated once, in source order, when the class is defined. It is

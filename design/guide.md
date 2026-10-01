@@ -102,10 +102,15 @@ Manager:add(a, b) # Method
     return a + b + @surprise
 
 fn Manager::CreateInstance() # Static method
-    return Manager()
+    return new Manager()
 ```
 Instance methods are called through their receiver. To use one as a callback,
 write a closure that calls it; `callback = manager.add` is not valid Lango.
+Construct any class, including an imported JavaScript class, with `new`:
+```lango
+manager = new Manager()
+emitter = new events.EventEmitter()
+```
 
 ### Properties
 
@@ -182,8 +187,8 @@ There is no separate enum structure. Use ordinary initialized static values:
 ```lango
 class Color
     static
-        White = Color(255, 255, 255)
-        Black = Color(0, 0, 0)
+        White = new Color(255, 255, 255)
+        Black = new Color(0, 0, 0)
 ```
 Outside the class, use `Color.White`; inside it, use `@@White`. These are
 mutable ordinary static properties, not a closed enum or exhaustive switch type.
