@@ -22,6 +22,9 @@
   * The first compiler output is ES2022 ESM: `.mjs` files for Node 24+ and
     modern ESM-capable browsers. The compiler writes external source maps;
     bundling is a host/build-tool concern.
+  * Each build also contains a private `.lango/runtime.mjs`. Generated modules
+    import only the helpers they use through compiler-calculated relative paths.
+    The host configures that runtime before it calls exported `main(args)`.
   * Indented structure. Normal block bodies are four spaces deeper than their
     header. An `else` is two spaces deeper than its `if`, and its body is four
     spaces deeper than the `else`.

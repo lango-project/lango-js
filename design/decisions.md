@@ -1211,6 +1211,30 @@ query object. `position` is the position in that SQL string reported by the
 adapter, or `null` when the source does not provide one; its unit is adapter-
 specific.
 
+## D-061: Compiler output carries a private relative-import runtime
+
+**Status:** Accepted
+
+Each ES2022 ESM compiler output contains a private `.lango/runtime.mjs` module.
+Every generated Lango module imports only the helpers it uses from that module,
+through a compiler-calculated relative specifier. A module in the output root
+therefore imports `./.lango/runtime.mjs`; a nested generated module uses the
+appropriate `../` prefix. These are ordinary relative ESM imports and work in
+both Node and browser-capable bundlers.
+
+The runtime implements compiler helpers such as `println`, Text translation,
+Decimal operations, dynamic context, JSON boundary normalization, and the SQL
+adapter bridge. It contains Lango's embedded runtime dependencies, including
+the pinned Decimal implementation. The host configures this runtime with its
+deployment-specific facilities, such as output, locale, and database adapter,
+before invoking exported `main(args)`.
+
+The compiler and its emitted runtime are a matched build artifact. Helper names
+and their JavaScript calling convention are private to that artifact: Lango
+source never imports a runtime package or relies on a global runtime object.
+The compiler may change private helper names when it changes the emitted runtime
+in the same build.
+
 Constraint, connection, timeout, and SQL-syntax failures share this one error
 surface; programs distinguish adapter-supported cases through `code` and use
 ordinary `try`/`catch`. The adapter never interpolates bound parameter values
