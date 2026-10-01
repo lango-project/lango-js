@@ -402,6 +402,10 @@ is_kindof(value, Class)
 ```
 `from_json` parses a numeric JSON field whose name starts with `$` directly as
 a Decimal. This preserves the numeric token's precision.
+Other JSON numeric fields are native JavaScript Numbers. Assign one to a `$`
+binding when Decimal arithmetic is needed, accepting that JSON parsing may
+already have lost precision; Lango has no separate Decimal-JSON parser or
+field-selection syntax.
 
 ## Embedded SQL
 

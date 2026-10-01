@@ -730,6 +730,13 @@ A normal JSON field remains a native Number. Assigning it to a `$` binding uses
 D-042's Number-to-Decimal conversion, which cannot restore precision that was
 already lost while parsing the normal JSON field.
 
+Lango provides no alternate `from_json` mode, field-path selector, or external-
+schema annotation that preserves raw numeric tokens for ordinary field names.
+An external JSON schema without `$` Decimal field names is intentionally parsed
+as native Numbers first; assigning `order.price` to `$price` performs the
+ordinary D-042 conversion at that point. This favors one simple JSON entry point
+over retaining precision that JavaScript Number parsing has already lost.
+
 ## D-039: Decimal division uses a configured fractional scale
 
 **Status:** Accepted
