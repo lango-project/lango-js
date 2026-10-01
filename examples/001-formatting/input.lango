@@ -1,0 +1,10 @@
+export main(args)
+    name = "world"
+
+
+    if args.length > 0
+        name = args[0]
+      else
+          name = "world"
+
+    println("Hello, ${name}")
