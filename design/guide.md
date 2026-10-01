@@ -190,6 +190,15 @@ data = {
 console.log(data.name)
 console.log(data["name"]) # Same with the above
 ```
+An object field beginning with `$` is a Decimal field:
+```lango
+invoice = {
+  $price: 12.50
+  quantity: 3
+}
+
+$total = invoice.$price * invoice.quantity
+```
 ## Arrays
 
 Arrays can also be defined freely.
@@ -327,6 +336,8 @@ to_js_number($decimal)
 get_class(value) # Can be used as get_class(value) == MyClass
 is_kindof(value, Class) 
 ```
+`from_json` parses a numeric JSON field whose name starts with `$` directly as
+a Decimal. This preserves the numeric token's precision.
 
 ## Embedded SQL
 

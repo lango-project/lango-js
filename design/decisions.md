@@ -592,12 +592,13 @@ and protected properties. `global $name = value` declares a Decimal global.
 Decimal values are backed by a decimal runtime selected by the transpiler, not
 by a package name exposed in Lango source.
 
-A numeric literal assigned to a `$` binding is emitted directly as a Decimal
-literal, without first becoming a JavaScript floating-point value. An expression
-that contains a `$` Decimal value or supplies an argument to a `$` parameter is
-a Decimal context. Its native Number operands and numeric literals are promoted
-to Decimal by the selected runtime. Arithmetic, ordering, and numeric equality
-in that context are lowered to the library-independent decimal protocol:
+A numeric literal assigned to a `$` binding/property is emitted directly as a
+Decimal literal, without first becoming a JavaScript floating-point value. An
+assignment to a `$` binding/property, an expression containing a `$` Decimal
+value, or an argument supplied to a `$` parameter is a Decimal context. Its
+finite native Number operands and numeric literals are promoted to Decimal by
+the selected runtime. Arithmetic, ordering, and numeric equality in that context
+are lowered to the library-independent decimal protocol:
 
 ```lango
 $total = $price + quantity + 2.5
@@ -618,6 +619,26 @@ Decimal values.
 
 Each transpiler backend must implement the same numeric protocol and pass the
 same semantic test suite.
+
+## D-043: `$` also marks Decimal object and JSON fields
+
+**Status:** Accepted
+
+A plain-object property named `$name` is a Decimal field. Source object literals
+such as `{ $price: 12.50 }` create an exact Decimal value for that field, and
+`object.$price` is a Decimal expression. The field name, including its `$`, is
+preserved when the object is passed to JavaScript or serialized as JSON.
+
+`from_json` recognizes a numeric JSON field whose key begins with `$` as a
+Decimal field and sends its raw numeric token directly to the Decimal backend.
+This preserves precision that a native JavaScript JSON parse would lose. A `$`
+JSON field must contain a JSON number; another JSON value is a parse error.
+`to_json` serializes a Decimal as a JSON number using the Decimal backend's
+canonical decimal spelling.
+
+A normal JSON field remains a native Number. Assigning it to a `$` binding uses
+D-042's Number-to-Decimal conversion, which cannot restore precision that was
+already lost while parsing the normal JSON field.
 
 ## D-039: Decimal division uses a configured fractional scale
 
