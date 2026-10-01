@@ -529,6 +529,25 @@ unless application code checks a response such as `output.ok` and throws.
 Lango does not introduce special Promise-chain block syntax or a separate
 Promise type.
 
+An ordinary `try`/`catch` catches only an exception thrown synchronously while
+the protected expression is evaluated or while a Promise is created. It does
+not catch a rejection delivered later by that Promise; a chain's `.catch(...)`
+handles that rejection. A rejected Promise returned from `main` is reported as
+a failed program outcome under D-035. A detached rejection is left to the host
+runtime's normal unhandled-rejection reporting; the transpiler does not attach
+a hidden handler.
+
+Lango preserves a JavaScript error object and its stack rather than constructing
+an artificial asynchronous stack. Generated source maps may improve reported
+source locations when the selected output target supports them. Promise
+cancellation, scheduling, and concurrent-handler ordering are not core Lango
+features: they follow the JavaScript Promise and library API in use.
+
+Dynamic `context` does not cross a Promise callback boundary automatically. A
+callback runs without the context active when it was registered. Code that needs
+a context value later reads it into a local binding before registering the
+callback and explicitly `capture`s that binding.
+
 ## D-030: Bindings and properties are mutable by default
 
 **Status:** Accepted

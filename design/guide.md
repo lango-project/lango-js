@@ -540,6 +540,25 @@ fetch(input).then((output)
 HTTP error responses are handled by checking `output.ok`; they do not normally
 reject `fetch` on their own.
 
+An ordinary `try/catch` does not catch a later Promise rejection; use a later
+`.catch(...)` in that chain. A Promise returned from `main` determines the
+program outcome, while a detached Promise follows the host's normal unhandled-
+rejection behavior. Lango adds no cancellation or concurrency model beyond the
+JavaScript library in use.
+
+`context` does not automatically cross into a Promise callback. Copy a needed
+context value into a local binding and capture that binding explicitly:
+```lango
+load()
+    context tenant
+    saved_tenant = tenant
+
+    fetch("/data").then((response)
+        capture saved_tenant
+        audit(saved_tenant, response)
+    )
+```
+
 ## Unwanted Features
 
 *async* and *await* have no place. Promise operations are handled explicitly

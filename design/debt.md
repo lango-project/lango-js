@@ -5,12 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Promise and error integration edge cases
-
-Specify Promise rejection stack traces, unhandled-rejection reporting, the
-interaction between Promise `catch` and ordinary `try`/`catch`, cancellation,
-concurrency, and context propagation.
-
 ### Function invocation contract
 
 Specify calls into ordinary JavaScript functions, including methods on imported
