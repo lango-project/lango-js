@@ -65,6 +65,20 @@ Callbacks receive only their declared positional arguments. A JavaScript API's
 callback `this` is not visible in Lango; use an argument, `context`, or
 `capture` when the callback needs outside state.
 
+Imported JavaScript functions use their native argument rules. Calling a method
+through its object preserves that object as JavaScript `this`; taking an
+imported method as a value does not. Use an explicit closure when its receiver
+matters:
+```lango
+callback = (value)
+    capture client
+    client.send(value)
+```
+Calling a non-function value raises `NotCallable`. JavaScript `undefined`
+returns as `null`; JavaScript errors propagate unchanged. Convert a Decimal
+explicitly with `to_js_number($value)` before passing it to a normal JavaScript
+numeric API.
+
 ## Class and Method Definitions
 
 ```lango

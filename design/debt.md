@@ -5,15 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Function invocation contract
-
-Specify calls into ordinary JavaScript functions, including methods on imported
-JavaScript objects. D-025 defines positional default parameters,
-missing-argument errors, excludes rest/spread syntax, and defines excess
-arguments; D-026 excludes overloads, D-027 defines Lango instance-method
-receivers, and D-028 defines callback invocation. The relaxed-JSON object-
-argument convention does not replace these positional-call rules.
-
 ### Number model and arbitrary precision
 
 D-038 defines native Numbers by default and explicit Decimal values through a

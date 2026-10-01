@@ -813,3 +813,28 @@ Function parameter and argument lists retain comma separators only when the
 whole list is on one physical line. Multiline parameter and argument lists are
 not currently Lango syntax; they are deliberately deferred rather than given a
 second separator rule.
+
+## D-045: JavaScript calls preserve native receiver and argument behavior
+
+**Status:** Accepted
+
+A call to a statically known Lango function or method follows D-025's arity and
+default-parameter rules. A call to an imported or dynamically obtained
+JavaScript function passes its positional arguments through unchanged; its
+handling of missing or excess arguments is the JavaScript API's own contract.
+An array is never expanded implicitly at either boundary.
+
+`object.method(arguments)` invokes a JavaScript method with `object` as its
+receiver. An imported JavaScript method may be read as a function value, but
+doing so preserves JavaScript's ordinary unbound-receiver behavior. Source that
+needs the receiver creates an explicit closure which calls the method through
+the object. D-027's stricter ban on detaching Lango instance methods remains in
+effect.
+
+Calling a value that is not callable raises the Lango runtime error
+`NotCallable`. Native JavaScript values otherwise cross the boundary unchanged,
+subject to the existing Lango normalizations: JavaScript `undefined` becomes
+Lango `null`, D-040 rejects non-finite numbers, and a Decimal must use
+`to_js_number` before it enters an ordinary JavaScript numeric API. A JavaScript
+exception value propagates unchanged through Lango. JavaScript constructors and
+subclassing are outside this decision.
