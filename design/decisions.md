@@ -384,14 +384,30 @@ rules as other class properties.
 
 ## D-019: Inheritance uses an ancestor class and `super`
 
-**Status:** Draft
+**Status:** Accepted
 
 `class Child : Parent` declares single inheritance. Re-declaring an inherited
 method in `Child` overrides it. `super` accesses the ancestor implementation,
 including its constructor where applicable; it never refers to a derived class.
 
-Constructor ordering, inherited public API declarations, static member
-inheritance, and the exact `super` call syntax remain open work.
+Lango has single inheritance only. Multiple inheritance, mixins, and interfaces
+are not core language features. In a class with an ancestor, a written
+constructor must call `super(...)` exactly once as its first executable
+statement, before any `@` or `_` property access. A class without a written
+constructor receives an implicit constructor that forwards its construction
+arguments to the ancestor. `super(...)` calls only the ancestor constructor;
+`super.method(...)` calls only an ancestor instance method, and `super` is not
+a first-class value.
+
+A child inherits public and protected instance members and cannot access an
+ancestor's private members. An override of a public or protected method cannot
+narrow its visibility; declaring a child method with an ancestor private method's
+name is a compile-time error. The public API declared by an ancestor is inherited
+automatically, so a child declares only its new or overridden public members.
+
+Static lookup follows JavaScript `class extends` behavior: a child finds its own
+static member first and otherwise its ancestor's. Assigning a static member in a
+child creates or updates the child's own member and can shadow an inherited one.
 
 ## D-020: Macro names and expansion form a separate compile-time phase
 

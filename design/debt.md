@@ -5,14 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Inheritance and `super` edge cases
-
-Specify constructor order and required `super` calls, method-resolution rules,
-inherited public API declarations, static-member inheritance, visibility changes
-in overrides, and the exact syntax for invoking an ancestor constructor or
-method. Decide whether multiple inheritance, mixins, or interfaces are excluded
-explicitly.
-
 ### Enum value semantics
 
 The current `enum` block is close to a shorthand for public static class

@@ -145,12 +145,25 @@ Will be used as @length, @quality in the class implementation.
 
 Inheritance can be used as expected.
 ```lango
-class Manager : HumanBeing
-  
-```
-Each method can be overriden by defining again.
+class Employee : Person
 
-*super* keyword is used to access ancestor class.
+Employee(name, id)
+    super(name)
+    @id = id
+
+Employee:describe()
+    return super.describe()
+```
+Only one ancestor class is allowed; mixins and interfaces are not core language
+features. A child constructor calls `super(...)` exactly once as its first
+executable statement. A child without its own constructor forwards its arguments
+to the ancestor automatically. Public and protected members are inherited;
+private ancestor members are not accessible.
+
+Use `super(...)` for the ancestor constructor and `super.method(...)` for an
+ancestor instance method. Public inherited members need not be listed again;
+an override cannot make a public or protected member less visible. Static lookup
+checks the child before the ancestor, as in JavaScript.
 
 ### Enums
 
