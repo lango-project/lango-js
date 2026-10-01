@@ -341,6 +341,12 @@ Texts can have interpolation like "My name is ${name}".
 
 Texts can be subject to translation.
 
+After macro expansion, texts are extracted into JSON translation catalogs. The
+source template is both the default message key and fallback text. Interpolated
+expressions become `{0}`, `{1}`, and so on in the catalog, so a translation may
+reorder them. A host chooses the active catalog; Lango source does not choose a
+locale.
+
 ### Multiline
 ```lango
 text = """
@@ -350,7 +356,10 @@ text = """
 ```
 ### Comparison
 
-Comparisons are case-sensitive in strings. It is case-insensitive for texts.
+Comparisons are case-sensitive for programmatic strings. Text comparisons use
+Unicode NFC normalization and locale-independent Unicode case folding. Thus
+`"I" == "i"` is true, whereas `"I" == "ı"` and `"İ" == "i"` are false even
+when the program is shown in Turkish.
 
 ### As an Array
 

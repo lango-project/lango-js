@@ -5,14 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Text equality and internationalization
-
-Case-insensitive text comparison needs an explicit Unicode normalization and
-locale-independent casing policy. This is especially important for Turkish
-`I`, `İ`, `ı`, and `i`. Also decide translation catalog format, message keys,
-pluralization, escaping, and whether interpolations can be reordered by a
-translation.
-
 ### Multiline text whitespace
 
 Specify whether the indentation shared with the closing `"""` delimiter is

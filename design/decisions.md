@@ -206,16 +206,29 @@ equality follows D-038.
 
 ## D-011: Quote style carries text intent
 
-**Status:** Draft
+**Status:** Accepted
 
 Single-quoted literals are programmatic strings. Double-quoted literals are
 texts: they are eligible for translation extraction and support interpolation.
 Both compile to JavaScript strings.
 
 Interpolation has one spelling, `${expression}`, in a double-quoted text.
-Texts compare case-insensitively as stated in the guide. The Unicode
-normalization and locale policy needed to make that deterministic is unresolved
-and is tracked in `debt.md`.
+Programmatic strings compare by exact, case-sensitive Unicode code points.
+Texts compare by first applying Unicode NFC normalization and then Unicode
+default case folding. The compiler supplies this operation; it must not inherit
+the host machine's locale. Therefore `"I" == "i"` is true, while `"I" == "ı"`
+and `"İ" == "i"` are false. Locale-specific Turkish casing never changes the
+meaning of `==`.
+
+After macro expansion, the compiler extracts texts into JSON translation
+catalogs. A text's canonical source template is its default message key and its
+fallback display value. Interpolations are replaced in source order by `{0}`,
+`{1}`, and so on; a translation may reorder or repeat those placeholders. In a
+catalog template, literal braces are escaped as `{{` and `}}`. Missing
+translations display the source template. The host chooses a catalog; source
+code does not select a locale. Plural rules, grammatical gender or context,
+custom message IDs, and catalog-loading policy are outside the core language
+and may be supplied by libraries.
 
 Triple double quotes create a multiline text. Its closing delimiter determines
 the end of the literal; formatter indentation stripping rules are open work.
