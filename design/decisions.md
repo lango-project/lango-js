@@ -553,16 +553,25 @@ normal property access.
 
 ## D-022: Test blocks are compile-time discoverable tests
 
-**Status:** Draft
+**Status:** Accepted
 
 `test` introduces a test block anywhere ordinary source is allowed. A quoted
 text after `test` is its display name; unnamed tests receive a stable name based
-on their source location. Test blocks are discovered and run by the test runner
-and are excluded from a production build.
+on their source location. After macro expansion, the test runner discovers
+tests from the resolved Lango module graph in deterministic module-path then
+source order. Test blocks are excluded from a production build.
 
 `assert expression` evaluates the expression and fails when it is false. The
 compiler retains the expression's source span so the test runner can report the
-original failed expression. Async-test behavior remains open work.
+original failed expression as `AssertionFailed`.
+
+Each test runs with fresh Lango module state and dynamic context. Lango globals
+and static properties therefore do not leak between tests; imported JavaScript
+modules retain the host's ordinary module-cache behavior. The first test runner
+supports synchronous tests only. It continues after a test failure and reports
+all failures at the end. There are no core setup/teardown hooks: tests use
+ordinary helper functions and `try`/`finally`. Name/path filtering is a runner
+option, and coverage is tooling rather than a language feature.
 
 ## D-023: Reflection exposes JavaScript constructors explicitly
 

@@ -820,16 +820,29 @@ Setters and getters are confusing.
 
 ## Test
 
-Unit tests are defined with test keyword in any source code. Some examples:
+Unit tests use `test` blocks in ordinary source files. A quoted text after
+`test` is its display name; an unnamed test receives a stable source-location
+name.
 ```lango
-test 
+test
     assert add(3, 5) == 8
 ```
 ```lango
 test "addition test 1"
     assert add(3, 5) == 8
 ```
-Assert should report the whole failed expression as text.
+`assert` failures are `AssertionFailed` and report the original asserted
+expression and source location. Tests are discovered after macro expansion,
+excluded from production output, and run in deterministic module-path then
+source order. Each receives a fresh Lango module state and dynamic context, so
+Lango globals and static values do not leak between tests. External JavaScript
+modules retain their host cache behavior.
+
+Tests run synchronously in the first runner. A failing test does not stop later
+tests; the runner reports every failure at the end. There are no special setup
+or teardown hooks: use normal helpers and `try`/`finally`. Test filtering by
+name or path is a test-runner option, and coverage is tooling rather than a
+language feature.
 
 ## Macros
 

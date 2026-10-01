@@ -20,9 +20,3 @@ contextual default connection and join-only nested transactions (D-054).
 Every accepted decision should gain at least one Lango input, expected JavaScript
 output, and a runtime assertion. Start with parsing/formatting fixtures before
 the full transpiler exists.
-
-### Test execution model
-
-Specify test discovery order, test isolation, setup/teardown, assertion error
-format, filtering, coverage, async tests, and how tests interact with imports,
-macros, context, and production build output.
