@@ -599,7 +599,26 @@ connection raises `DatabaseNotConfigured`.
 
 ## Embedded XML
 
-XML is detected when the syntax is encountered.
+At the start of an expression, `<tag` starts an XML literal; in an operator
+position, `<` remains comparison. XML's static structure must be well-formed at
+compile time. An XML literal produces a programmatic string, not translatable
+Text. Its source whitespace is preserved.
+
+`${expression}` is allowed only in text nodes and quoted attribute values. It
+is XML-escaped for that position, so it cannot introduce markup, a tag name, or
+an attribute name. Dynamic XML structure and XML parsing/manipulation use a
+separate library.
+
+```lango
+xml_name = "<Savaş & Co>"
+
+xml = <customer name="${xml_name}">
+        <status>active</status>
+      </customer>
+
+# name="&lt;Savaş &amp; Co&gt;"
+```
+
 ```lango
 xml = <student name="Savas" />
 
@@ -610,8 +629,6 @@ xml = <records>
 
 call(333, <item/>)
 ```
-XML literals evaluate to text and normal `${expression}` interpolation can be
-used in text or attribute values.
 
 TODO should it be closed properly? Or just relax and accept any chunk?
 

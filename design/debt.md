@@ -13,13 +13,6 @@ Design a separate library for explicit connection selection, multiple databases,
 pooling, SQL savepoints, and independent transactions. The core library has one
 contextual default connection and join-only nested transactions (D-054).
 
-### Embedded XML lexical and escaping rules
-
-Define how XML literals are distinguished from `<`, `>`, and related operators;
-which XML forms are accepted; and how interpolated text and attributes are
-escaped. Decide whether parsing produces only validated text or an XML value
-with query/manipulation operations.
-
 ### Macro evaluation and generated source
 
 Define the compile-time expression subset available inside macros, macro

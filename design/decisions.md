@@ -1216,3 +1216,24 @@ an available default adapter or connection raises `DatabaseNotConfigured`.
 Source cannot select a second adapter or override the default connection. Such
 explicit connection selection belongs to the advanced database library noted in
 design debt.
+
+## D-059: XML literals are validated, escaped programmatic strings
+
+**Status:** Accepted
+
+At an expression-start position, `<` followed by an XML tag start introduces an
+XML literal. In an operator position, `<` retains its ordinary comparison
+meaning; the parser's expression context resolves the overlap. Static XML
+structure must be well-formed at compile time. An XML literal evaluates to a
+programmatic string, never translatable Text, and preserves the source
+whitespace in its static content.
+
+An `${expression}` interpolation is valid only in an XML text node or a quoted
+attribute value. The compiler XML-escapes its value for that precise position.
+It cannot supply a tag name, attribute name, raw markup, or another syntactic
+XML fragment. This makes the literal a safe XML-generation convenience rather
+than a dynamic XML templating language.
+
+The core language has no XML document value, parser, selector/query API, or
+mutation API. Programs that need dynamic XML structure or XML manipulation use
+an explicit library after the programmatic-string boundary.
