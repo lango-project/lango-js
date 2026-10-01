@@ -5,13 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Define the `else` indentation grammar
-
-The guide intentionally displays `else` at a different indentation from both
-the `if` and its body. Specify the exact column relationship, nesting behavior,
-and diagnostics. Test nested `if`/`else`, an `else` at file indentation zero,
-and formatter round-tripping before accepting the rule.
-
 ### Complete definite-assignment analysis
 
 Decide how assignment facts flow through loops, `break`, `continue`, returns,

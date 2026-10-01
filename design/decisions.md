@@ -28,9 +28,10 @@ A block begins after a block-introducing construct and continues while source
 lines are more indented than its parent line. Blank lines do not affect block
 structure. Comments are ignored for block structure.
 
-Source files use UTF-8 and spaces for indentation. A formatter emits two spaces
-per nesting level. The lexer rejects a tab in leading whitespace, so that one
-file has one unambiguous visual structure.
+Source files use UTF-8 and spaces for indentation. A formatter emits four spaces
+per nesting level. The TAB character (U+0009) is forbidden anywhere in source,
+including text literals and comments; write a tab in text with the `\t` escape.
+This keeps one file's visual structure unambiguous.
 
 An unclosed parenthesis, bracket, or brace continues the current logical line.
 Inside an object literal, a newline separates entries just as a comma would.
@@ -40,8 +41,25 @@ to the indentation of the expression that opened the group. That dedent closes
 any indentation blocks inside the group but does not end the grouped expression;
 a following `.method(...)` therefore remains part of the same chain.
 
-The precise indentation rule for `else` is deliberately not accepted yet; see
-`debt.md`.
+An `if` header begins at a normal indentation column (a multiple of four); its
+then-body begins four columns farther in. Its associated `else` begins exactly
+two columns farther in than that `if`, and the else-body begins four columns
+farther in than the `else` (six columns farther in than the `if`). This unusual
+half-step is deliberate: it makes `else` visually subordinate to its `if`
+without making it look like part of the then-body. Only an `else` and its direct
+body use those non-four-column positions. A misplaced `else`, or an `else` at
+the same column as its `if`, is a syntax error.
+
+An `else` binds to the most recent unmatched `if` exactly two columns to its
+left; it never binds across another completed conditional. Thus a nested `if`
+uses the same four/two/four pattern relative to its own header. A dangling
+`else`, a second `else` for one `if`, or an `else` at any other column is a
+syntax error.
+
+`switch` labels use the same visual half-step: each `case` and the switch's
+`else` begin two columns farther in than their `switch`, and each label body
+begins four columns farther in than the label. A `case` or switch `else` at any
+other column is a syntax error.
 
 ## D-003: Bindings are lexical and must be definitely assigned
 

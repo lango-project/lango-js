@@ -19,7 +19,11 @@
     declarations.
   * The compiler or host selects Node, browser, test, and database environments.
     Host services are accessed through explicit libraries, `args`, or `context`.
-  * Indented structure.
+  * Indented structure. Normal block bodies are four spaces deeper than their
+    header. An `else` is two spaces deeper than its `if`, and its body is four
+    spaces deeper than the `else`.
+  * TAB characters are forbidden everywhere in source, including comments and
+    text literals. Use `\t` when text needs a tab character.
   * Line oriented. Operators or paranthesis imbalance denotes line continuation.
   * A closing parenthesis, bracket, or brace may dedent to the start of its
     enclosing expression. This keeps chained calls aligned without ending the
@@ -31,17 +35,17 @@
 Leftmost definiton denotes a function.
 ```lango
 add(a, b)
-  return a + b
+    return a + b
 ```
 If you define it in code, then:
 ```lango
-  add = (a, b)
-    return a + b
+    add = (a, b)
+        return a + b
 ```
 Parameters can have a default value. They remain positional arguments:
 ```lango
 greet(name, prefix = "Hello")
-  return "${prefix}, ${name}"
+    return "${prefix}, ${name}"
 
 greet("Savaş")
 greet("Savaş", "Merhaba")
@@ -53,8 +57,8 @@ parameter, or an object argument for a different calling shape.
 As a parameter to an existing function:
 ```lango
 setInterval(1000, ()
-  console.log("Hello")
-  )
+    console.log("Hello")
+)
 ```
 _Function parameters should be the last one. Legacy functions like setInterval() get special treatment from the transpiler._
 Callbacks receive only their declared positional arguments. A JavaScript API's
@@ -67,13 +71,13 @@ callback `this` is not visible in Lango; use an argument, `context`, or
 class Manager
 
 Manager() # Constructor
-  @surprise = 10
+    @surprise = 10
   
 Manager:add(a, b) # Method
-  return a + b + @surprise
+    return a + b + @surprise
 
 fn Manager::CreateInstance() # Static method
-  return Manager()
+    return Manager()
 ```
 Instance methods are called through their receiver. To use one as a callback,
 write a closure that calls it; `callback = manager.add` is not valid Lango.
@@ -92,9 +96,9 @@ For example:
 class Manager
 
 Manager:do_it()
-  @prop = 3
-  _name = "Savaş"
-  @@statik = true
+    @prop = 3
+    _name = "Savaş"
+    @@statik = true
 ```
 
 
@@ -105,13 +109,13 @@ To make classes, properties and methods public, they should be exported at the s
 Public methods are listed at the start of the class:
 ```lango
 export class Manager
-  properties
-    length
-    quality
-    _name # Protected
-  methods
-    add(a, b)
-    kill()
+    properties
+        length
+        quality
+        _name # Protected
+    methods
+        add(a, b)
+        kill()
 ```
 
 Will be used as @length, @quality in the class implementation.
@@ -132,9 +136,9 @@ Each method can be overriden by defining again.
 There is no separate enum structure. Enums are encapsulated in classes.
 ```lango
 class Color
-  enum
-    White = Color(255, 255, 255)
-    Black = Color(0, 0, 0)
+    enum
+        White = Color(255, 255, 255)
+        Black = Color(0, 0, 0)
 ```
 Each enum member's value should be explicitly specified.
 
@@ -155,9 +159,9 @@ property are seen as `null` in Lango. Use `value == null` to test for absence.
 It may be defined like this:
 ```lango
 if blabla
-  n = 333
- else
-    n = 666 # If all paths are defining it, then it is no error to use it later
+    n = 333
+  else
+      n = 666 # If all paths are defining it, then it is no error to use it later
 ```
 ### Global Variables
 
@@ -167,8 +171,8 @@ used for accessing them inside a function or method.
 global surprise = 10
 
 add(a, b)
-  global surprise
-  return a + b + surprise
+    global surprise
+    return a + b + surprise
 ```
 ## Objects
 A flexible object can be defined like this:
@@ -182,9 +186,9 @@ And properties can be assigned freely:
 Relaxed JSON notation can be used:
 ```lango
 data = {
-  name: "Savaş"
-  surname: "Alparslan"
-  children: ["Özgür"]
+    name: "Savaş"
+    surname: "Alparslan"
+    children: ["Özgür"]
 }
 
 console.log(data.name)
@@ -193,8 +197,8 @@ console.log(data["name"]) # Same with the above
 An object field beginning with `$` is a Decimal field:
 ```lango
 invoice = {
-  $price: 12.50
-  quantity: 3
+    $price: 12.50
+    quantity: 3
 }
 
 $total = invoice.$price * invoice.quantity
@@ -215,12 +219,13 @@ a.length
 
 ### If
 ```lango
-  if n == 5
-      console.log("Five")
-    else # This is not an indentation bug.
-        console.log("Not five")
+if n == 5
+    console.log("Five")
+  else # This is not an indentation bug.
+      console.log("Not five")
 ```
-_Else_ is indented differently to make it clear (and a little ugly)
+_Else_ is indented two spaces deeper than its `if` to make its relationship
+clear (and a little ugly).
 
 No elseif. Use _switch_ for it.
 
@@ -231,43 +236,43 @@ First usage:
 switch n
   case 3
   case 5
-    console.log("Hello")
+      console.log("Hello")
   case 6
-    console.log("Six")
+      console.log("Six")
   else
-    console.log("Good bye")
+      console.log("Good bye")
 ```
 Or
 ```lango
 switch
   case n == 5
-    console.log("Five")
+      console.log("Five")
   case n > 100
-    console.log("Big")
+      console.log("Big")
   else
-    console.log("Not five")
+      console.log("Not five")
 
 ```
 ### Loop
 ```lango
 n = 0
 loop while n < 100
-  console.log(n)
-  n++
+    console.log(n)
+    n++
 ```
 ```lango
 n = 0
 loop until n == 100
-  console.log(n)
-  n++
+    console.log(n)
+    n++
 ```
 ```lango
 n = 0
 loop 
-  console.log(n)
-  n++
-  if n == 100
-    break
+    console.log(n)
+    n++
+    if n == 100
+        break
 ```
 ####  Leveled break and continue
 
@@ -278,11 +283,11 @@ You can use the following to break from a 3 level inner loop:
 ### For (Iterator)
 ```lango
 for array as n
-  console.log(n)
+    console.log(n)
 ```
 ```lango
 for obj as name: value
-  console.log("${name}=${value}")
+    console.log("${name}=${value}")
 
 ```
 Arrays, strings, texts, and other JavaScript iterables can be used with the
@@ -309,8 +314,8 @@ Texts can be subject to translation.
 ### Multiline
 ```lango
 text = """
-  Here is a 
-  multiline text.
+    Here is a
+    multiline text.
 """
 ```
 ### Comparison
@@ -350,7 +355,7 @@ rs = SQL
 rs.year = 2011
 rs.execute()
 loop while rs.next()
-  console.log("${rs.name} ${rs.surname}")
+    console.log("${rs.name} ${rs.surname}")
 ```
 `@year` is a named query parameter. Set it through the result before execution;
 it is bound as data rather than inserted into the SQL text.
@@ -411,19 +416,20 @@ precision because it explicitly converts back to a native Number.
 
 Outside variables to be captured inside the closure should be explicitly specified by the *capture* keyword:
 ```lango
-  number = 666
+make_adder()
+    number = 666
 
-  return (a, b)
-    capture number
-    return a + b + number
+    return (a, b)
+        capture number
+        return a + b + number
 ```
 Instance and static properties used by a closure must also be captured. A
 property capture keeps its owner, not a snapshot of its current value:
 ```lango
 return ()
-  capture @count, @@limit
-  @count = @count + 1
-  return @count < @@limit
+    capture @count, @@limit
+    @count = @count + 1
+    return @count < @@limit
 ```
 ## Context
 
@@ -445,26 +451,26 @@ value: all calls below the current stack frame use it, and leaving that frame
 restores the previous value.
 ```lango
 f()
-  context pi = 3
-  g()
-  console.log(pi) # prints 3
+    context pi = 3
+    g()
+    console.log(pi) # prints 3
 
 g()
-  context pi
-  console.log(pi) # prints 3
-  h()
-  console.log(pi) # still prints 3 even though h() changes it to 3.14
+    context pi
+    console.log(pi) # prints 3
+    h()
+    console.log(pi) # still prints 3 even though h() changes it to 3.14
 
 h()
-  context pi = 3.14
-  j()
+    context pi = 3.14
+    j()
 
 j()
-  k()
+    k()
 
 k()
-  context pi
-  console.log(pi) # prints 3.14
+    context pi
+    console.log(pi) # prints 3.14
 ```
 
 ## Promises
@@ -472,17 +478,17 @@ k()
 Promises use ordinary method calls and closures.
 ```lango
 fetch(input).then((output)
-  if not output.ok
-    throw {
-      type: "HttpError"
-      status: output.status
-    }
+    if not output.ok
+        throw {
+            type: "HttpError"
+            status: output.status
+        }
 
-  return output.json()
+    return output.json()
 ).then((data)
-  println("${data.name}")
+    println("${data.name}")
 ).catch((err)
-  println("Request failed: ${err.message}")
+    println("Request failed: ${err.message}")
 )
 ```
 `then`, `catch`, and `finally` are the standard JavaScript Promise methods.
@@ -500,8 +506,8 @@ No destructuring. No named parameters. Still parameters can be sent as relaxed J
 
 ```lango
 register_student({
-  name: "Savaş"
-  surname: "Alparslan"
+    name: "Savaş"
+    surname: "Alparslan"
 })
 
 ```
@@ -514,11 +520,11 @@ Setters and getters are confusing.
 Unit tests are defined with test keyword in any source code. Some examples:
 ```lango
 test 
-  assert add(3, 5) == 8
+    assert add(3, 5) == 8
 ```
 ```lango
 test "addition test 1"
-  assert add(3, 5) == 8
+    assert add(3, 5) == 8
 ```
 Assert should report the whole failed expression as text.
 
@@ -531,23 +537,23 @@ Some examples:
 PI = 3.14
 
 f()
-  return PASTE(PI)
+    return PASTE(PI)
 ```
 ```lango
 WARN()
-  PASTE("console.log(\"WARNING!\")")
+    PASTE("console.log(\"WARNING!\")")
 
 f()
-  WARN()
+    WARN()
 ```
 ```lango
 MYMACRO(A)
-  IF A == 5
-    PASTE("FIVE")
+    IF A == 5
+        PASTE("FIVE")
   
 f()
-  A = 5
-  console.log("${MYMACRO(A)}")
+    A = 5
+    console.log("${MYMACRO(A)}")
 ```
 At the start of the compilation, all macro calls are evaluated and all PASTE's are pasted into the code until all are resolved.
 
@@ -560,37 +566,37 @@ Functions, classes and macros can be exported and imported within source codes.
 Class export syntax is mentioned above. Let's repeat it here:
 ```lango
 export class Manager
-  properties
-    length
-    quality
-  methods
-    add(a, b)
-    kill()
+    properties
+        length
+        quality
+    methods
+        add(a, b)
+        kill()
 ```
 Functions, macros and global, context variables are exported with full headers:
 ```lango
 export add(a, b)
 
 export # export multiple
-  add(a, b)
-  subtract(a, b)
-  MYMACRO(a)
-  global surprise
-  global
-    another_surprise
-  context ctx
+    add(a, b)
+    subtract(a, b)
+    MYMACRO(a)
+    global surprise
+    global
+        another_surprise
+    context ctx
 ```
 Imports are also specified with full headers:
 ```lango
 import another_file
-  add(a, b)
-  MYMACRO(a)
-  alias surp = global surprise
-  alias Admin = class Manager
-    properties
-      length
-    methods
-      add(a, b)
+    add(a, b)
+    MYMACRO(a)
+    alias surp = global surprise
+    alias Admin = class Manager
+        properties
+            length
+        methods
+            add(a, b)
 ```
 *alias* keyword is used to avoid name clashes. Properties and methods cannot be aliased.
 
@@ -601,11 +607,11 @@ Two or more source files may import/export each other. Dependency loops are reso
 This feature is as usual, except catch cannot catch specific exceptions.
 ```lango
 try
-  ...
+    ...
 catch err # err or anything else
-  ...  
+    ...
 finally
-  ...
+    ...
 ```
 throw statement can throw anything you want and the err parameter holds it.
 
@@ -620,7 +626,7 @@ Use `finally` to release a resource explicitly:
 connection = database.open()
 
 try
-  connection.execute()
+    connection.execute()
 finally
-  connection.close()
+    connection.close()
 ```
