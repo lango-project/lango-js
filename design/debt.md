@@ -5,14 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Number model and arbitrary precision
-
-D-038 defines native Numbers by default and explicit Decimal values through a
-transpiler-selected backend, and D-039 defines exact arithmetic and division
-rounding. Design math-library functions, SQL parameter mapping, and the adapter
-semantic test suite. Define Decimal-flow analysis for mixed
-return paths, recursion, closures, higher-order functions, and module exports.
-
 ### Context execution model
 
 Specify context shadowing, recursion, exception restoration, re-entrant calls,

@@ -678,7 +678,8 @@ parameter, or property is a Decimal value. The marker composes with existing
 property sigils: `@$name`, `@@$name`, and `_$name` are Decimal instance, static,
 and protected properties. `global $name = value` declares a Decimal global.
 Decimal values are backed by a decimal runtime selected by the transpiler, not
-by a package name exposed in Lango source.
+by a package name exposed in Lango source. D-049 fixes that runtime for the
+current compiler.
 
 A numeric literal assigned to a `$` binding/property is emitted directly as a
 Decimal literal, without first becoming a JavaScript floating-point value. An
@@ -705,10 +706,9 @@ the explicit escape to native Number and may lose precision; it is intended for
 JavaScript-library boundaries. `is_number(value)` is true for both Number and
 Decimal values.
 
-Each transpiler backend must implement the same numeric protocol and pass the
-same semantic test suite. When source contains no `$` Decimal binding, parameter,
-or property, the transpiler emits ordinary native JavaScript Number operations
-and does not include a Decimal backend or runtime helper.
+When source contains no `$` Decimal binding, parameter, or property, the
+transpiler emits ordinary native JavaScript Number operations and does not
+include the Decimal runtime helper.
 
 ## D-043: `$` also marks Decimal object and JSON fields
 
@@ -845,3 +845,77 @@ Lango `null`, D-040 rejects non-finite numbers, and a Decimal must use
 `to_js_number` before it enters an ordinary JavaScript numeric API. A JavaScript
 exception value propagates unchanged through Lango. JavaScript constructors and
 subclassing are outside this decision.
+
+## D-049: Decimal uses a pinned embedded `bignumber.js` runtime
+
+**Status:** Accepted
+
+The compiler vendors `bignumber.js` version 11.1.5 as Lango's Decimal runtime;
+Lango source never imports, configures, or observes that package. This library
+matches Lango's numeric contract: addition, subtraction, and multiplication
+remain exact, while division uses a decimal-place scale and rounding mode.
+
+For each compiler profile, the transpiler creates an isolated `BigNumber.clone`
+configuration rather than mutating global library settings. It maps
+`decimal_division_scale` and `decimal_division_rounding` to that clone, including
+the default scale of six and `half_even` mode. D-040 checks still prevent
+non-finite values from becoming Lango numbers.
+
+There is no pluggable Decimal-backend interface in the first compiler. Decimal
+regression tests operate at the Lango semantic level and cover the pinned runtime
+through literals, conversion, arithmetic, division ties, comparison, JSON,
+serialization, and non-finite boundaries. Replacing the embedded library later
+requires preserving those language-level results; it does not expose a backend
+choice to source programs.
+
+## D-046: Decimal core has no general math-function surface
+
+**Status:** Accepted
+
+Decimal contexts support the four arithmetic operators `+`, `-`, `*`, and `/`,
+unary sign, ordering, and numeric equality as defined by D-038 and D-039.
+Decimal modulo and a core Decimal `Math` surface are not part of Lango:
+there is no Decimal `pow`, `sqrt`, trigonometry, `floor`, `ceil`, or source-
+level `round` operation. In particular, D-039's compiler-profile division
+rounding remains the language's only built-in Decimal rounding point.
+
+Advanced numerical work uses an imported JavaScript library with an explicit
+`to_js_number($value)` boundary. Assigning that finite Number result to a `$`
+binding converts it back under D-042, making any native-number precision loss
+visible at the source boundary. Ordinary native Number expressions retain their
+normal JavaScript arithmetic surface, subject to D-040.
+
+## D-047: Decimal SQL parameters never narrow to native Number
+
+**Status:** Accepted
+
+When a `$` Decimal value is assigned to an `SQL` literal's named parameter, the
+transpiler passes the database adapter its canonical decimal text together with
+a `decimal` type tag. It never first converts that value to a JavaScript Number.
+The adapter binds it through the database driver's Decimal/numeric mechanism;
+an adapter or driver that cannot do this reports an error rather than silently
+losing precision. Native Number parameters remain native Numbers, and `null`
+binds as SQL `NULL`. This decision concerns input parameters only; SQL result
+column representation remains part of the embedded-SQL contract.
+
+## D-048: Decimal-returning functions are inferred consistently
+
+**Status:** Accepted
+
+A Lango function or source-visible closure is Decimal-returning when any
+reachable value-return expression is Decimal. Every other normally returning
+path of that function must then return a Decimal too; a native Number, `null`,
+or valueless normal return mixed with a Decimal return is a compile-time error.
+The compiler computes this property to a fixed point across direct and mutually
+recursive Lango functions, including across resolved Lango modules.
+
+A call to a known Decimal-returning function produces a Decimal result and must
+be used in a Decimal-compatible position under D-038, unless its result is
+discarded. The same inference applies to an inline closure whose source is
+visible to the compiler.
+
+The result of a dynamically obtained JavaScript function or a statically
+unknown higher-order callback is not inferred as Decimal. Assigning such a
+result to a `$` binding uses the ordinary Number-to-Decimal boundary conversion
+when it is a native Number; source does not assume an untyped callback preserves
+Decimal identity.

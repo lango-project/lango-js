@@ -423,6 +423,11 @@ loop while rs.next()
 `@year` is a named query parameter. Set it through the result before execution;
 it is bound as data rather than inserted into the SQL text.
 
+Assigning a `$` Decimal to a named SQL parameter preserves its exact canonical
+decimal spelling through the database adapter; it is never silently narrowed to
+a JavaScript Number. A driver without Decimal/numeric parameter support reports
+an error.
+
 The actual database connection and appropriate library calls are managed by the environment.
 
 TODO syntax for multiple database 
@@ -461,12 +466,23 @@ $total = $price + $tax
 
 chart.plot(to_js_number($total))
 ```
+Decimal is implemented by a compiler-embedded, pinned runtime; source code does
+not import or configure a Decimal package. The compiler profile controls only
+the documented division scale and rounding mode.
 When an expression contains a `$` Decimal value, its other numeric operands are
 Decimal values too. A Decimal result must be stored in a `$` binding. Use
 `to_js_number($decimal)` only when a JavaScript library needs a native Number.
 Decimal addition, subtraction, and multiplication are exact. Division is valid
 at the configured number of fractional digits, which defaults to six. It uses
 the configured rounding mode, which defaults to half-even.
+When a function returns a Decimal on one reachable path, all of its normal
+return paths must return Decimal values. The compiler infers this across Lango
+calls and closures; a Decimal-returning result must be kept in a `$` binding,
+passed to a `$` parameter, used in a Decimal expression, or discarded.
+Decimal has no `Math` function surface and no per-operation `round`, `floor`,
+`ceil`, `sqrt`, `pow`, or modulo operation. Advanced math goes through an
+imported JavaScript library after an explicit `to_js_number($decimal)` conversion;
+assigning its finite result to a `$` binding converts it back to Decimal.
 `NaN`, `Infinity`, and `-Infinity` are not Lango numbers; producing or receiving
 one is a runtime error.
 Numeric literals support decimal (`12`, `12.50`), scientific notation (`1.2e3`),
