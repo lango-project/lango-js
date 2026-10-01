@@ -243,7 +243,7 @@ particular indentation is semantically required.
 
 ## D-012: Closures make nonlocal local bindings explicit
 
-**Status:** Draft
+**Status:** Accepted
 
 A closure may read its own parameters and bindings created inside its body.
 Reading a local binding from an enclosing lexical function requires a
@@ -264,6 +264,24 @@ makes an accidental property name a compile-time error. The generated closure
 therefore safely outlives the method that created it while continuing to access
 the original owner. Access to an instance/static property is invalid outside a
 class-member context.
+
+Each closure declares its own direct external dependencies. An inner closure
+therefore captures a local even if an enclosing closure also captures it; a
+capture is a shared binding, not a value snapshot, so a closure may mutate it.
+The same rule applies to protected properties, written `capture _property`.
+
+`for collection as item` creates a fresh `item` binding for every iteration.
+A closure created in that iteration captures that iteration's binding. By
+contrast, a binding declared outside a `loop` remains one shared binding and
+closures observe its later mutations.
+
+Within a closure, `global name` and `context name` must be declared again when
+those bindings are used; imported names remain directly available. Every
+`capture` declaration must precede ordinary closure statements and must name a
+binding actually used by that closure. An implicit local capture is a
+compile-time `MissingCapture` diagnostic that identifies the name and suggests
+its `capture name` declaration. Destructuring has no separate rule because it
+is not Lango syntax.
 
 ## D-013: Context is dynamically scoped, immutable binding state
 

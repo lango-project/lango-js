@@ -5,12 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Closure capture edge cases
-
-Specify capture behavior for nested closures, mutation of a captured binding,
-loop bindings, destructuring, globals, context names, imported names, and
-instance/static properties. Define the diagnostic for an implicit capture.
-
 ### Inheritance and `super` edge cases
 
 Specify constructor order and required `super` calls, method-resolution rules,

@@ -510,6 +510,12 @@ return ()
     @count = @count + 1
     return @count < @@limit
 ```
+Each nested closure declares its own captures. Captures are shared bindings, so
+a closure may change a captured local. A `for` loop gives each iteration its
+own captured item; a local declared outside a `loop` remains shared across its
+iterations. Put every `capture` at the start of the closure body. Missing or
+unused captures are compile-time errors; a missing capture reports
+`MissingCapture` and the needed name.
 ## Context
 
 Context variables are used for dependency injection or not to carry specific variables through all functions or methods.
