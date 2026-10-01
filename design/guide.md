@@ -90,6 +90,13 @@ Variables starting with @@ are static properties.
 
 Variables starting with _ (underscore) are protected instance properties.
 
+There are no protected static properties; `@@_name` is invalid. The
+`properties` section declares only the public API, not types or initial values.
+A public property may therefore be initialized lazily. Reading a known property
+before its first assignment gives `null`; reading an unknown property is a
+compile-time error. Private and protected properties become known through an
+assignment somewhere in their declaring class.
+
 For example:
 
 ```lango

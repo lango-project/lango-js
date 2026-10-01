@@ -118,7 +118,7 @@ unknown or imported JavaScript function remain ordinary JavaScript calls.
 
 ## D-005: Properties use explicit sigils
 
-**Status:** Draft
+**Status:** Accepted
 
 `@name` denotes an instance property and `@@name` denotes a static property.
 They are never local variables. A class `properties` section declares the
@@ -129,18 +129,28 @@ An `@` property that is not listed in `properties` is private to the Lango class
 contract. JavaScript cannot enforce this for interoperable objects, so privacy
 is checked by the Lango compiler rather than by a JavaScript private field.
 
+The `properties` section declares API only: it supplies neither a type nor an
+initializer. A public property therefore need not be initialized by every
+constructor path. A property read is valid only when its member name is known:
+a public name is known through `properties`, while a private or protected name
+is known through an assignment somewhere in its declaring class. A known but
+not-yet-assigned property reads as `null`; an unknown property read is a
+compile-time error. First assignment creates the property's storage, so private
+and protected properties may be initialized lazily.
+
 ## D-006: Relaxed JSON object literals compile to plain objects
 
 **Status:** Accepted
 
-`{}` creates a JavaScript object. Object entries may be separated by commas or
-by logical-line boundaries. Unquoted identifier keys and quoted string keys are
-both valid. Dot and bracket access have their JavaScript meanings:
+`{}` creates a JavaScript object. D-044 defines its line-oriented field syntax:
+fields are newline-separated, not comma-separated. Unquoted identifier keys and
+quoted string keys are both valid. Dot and bracket access have their JavaScript
+meanings:
 
 ```lango
 person = {
-  name: "Savaş"
-  age: 42,
+    name: "Savaş"
+    age: 42
 }
 person.name
 person["name"]
@@ -307,7 +317,7 @@ visibility separate from private/protected member visibility.
 
 ## D-018: Property sigils encode class-member visibility
 
-**Status:** Draft
+**Status:** Accepted
 
 `@name` is a private instance property, `@@name` is a static property, and
 `_name` is a protected instance property. `_name` is a class member rather than
@@ -316,8 +326,10 @@ used by the declaring class and its descendants, but not by unrelated code.
 
 Names in the `properties` section form the externally accessible instance
 property API. A protected name may be shown there for documentation, but it does
-not become public through that listing. The syntax and policy for protected
-static properties remain open work.
+not become public through that listing. There are no protected static properties:
+`@@_name` is invalid rather than a second spelling for a static member. Static
+properties use `@@name` and follow the same known-name and lazy-initialization
+rules as other class properties.
 
 ## D-019: Inheritance uses an ancestor class and `super`
 
