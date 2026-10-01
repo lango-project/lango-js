@@ -720,7 +720,7 @@ export # export multiple
 ```
 Imports are also specified with full headers:
 ```lango
-import another_file
+import "./another_file"
     add(a, b)
     MYMACRO(a)
     alias surp = global surprise
@@ -732,7 +732,16 @@ import another_file
 ```
 *alias* keyword is used to avoid name clashes. Properties and methods cannot be aliased.
 
-Two or more source files may import/export each other. Dependency loops are resolved by the compiler. Infinite loops are not allowed since iteration is failed after 16 rounds.
+The path is relative to the importing source and omits the `.lango` extension.
+JavaScript packages and host modules use a namespace import:
+```lango
+import js "node:fs" as fs
+```
+Use the package through that name, for example `fs.readFile(...)`. Lango module
+cycles are allowed for functions and classes. A cycle cannot read an uninitialized
+global or static value from another module; that is a compile-time error. Module
+cycles are resolved before macro expansion and are unrelated to its 16-round
+limit.
 
 ## Throw and Try/Catch/Finally
 

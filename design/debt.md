@@ -7,14 +7,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## JavaScript interoperability
 
-### Imports and exports
-
-The guide defines header-based imports and exports. Specify file-name/module
-resolution, extension handling, JavaScript package specifiers, aliases, export
-conflicts, initialization order, and runtime semantics for cyclic module graphs.
-Module cycles are not macro-expansion rounds: resolve them as module-graph
-components before macro expansion.
-
 ### Callback and argument adaptation
 
 Clarify the rule behind trailing function arguments and the `setInterval`

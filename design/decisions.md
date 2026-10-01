@@ -364,7 +364,7 @@ remain open work.
 
 ## D-017: File exports and class-member visibility are separate
 
-**Status:** Draft
+**Status:** Accepted
 
 `export` controls module visibility: an exported declaration can be imported
 by another source file. Declarations that are not exported remain usable by all
@@ -374,6 +374,24 @@ A class's `properties` and `methods` sections declare its member API; they do
 not themselves export the class from its file. An external caller can use that
 API only after the class has been exported and imported. This keeps module
 visibility separate from private/protected member visibility.
+
+A Lango source import names a quoted relative path without its `.lango`
+extension, such as `import "./invoice"`; it resolves relative to the importing
+source file. Its header selects exported declarations and uses an explicit
+`alias` for any imported-name collision. Duplicate imports into one local name,
+or duplicate exports from one module, are compile-time errors.
+
+JavaScript packages and host modules use `import js "specifier" as name` and
+are available only through that namespace. This deliberately avoids depending
+on ESM versus CommonJS named-export shape; Lango source uses members such as
+`name.readFile(...)`. The selected Node or browser host resolves that specifier.
+
+The compiler resolves the complete Lango module graph before macro expansion.
+Cyclic Lango imports are permitted and emit ESM live bindings, but a global or
+static initializer in the cycle may not read a value whose defining module has
+not initialized it; this is a compile-time module-initialization error.
+Function and class declaration cycles are allowed. Module cycles never consume
+or interact with macro-expansion rounds.
 
 ## D-018: Property sigils encode class-member visibility
 
