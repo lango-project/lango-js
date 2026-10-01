@@ -664,3 +664,19 @@ Binary and octal literals, numeric separators, and other JavaScript numeric
 literal forms are not part of Lango. A literal assigned to a `$` Decimal binding
 is converted from its source spelling directly by the Decimal backend; a
 hexadecimal Decimal literal therefore becomes its exact base-10 integer value.
+
+## D-042: Number–Decimal conversion has explicit boundary semantics
+
+**Status:** Accepted
+
+When D-038 promotes a finite native JavaScript Number into a Decimal context,
+the Decimal backend receives the Number's canonical shortest decimal string that
+round-trips to the same JavaScript Number. Therefore a native `0.1` becomes the
+Decimal value `0.1`, rather than the Number's hidden binary expansion. The
+backend may receive scientific notation where that is JavaScript's canonical
+spelling.
+
+`to_js_number($decimal)` converts a Decimal to the nearest finite JavaScript
+Number. Precision loss is permitted because this conversion is explicit in
+source. A conversion that cannot produce a finite Number raises the D-040
+`NonFiniteNumber` error.

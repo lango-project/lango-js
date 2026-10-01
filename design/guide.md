@@ -392,6 +392,9 @@ half-even rounding.
 one is a runtime error.
 Numeric literals support decimal (`12`, `12.50`), scientific notation (`1.2e3`),
 and hexadecimal integers (`0xFF`).
+When a native Number enters a Decimal expression, it is converted from its
+normal short decimal representation. `to_js_number($decimal)` may lose
+precision because it explicitly converts back to a native Number.
 
 ## Closure
 
