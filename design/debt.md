@@ -7,12 +7,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## JavaScript interoperability
 
-### Callback and argument adaptation
-
-Clarify the rule behind trailing function arguments and the `setInterval`
-example. Prefer one general, statically understandable adaptation rule over a
-growing list of special-cased JavaScript APIs.
-
 ### Class construction and JavaScript classes
 
 Specify how imported JavaScript constructors are distinguished from ordinary

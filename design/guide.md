@@ -59,11 +59,19 @@ required. Functions cannot be overloaded; use a different name, a default
 parameter, or an object argument for a different calling shape.
 As a parameter to an existing function:
 ```lango
-setInterval(1000, ()
+run_later(1000, ()
     console.log("Hello")
 )
 ```
-_Function parameters should be the last one. Legacy functions like setInterval() get special treatment from the transpiler._
+An inline closure is convenient as the last argument of a multiline call. This
+does not change JavaScript argument order. For an API whose callback belongs
+elsewhere, bind the closure first:
+```lango
+tick = ()
+    println("tick")
+
+setInterval(tick, 1000)
+```
 Callbacks receive only their declared positional arguments. A JavaScript API's
 callback `this` is not visible in Lango; use an argument, `context`, or
 `capture` when the callback needs outside state.

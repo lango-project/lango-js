@@ -561,6 +561,13 @@ invoke Lango callbacks with additional callback arguments. Calling a JavaScript
 variadic API with an array remains possible through its ordinary JavaScript
 `apply` method.
 
+Lango never reorders a JavaScript API's arguments. An inline closure can be
+written conveniently as the final argument of a multiline call, but that is
+only a formatting property, not an adaptation rule. When an API requires its
+callback in another position, source creates the closure in a separate binding
+and passes that binding in the API's native argument order. The compiler keeps
+no list of special-cased JavaScript APIs.
+
 Function overloads are excluded by D-026.
 
 ## D-026: Functions do not overload by signature
