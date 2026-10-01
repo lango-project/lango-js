@@ -462,9 +462,9 @@ JSON `null`.
 Here's an example:
 ```lango
 rs = SQL
-         select name, surname
-         from students
-         where birth_year > @year
+    select name, surname
+    from students
+    where birth_year > @year
 rs.year = 2011
 rs.execute()
 loop while rs.next()
@@ -478,11 +478,39 @@ decimal spelling through the database adapter; it is never silently narrowed to
 a JavaScript Number. A driver without Decimal/numeric parameter support reports
 an error.
 
-The actual database connection and appropriate library calls are managed by the environment.
+If a SQL statement returns multiple result sets, `next_result()` moves to the
+next set and returns whether one exists. `next()` moves to a row and returns
+whether one exists; reading `rs.field` without a current row is an error.
+`rs.parameter = value` is only parameter binding before execution, never a
+result-row update. A non-row statement exposes `rs.affected_rows`: it is the
+number of affected rows when the driver reliably reports one, otherwise `null`.
+For a single-row `insert`, `rs.generated_key` is the automatically generated
+key when the driver provides it; otherwise it is `null`. It is also `null` for
+multi-row inserts. For multiple or composite generated values, use `returning`
+and read ordinary result rows instead.
 
-TODO syntax for multiple database 
+```lango
+rs = SQL
+    insert into orders (customer_id)
+    values (@customer_id)
 
-If a SQL statement returns multiple result sets, *NextResult()* method is used to switch to the next one.
+rs.customer_id = customer_id
+rs.execute()
+order_id = rs.generated_key
+```
+
+```lango
+rs = SQL
+    insert into orders (customer_id)
+    values (@customer_id)
+    returning id
+
+rs.customer_id = customer_id
+rs.execute()
+
+if rs.next()
+    order_id = rs.id
+```
 
 Use named `@parameter` values for dynamic SQL values. Text interpolation is not
 used for parameter binding: `@parameter` is always passed to the database as
@@ -491,6 +519,83 @@ SQL string. It uses programmatic-string semantics, never translatable Text
 semantics. Use it deliberately for dynamic identifiers, keywords, or SQL
 fragments; it is not escaped or parameterized, and interpolated content cannot
 create new `@parameter` bindings.
+
+### Transactions
+
+The core database library uses one default database and keeps its active
+connection and transaction in synchronous dynamic context. Begin and finish a
+transaction with `start_trans()`, `commit_trans()`, and `rollback_trans()`;
+queries executed below `start_trans()` automatically use that transaction.
+
+```lango
+save_order(order)
+    start_trans()
+    insert_order(order)
+    reserve_stock(order)
+    commit_trans()
+
+reserve_stock(order)
+    start_trans() # joins the current transaction
+    reserve(order.items)
+    commit_trans() # finishes only this inner scope
+```
+
+`start_trans()` starts a transaction when none is active. When one is already
+active, it silently joins it; only the outermost `commit_trans()` performs the
+database commit. An inner `rollback_trans()` makes the one physical transaction
+`rollback_only`. The outermost `commit_trans()` then rolls it back and raises
+`TransactionRolledBack`, so a caller cannot mistake that outcome for a commit.
+Calling `commit_trans()` or `rollback_trans()` without an active transaction is
+an error.
+
+`trans_state()` returns `null` when there is no active transaction, or one of
+`'active'`, `'rollback_only'`, or `'failed'` while one is active. A completed
+transaction has no retained context state; application code that needs an audit
+result stores it itself.
+
+Core transactions are for synchronous server-side database work. They do not
+cross Promise, timer, or event callback boundaries. The core library has no
+connection-selection API and does not create SQL savepoints for nested
+`start_trans()` calls; multi-connection and savepoint-oriented work belongs in
+an explicit advanced database library.
+
+### SQL errors
+
+Database and driver failures raise `SqlError`. Its `message` is suitable for
+display or logging; `code` is the adapter's stable database/driver error code
+when available, otherwise `null`; `query` is the SQL string; and `position` is
+the position reported by the adapter when available, otherwise `null`. Its unit
+is adapter-specific. Parameter values are never interpolated into `query` or a generated
+error message.
+
+```lango
+try
+    rs.execute()
+catch err
+    if err.code == "unique_violation"
+        throw "This email is already registered"
+    throw err
+```
+
+### Timeouts and cancellation
+
+The core database library has no source-level query-cancellation API. A timeout
+is configured by the selected host or database adapter and is reported as
+`SqlError` (normally with `err.code == "timeout"` when the adapter supplies
+such a code). If the adapter reports that the timeout left the active
+transaction unusable, `trans_state()` becomes `'failed'` and the only valid
+finish is `rollback_trans()`. Client-driven cancellation and cancellation that
+needs another database connection belong to an advanced database library.
+
+### Database configuration
+
+Lango source does not name a database adapter, connection string, or credential.
+The compiler/host configuration selects one `database_adapter` and deployment
+configuration supplies that adapter's default connection settings and secrets.
+Outside a transaction, `rs.execute()` uses this default connection. Inside a
+transaction, it uses the default connection bound by `start_trans()` in the
+current context. A database operation with no configured default adapter or
+connection raises `DatabaseNotConfigured`.
 
 ## Embedded XML
 

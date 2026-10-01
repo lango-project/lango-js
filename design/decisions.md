@@ -947,6 +947,26 @@ Number. Precision loss is permitted because this conversion is explicit in
 source. A conversion that cannot produce a finite Number raises the D-040
 `NonFiniteNumber` error.
 
+## D-053: SQL query objects separate parameters from result rows
+
+**Status:** Accepted
+
+An `SQL` body removes its shared leading indentation and otherwise preserves its
+SQL string. The compiler statically collects its `@name` parameters; repeated
+occurrences of one name share one parameter binding. Before `execute()`,
+`result.name = value` is valid only for one of those declared parameter names.
+An unknown parameter assignment is a compile-time error. This assignment never
+mutates a result row.
+
+`execute()` starts a new execution, resets any prior cursor, and returns the
+same query/result object. `next()` returns a Boolean and advances the active
+result set to its next row. A result-field read such as `result.name` is valid
+only with a current row and otherwise raises `SqlNoCurrentRow`; result fields
+are never assignable. `next_result()` returns a Boolean and moves to the next
+result set with no current row. Calling `execute()` again restarts the query and
+cursor. Statement classification, affected-row reporting, cancellation, and
+adapter registration remain outside this decision.
+
 ## D-052: Standard aliases are deliberately minimal
 
 **Status:** Accepted
@@ -1083,3 +1103,116 @@ unknown higher-order callback is not inferred as Decimal. Assigning such a
 result to a `$` binding uses the ordinary Number-to-Decimal boundary conversion
 when it is a native Number; source does not assume an untyped callback preserves
 Decimal identity.
+
+## D-054: Core transactions join one contextual default connection
+
+**Status:** Accepted
+
+The core database library exposes `start_trans()`, `commit_trans()`,
+`rollback_trans()`, and `trans_state()` for one default database. Starting a
+transaction binds its connection and transaction state in the synchronous
+dynamic context defined by D-013. SQL query execution below that call therefore
+uses the active transaction automatically; source neither receives nor passes a
+connection or transaction handle.
+
+`start_trans()` starts one physical transaction when no transaction is active.
+When one is active, it silently joins that transaction and opens a logical inner
+scope. An inner `commit_trans()` closes only its logical scope. The outermost
+`commit_trans()` is the only operation that commits the physical transaction.
+
+An inner `rollback_trans()` marks the physical transaction `rollback_only`.
+It cannot be cleared by a later inner or outer call. The outermost
+`commit_trans()` rolls back instead and raises `TransactionRolledBack`; the
+caller is consequently never told that a commit succeeded when an inner layer
+had rolled back. `rollback_trans()` at the outermost scope rolls back the
+physical transaction. Calling either finishing function without an active
+transaction is a runtime error. A driver or SQL failure that leaves the active
+transaction unusable changes its state to `failed` and requires rollback.
+
+`trans_state()` returns `null` outside a transaction, and returns exactly
+`'active'`, `'rollback_only'`, or `'failed'` while one is active. A committed or
+rolled-back transaction leaves no retained context state; code that needs to
+record an outcome does so explicitly.
+
+Core transactions apply only to synchronous server-side database calls. As with
+all D-013 context, they do not cross Promise, timer, or event callback
+boundaries. Core nested calls do not emit SQL savepoints, and the core API has
+no connection selection or multi-database facility. Those needs belong to a
+separate explicit advanced database library.
+
+## D-055: SQL execution reports affected rows and one generated key
+
+**Status:** Accepted
+
+After `execute()`, `affected_rows` on a query/result object is the number of
+rows affected when the selected adapter can report it reliably. It is `null` for
+statements, including DDL, where that number is unavailable or has no useful
+meaning. A result-set statement continues to use D-053's `next()` and field
+access model; no-result statements simply have no rows.
+
+`generated_key` is the one automatically generated key from a single-row
+`insert` when the adapter/driver provides it. It is `null` when no key was
+generated, the driver cannot provide it, or the statement inserts multiple
+rows. It never guesses from an affected-row count or synthesizes an ID.
+
+Applications that need several generated values, a composite key, or portable
+control over returned columns use SQL `returning` and consume the normal result
+rows. `generated_key` is a convenience for the common single-row case, not a
+replacement for result sets.
+
+## D-056: Database failures use a parameter-safe `SqlError`
+
+**Status:** Accepted
+
+A database adapter or driver failure raises `SqlError`. It has `message`,
+`code`, `query`, and `position` properties. `message` is the database/driver's
+displayable error message. `code` is its stable database or driver error code,
+or `null` when none is available. `query` is the SQL string submitted by the
+query object. `position` is the position in that SQL string reported by the
+adapter, or `null` when the source does not provide one; its unit is adapter-
+specific.
+
+Constraint, connection, timeout, and SQL-syntax failures share this one error
+surface; programs distinguish adapter-supported cases through `code` and use
+ordinary `try`/`catch`. The adapter never interpolates bound parameter values
+into `query` or an error message it constructs. This avoids leaking secrets or
+private data into diagnostics while retaining the SQL source necessary to
+investigate a failure.
+
+## D-057: Core database work has no source-level cancellation API
+
+**Status:** Accepted
+
+Core database calls are synchronous server-side operations. Lango consequently
+does not provide `cancel()`, cancellation tokens, signals, or another
+source-level query-cancellation mechanism. Such mechanisms commonly require an
+asynchronous driver operation or another database connection, neither of which
+belongs to the one-contextual-connection core model.
+
+The selected host or adapter configures a query timeout. A timeout reaches
+Lango as D-056 `SqlError`, with the adapter's timeout `code` when it provides
+one. When the adapter reports that a timeout leaves the current transaction
+unusable, D-054 changes its state to `'failed'`; it must then be finished by
+`rollback_trans()`. Client-directed or separate-connection cancellation belongs
+to an advanced database library.
+
+## D-058: The host configures one default database adapter
+
+**Status:** Accepted
+
+Lango source code contains neither a database-adapter selection nor connection
+details such as a connection string, credential, or secret. The compiler/host
+configuration selects exactly one `database_adapter`; deployment configuration
+supplies that adapter's default connection settings and credentials. The
+compiler uses the selected adapter to construct the database portion of its
+output, while the host owns secret delivery.
+
+Outside a D-054 transaction, an SQL query executes through the configured
+default connection. `start_trans()` acquires that same default connection and
+binds it to the dynamic transaction context; all SQL executions under the
+transaction use that bound connection. A database operation attempted without
+an available default adapter or connection raises `DatabaseNotConfigured`.
+
+Source cannot select a second adapter or override the default connection. Such
+explicit connection selection belongs to the advanced database library noted in
+design debt.

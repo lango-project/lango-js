@@ -7,13 +7,11 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## JavaScript interoperability
 
-### Embedded SQL contract
+### Advanced database connections and transactions
 
-Define SQL-literal recognition, query formatting, repeated named parameters,
-parameter type conversion, statement/result-set API,
-transactions, cancellation, diagnostics, and database adapter registration.
-Decide whether `result.name = value` is exclusively parameter binding or can
-also mutate a row. Add multi-database selection syntax here when it is designed.
+Design a separate library for explicit connection selection, multiple databases,
+pooling, SQL savepoints, and independent transactions. The core library has one
+contextual default connection and join-only nested transactions (D-054).
 
 ### Embedded XML lexical and escaping rules
 
