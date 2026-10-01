@@ -409,6 +409,27 @@ Static lookup follows JavaScript `class extends` behavior: a child finds its own
 static member first and otherwise its ancestor's. Assigning a static member in a
 child creates or updates the child's own member and can shadow an inherited one.
 
+## D-050: Static values replace enums
+
+**Status:** Accepted
+
+Lango has no `enum` construct. A class declares initialized public static values
+with a `static` section:
+
+```lango
+class Color
+    static
+        White = Color(255, 255, 255)
+        Black = Color(0, 0, 0)
+```
+
+Each entry is evaluated once, in source order, when the class is defined. It is
+an ordinary static property: source outside the class accesses `Color.White`,
+and class code accesses `@@White`. Static values remain mutable under D-030,
+use ordinary instance identity equality, and serialize as ordinary values. There
+is no closed-member rule, exhaustive `switch` analysis, generated `values()`
+API, or enum-specific constructor restriction.
+
 ## D-020: Macro names and expansion form a separate compile-time phase
 
 **Status:** Draft

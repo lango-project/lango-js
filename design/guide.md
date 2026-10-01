@@ -165,16 +165,17 @@ ancestor instance method. Public inherited members need not be listed again;
 an override cannot make a public or protected member less visible. Static lookup
 checks the child before the ancestor, as in JavaScript.
 
-### Enums
+### Static Values
 
-There is no separate enum structure. Enums are encapsulated in classes.
+There is no separate enum structure. Use ordinary initialized static values:
 ```lango
 class Color
-    enum
+    static
         White = Color(255, 255, 255)
         Black = Color(0, 0, 0)
 ```
-Each enum member's value should be explicitly specified.
+Outside the class, use `Color.White`; inside it, use `@@White`. These are
+mutable ordinary static properties, not a closed enum or exhaustive switch type.
 
 ## Variables
 

@@ -5,15 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Enum value semantics
-
-The current `enum` block is close to a shorthand for public static class
-instances. Decide whether it earns separate syntax through closed-member
-semantics, constructor restrictions, identity/equality rules, exhaustive
-switching, serialization, or enumeration APIs. If none of these are wanted,
-replace it with ordinary static class constants rather than maintaining a
-near-duplicate feature.
-
 ### Unicode string indexing and iteration
 
 D-032 defines strings and texts as built-in iterable values. Specify whether
