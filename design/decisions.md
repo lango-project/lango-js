@@ -721,3 +721,25 @@ spelling.
 Number. Precision loss is permitted because this conversion is explicit in
 source. A conversion that cannot produce a finite Number raises the D-040
 `NonFiniteNumber` error.
+
+## D-044: Delimiters are line-oriented outside single-line lists
+
+**Status:** Accepted
+
+Braces always introduce an object literal expression; they never introduce a
+statement block. Object fields use `key: value`, with either a bare identifier
+(including a `$` Decimal field name) or a quoted-text key. An object has at
+most one field per physical line. Newlines separate its fields; commas,
+including a trailing comma, are invalid in object literals. Repeated object
+keys are a compile-time error. Computed keys and object-spread syntax are not
+part of Lango.
+
+An array whose members occupy one physical line uses commas, such as `[1, 2,
+3]`. A multiline array has exactly one member per line and uses no commas,
+including after its final member. This makes a newline the unambiguous separator
+for multiline data literals.
+
+Function parameter and argument lists retain comma separators only when the
+whole list is on one physical line. Multiline parameter and argument lists are
+not currently Lango syntax; they are deliberately deferred rather than given a
+second separator rule.

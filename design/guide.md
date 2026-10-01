@@ -194,6 +194,12 @@ data = {
 console.log(data.name)
 console.log(data["name"]) # Same with the above
 ```
+Braces always create an object; they never create a code block. An object has
+at most one field per physical line. Its fields are separated by newlines, not
+commas, so an object has no trailing comma. A field key may be a bare name
+(including `$price`) or quoted text. Computed keys and object spread are not
+supported; repeating a key is a compile-time error.
+
 An object field beginning with `$` is a Decimal field:
 ```lango
 invoice = {
@@ -214,6 +220,17 @@ console.log(a[2])
 
 a.length
 ```
+An array may use commas only when all of its members are on one physical line.
+A multiline array has one member per line and no commas:
+```lango
+names = [
+    "Bill"
+    "Elon"
+]
+```
+Function parameter and argument lists retain comma separators, but only when
+their list is on one physical line. Multiline function lists are not currently
+part of the syntax.
 ## 
 ## Control Structures
 

@@ -17,12 +17,6 @@ Protected instance properties use the `_name` form. Decide whether protected
 static properties exist, whether public properties need a declaration initializer
 or type, and what reading an uninitialized instance property means.
 
-### Object literals versus blocks
-
-Specify all parser boundaries between a brace-delimited object, a multiline
-call, and an indentation block. Include trailing commas, computed keys,
-spreads, reserved words, and duplicate keys.
-
 ### Text equality and internationalization
 
 Case-insensitive text comparison needs an explicit Unicode normalization and
