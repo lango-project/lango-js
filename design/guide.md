@@ -5,7 +5,7 @@
   * A file has imports and exports at the start, followed by declarations.
   * An entry file exports `main(args)`. The host starts the program by calling
     it with its argument array.
-  * `args` is an array of programmatic strings supplied by the host; it does
+  * `args` is an array of strings supplied by the host; it does
     not include the executable or entry-file name.
   * Normal completion means success. A numeric value returned from `main` is an
     exit code for command-line hosts.
@@ -382,7 +382,7 @@ for obj as name: value
     println("${name}=${value}")
 
 ```
-Arrays, strings, texts, and other JavaScript iterables can be used with the
+Arrays, strings, and other JavaScript iterables can be used with the
 single-value form. Plain objects use the `key: value` form. `Map` and `Set`
 remain ordinary JavaScript values; they have no special Lango syntax.
 ### Return
@@ -391,51 +391,53 @@ remain ordinary JavaScript values; they have no special Lango syntax.
 
 ## Operators
 
-Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be used alongside &&, || and !. Conditions require `true` or `false`; Lango does not use JavaScript truthiness or implicit conversion. Arithmetic operators work on numbers, and text is composed with interpolation.
+Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be used alongside &&, || and !. Conditions require `true` or `false`; Lango does not use JavaScript truthiness or implicit conversion. Arithmetic operators work on numbers, and strings are composed with interpolation.
 
 There should be space before and after an operator, except unary operators.
 
-## Strings and Text
+## Strings and localization
 
-There are two kinds of strings. Programmatic strings like 'code', and texts like "Elon Gates".
+There is one string kind: a primitive JavaScript string. Single and double
+quotes are equivalent except for delimiter/escape convenience, and both support
+interpolation:
 
-Texts can have interpolation like "My name is ${name}".
+```lango
+name = 'Savaş'
+message = 'Hello, ${name}'
+```
 
-Texts can be subject to translation.
+Localization is explicit. `_()` accepts a string literal, extracts it after
+macro expansion, and returns the translated primitive string at runtime. Its
+source template is the default catalog key and fallback; `${expression}` values
+become catalog placeholders.
 
-After macro expansion, texts are extracted into JSON translation catalogs. The
-source template is both the default message key and fallback text. Interpolated
-expressions become `{0}`, `{1}`, and so on in the catalog, so a translation may
-reorder them. A host chooses the active catalog; Lango source does not choose a
-locale.
+```lango
+message = _("Welcome, ${name}")
+```
 
 ### Multiline
 ```lango
-text = """
+message = """
     Here is a
-    multiline text.
+    multiline string.
 """
 ```
-The value is `Here is a\nmultiline text.`: the outer line breaks are omitted and
+The value is `Here is a\nmultiline string.`: the outer line breaks are omitted and
 the shared indentation of nonblank lines is removed. The closing `"""` may be
 aligned for surrounding code without changing the value. Blank lines contain no
-whitespace. A multiline text must place both delimiters on their own lines;
+whitespace. A multiline string must place both delimiters on their own lines;
 write short text as `"text"`. Use explicit `\n` or `\t` when those characters
 are part of the value.
 ### Comparison
 
-Comparisons are case-sensitive for programmatic strings. Text comparisons use
-Unicode NFC normalization and locale-independent Unicode case folding. Thus
-`"I" == "i"` is true, whereas `"I" == "ı"` and `"İ" == "i"` are false even
-when the program is shown in Turkish.
+String comparisons are exact and case-sensitive: `"I" == "i"` is false.
 
 ### As an Array
 
-Strings and texts are Unicode code-point arrays. `length`, `for ... as`, and
+Strings are Unicode code-point arrays. `length`, `for ... as`, and
 individual `[]` access all use zero-based code points, so a surrogate-pair emoji
 is one element. Grapheme clusters are not combined: a visually single composed
-emoji may contain several elements. An out-of-range index is `null`. Text
-comparison normalization does not alter a text's stored characters or length.
+emoji may contain several elements. An out-of-range index is `null`.
 
 ## Standard Lib
 
@@ -443,6 +445,7 @@ The standard library provides the absolute minimum functions.
 ```lango
 from_json(text)
 to_json(object)
+_(literal)
 println(value)
 is_number(value)
 is_string(value)
@@ -467,9 +470,9 @@ Other JSON numeric fields are native JavaScript Numbers. Assign one to a `$`
 binding when Decimal arithmetic is needed, accepting that JSON parsing may
 already have lost precision; Lango has no separate Decimal-JSON parser or
 field-selection syntax.
-`from_json` accepts a string or Text and returns only plain JSON-shaped values;
+`from_json` accepts a string and returns only plain JSON-shaped values;
 invalid input reports `JsonParseError` with its input location. `to_json` returns
-a programmatic string and accepts only JSON-shaped values, including Decimal.
+a string and accepts only JSON-shaped values, including Decimal.
 Dates, binary data, Map/Set, class instances, functions, Promises, and other
 custom objects require an explicit library conversion first. Cycles raise
 `JsonCycle`, and non-finite numbers raise `NonFiniteNumber` rather than becoming
@@ -530,11 +533,10 @@ if rs.next()
     order_id = rs.id
 ```
 
-Use named `@parameter` values for dynamic SQL values. Text interpolation is not
+Use named `@parameter` values for dynamic SQL values. String interpolation is not
 used for parameter binding: `@parameter` is always passed to the database as
 data. `${expression}` is also allowed in SQL and is inserted directly into the
-SQL string. It uses programmatic-string semantics, never translatable Text
-semantics. Use it deliberately for dynamic identifiers, keywords, or SQL
+SQL string. It uses ordinary string conversion. Use it deliberately for dynamic identifiers, keywords, or SQL
 fragments; it is not escaped or parameterized, and interpolated content cannot
 create new `@parameter` bindings.
 
@@ -619,8 +621,8 @@ connection raises `DatabaseNotConfigured`.
 
 At the start of an expression, `<tag` starts an XML literal; in an operator
 position, `<` remains comparison. XML's static structure must be well-formed at
-compile time. An XML literal produces a programmatic string, not translatable
-Text. Its source whitespace is preserved.
+compile time. An XML literal produces a string. Its source whitespace is
+preserved.
 
 `${expression}` is allowed only in text nodes and quoted attribute values. It
 is XML-escaped for that position, so it cannot introduce markup, a tag name, or
@@ -864,9 +866,9 @@ main(args)
 
 Macro conditions use only macro parameters, uppercase macro bindings, and
 literal values. They cannot read a runtime local, global, `context`, import,
-function, method, or JavaScript API. `PASTE(...)` accepts a programmatic string
-or a source fragment and inserts it as source; it does not accept translatable
-Text. The inserted result is parsed and checked as ordinary Lango source.
+function, method, or JavaScript API. `PASTE(...)` accepts a string or a source
+fragment and inserts it as source. The inserted result is parsed and checked as
+ordinary Lango source.
 
 ```lango
 VALUE = 5

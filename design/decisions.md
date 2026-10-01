@@ -212,43 +212,38 @@ Lango has one equality spelling: `==`. It never performs JavaScript's coercive
 `==` comparison. For ordinary values it transpiles to JavaScript strict equality
 (`===`). JavaScript `===` is not valid Lango source.
 
-Text equality follows the text comparison policy described in D-011. Decimal
-equality follows D-038.
+Decimal equality follows D-038.
 
-## D-011: Quote style carries text intent
+## D-011: Strings are primitive and localization is explicit
 
 **Status:** Accepted
 
-Single-quoted literals are programmatic strings. Double-quoted literals are
-texts: they are eligible for translation extraction and support interpolation.
-Both compile to JavaScript strings.
+Single-quoted and double-quoted literals are both primitive JavaScript strings.
+They differ only in delimiter/escaping convenience, and both support
+`${expression}` interpolation. String equality is exact, case-sensitive Unicode
+code-point equality under D-010; Lango has no Text value or alternate string
+comparison rule.
 
-Interpolation has one spelling, `${expression}`, in a double-quoted text.
-Programmatic strings compare by exact, case-sensitive Unicode code points.
-Texts compare by first applying Unicode NFC normalization and then Unicode
-default case folding. The compiler supplies this operation; it must not inherit
-the host machine's locale. Therefore `"I" == "i"` is true, while `"I" == "ı"`
-and `"İ" == "i"` are false. Locale-specific Turkish casing never changes the
-meaning of `==`.
+`_(literal)` is the explicit localization operation. `_` is reserved for this
+standard function and cannot be shadowed by a declaration or import. Its one
+argument must be a source string literal, including an interpolated or triple
+quoted literal. After macro expansion, the compiler extracts that literal into
+a JSON translation catalog. Its template is both default message key and
+fallback value; interpolations become `{0}`, `{1}`, and so on, so a translation
+may reorder or repeat them. Literal braces in a catalog template are `{{` and
+`}}`. At runtime `_()` returns the translated, interpolated primitive string;
+a missing translation returns the source-template result. The host chooses a
+catalog. Plurals, grammatical gender/context, custom message IDs, and catalog
+loading remain library concerns.
 
-After macro expansion, the compiler extracts texts into JSON translation
-catalogs. A text's canonical source template is its default message key and its
-fallback display value. Interpolations are replaced in source order by `{0}`,
-`{1}`, and so on; a translation may reorder or repeat those placeholders. In a
-catalog template, literal braces are escaped as `{{` and `}}`. Missing
-translations display the source template. The host chooses a catalog; source
-code does not select a locale. Plural rules, grammatical gender or context,
-custom message IDs, and catalog-loading policy are outside the core language
-and may be supplied by libraries.
-
-Triple double quotes create a multiline text. The opening delimiter must end
+Triple double quotes create a multiline string. The opening delimiter must end
 its physical line and the closing delimiter must be the only non-whitespace
 content on its line; `"""text"""` is invalid. The line terminator immediately
 after the opening delimiter and the line terminator immediately before the
 closing delimiter are not part of the value. From every remaining nonblank line,
 the compiler removes the shared minimum leading-space indentation. Whitespace
 on otherwise blank lines is removed. The closing delimiter's column has no
-effect on the value, so formatting a surrounding block cannot change the text.
+effect on the value, so formatting a surrounding block cannot change the string.
 Use explicit escapes such as `\n` and `\t` when a leading/trailing newline or
 particular indentation is semantically required.
 
@@ -326,17 +321,15 @@ attempt to retain context through uninstrumented asynchronous JavaScript code.
 
 **Status:** Accepted
 
-`from_json(text)` accepts a programmatic string or Text and returns plain
-objects, arrays, programmatic strings, Booleans, null, and numbers according to
-the Lango number model. A Text's translation intent is not represented in JSON.
+`from_json(text)` accepts a string and returns plain objects, arrays, strings,
+Booleans, null, and numbers according to the Lango number model.
 Normal JSON numbers are native Numbers; D-043 directly parses `$` fields as
 Decimal values. Invalid JSON raises `JsonParseError`, including its input line,
 column, and a short excerpt; it never returns a sentinel value.
 
-`to_json(value)` returns a programmatic string and accepts only null, Booleans,
-finite native Numbers, Decimals, strings/Texts, Arrays, and plain objects. A
-Decimal uses D-043's canonical JSON-number spelling, and a Text serializes as
-its ordinary string content. Dates, binary values, Map/Set, class instances,
+`to_json(value)` returns a string and accepts only null, Booleans, finite native
+Numbers, Decimals, strings, Arrays, and plain objects. A Decimal uses D-043's
+canonical JSON-number spelling. Dates, binary values, Map/Set, class instances,
 functions, Promises, and other custom JavaScript objects raise `JsonUnsupported`;
 call library code to convert them explicitly first. A cycle raises `JsonCycle`.
 
@@ -356,27 +349,13 @@ The environment adapts the template and bindings to its database driver.
 
 An `@name` parameter is statically recognized from the SQL literal source and
 is always bound as data. `${expression}` is separately permitted as raw SQL
-string interpolation, using programmatic-string conversion rather than Text
-translation semantics. It may supply any SQL string fragment, including
+string interpolation, using ordinary string conversion. It may supply any SQL
+string fragment, including
 identifiers, keywords, or clauses; its contents are not escaped, quoted, or
 re-scanned for additional `@` parameters. The programmer is responsible for
 ensuring interpolated SQL is safe and valid. The result-set API, statement
 classification, adapter interface, and multiple-database syntax remain open
 work.
-
-## D-016: Embedded XML is a balanced literal form
-
-**Status:** Draft
-
-An XML literal begins with an XML start tag in expression position and ends at
-its matching closing tag, or is a self-closing tag. The parser validates tag
-balance and reports malformed XML as a source error; arbitrary unclosed chunks
-are not accepted.
-
-An XML literal evaluates to text. Interpolation may occur only in text and
-attribute-value positions using the normal `${expression}` syntax. The exact
-XML escaping policy and the lexical disambiguation from comparison operators
-remain open work.
 
 ## D-017: File exports and class-member visibility are separate
 
@@ -503,15 +482,15 @@ a non-all-uppercase alias.
 The compiler parses all source files, resolves ordinary `import`/`export`
 headers and the module graph, registers imported macros, and then expands macro
 calls. Macros therefore may themselves be exported and imported as ordinary
-module members; no uppercase `IMPORT` or `EXPORT` directive exists. Text
-translation extraction runs after macro expansion, so it sees text literals in
-the generated program rather than macro template literals.
+module members; no uppercase `IMPORT` or `EXPORT` directive exists. Localization
+extraction runs after macro expansion, so it sees `_()` literals in the generated
+program rather than macro template literals.
 
 Macro evaluation can read only its parameters, uppercase macro bindings, and
 literal values. It cannot read a runtime local, global, context binding, import,
 function, method, or JavaScript API. `IF` uses that same compile-time subset.
-`PASTE(value)` accepts only a programmatic string or a source fragment, inserts
-the resulting source into the expansion, and never accepts translatable Text.
+`PASTE(value)` accepts only a string or a source fragment and inserts the
+resulting source into the expansion.
 The compiler reparses and validates pasted source as ordinary Lango.
 
 Bindings introduced directly by a macro body are hygienic: the compiler gives
@@ -579,7 +558,7 @@ option, and coverage is tooling rather than a language feature.
 
 `get_class(value)` returns the JavaScript-style constructor associated with a
 value, rather than a textual class name. It returns `null` for `null`; primitive
-numbers, strings/texts, and Booleans return `Number`, `String`, and `Boolean`.
+numbers, strings, and Booleans return `Number`, `String`, and `Boolean`.
 Arrays return `Array`, plain objects return `Object`, and Lango instances return
 their Lango class constructor.
 
@@ -602,11 +581,11 @@ inspect a value's kind.
 
 Conditions in `if`, `loop while`, `loop until`, and condition-only `switch`
 must evaluate to a Boolean. Lango does not apply JavaScript truthiness: numbers,
-programmatic strings, texts, objects, arrays, null, and undefined are not
+strings, objects, arrays, null, and undefined are not
 implicitly accepted as conditions.
 
 There are no implicit value conversions, except for the numeric promotion that
-D-038 defines inside a Decimal context. Text is composed with interpolation
+D-038 defines inside a Decimal context. Strings are composed with interpolation
 rather than string concatenation. `and`, `or`, and `not` require Boolean
 operands; `and` and `or` short-circuit and produce a Boolean result. D-010
 continues to define `==` as non-coercive equality.
@@ -762,9 +741,9 @@ block itself changes control flow.
 
 **Status:** Accepted
 
-Arrays, plain objects, programmatic strings, and texts are Lango's built-in
-collection surface. `for collection as item` iterates arrays, strings, texts,
-and other ordinary JavaScript iterable values. `for object as key: value`
+Arrays, plain objects, and strings are Lango's built-in collection surface.
+`for collection as item` iterates arrays, strings, and other ordinary JavaScript
+iterable values. `for object as key: value`
 iterates the own enumerable entries of a plain object.
 
 `Map`, `Set`, and other JavaScript collection types remain usable through normal
@@ -773,13 +752,10 @@ Lango literal, member, or iteration syntax. A `Map` used as a generic iterable
 therefore yields its native entry values rather than gaining implicit key/value
 destructuring. Generators and `yield` are not introduced by this decision.
 
-String and text indexing, `length`, and single-value iteration use Unicode code
-points, not JavaScript UTF-16 code units and not grapheme clusters. Indices are
-zero-based; an out-of-range index produces `null` under D-037. The transpiler
-uses helpers where JavaScript's native string operations would split a surrogate
-pair. Text equality's D-011 normalization and case folding apply only while
-comparing values; they do not rewrite stored text or change its code-point
-length or indexing.
+String indexing, `length`, and single-value iteration use Unicode code points,
+not JavaScript UTF-16 code units and not grapheme clusters. Indices are zero-
+based; an out-of-range index produces `null` under D-037. The transpiler uses
+helpers where JavaScript's native string operations would split a surrogate pair.
 
 ## D-033: Programs start in an exported `main(args)` function
 
@@ -1222,7 +1198,8 @@ therefore imports `./.lango/runtime.mjs`; a nested generated module uses the
 appropriate `../` prefix. These are ordinary relative ESM imports and work in
 both Node and browser-capable bundlers.
 
-The runtime implements compiler helpers such as `println`, Text translation,
+The runtime implements compiler helpers such as `println`, explicit `_()`
+localization,
 Decimal operations, dynamic context, JSON boundary normalization, and the SQL
 adapter bridge. It contains Lango's embedded runtime dependencies, including
 the pinned Decimal implementation. The host configures this runtime with its
@@ -1280,7 +1257,7 @@ Source cannot select a second adapter or override the default connection. Such
 explicit connection selection belongs to the advanced database library noted in
 design debt.
 
-## D-059: XML literals are validated, escaped programmatic strings
+## D-059: XML literals are validated, escaped strings
 
 **Status:** Accepted
 
@@ -1288,8 +1265,7 @@ At an expression-start position, `<` followed by an XML tag start introduces an
 XML literal. In an operator position, `<` retains its ordinary comparison
 meaning; the parser's expression context resolves the overlap. Static XML
 structure must be well-formed at compile time. An XML literal evaluates to a
-programmatic string, never translatable Text, and preserves the source
-whitespace in its static content.
+string and preserves the source whitespace in its static content.
 
 An `${expression}` interpolation is valid only in an XML text node or a quoted
 attribute value. The compiler XML-escapes its value for that precise position.
@@ -1299,4 +1275,4 @@ than a dynamic XML templating language.
 
 The core language has no XML document value, parser, selector/query API, or
 mutation API. Programs that need dynamic XML structure or XML manipulation use
-an explicit library after the programmatic-string boundary.
+an explicit library after the string boundary.
