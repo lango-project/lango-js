@@ -267,7 +267,7 @@ class-member context.
 
 ## D-013: Context is dynamically scoped, immutable binding state
 
-**Status:** Draft
+**Status:** Accepted
 
 `context name = value` establishes or shadows a named context binding for the
 remainder of the current dynamic call scope. When that scope returns or throws,
@@ -277,9 +277,21 @@ the binding; after that declaration, `name` reads the current context value.
 Context values cannot be assigned through a bare `name = value` assignment.
 Another `context name = value` creates a nested binding instead. A read of an
 unavailable context binding is a runtime error with the requested context name.
+The binding itself is immutable, although an object held as its value may still
+be mutated through that object.
 
-The cross-async-boundary propagation mechanism and host-runtime support remain
-open work in `debt.md`.
+The context runtime is a synchronous dynamic binding stack. Each Lango function
+activation pushes its context changes and restores them with generated
+`try`/`finally` cleanup when that activation returns or throws. Recursive and
+re-entrant calls therefore create independent nested layers. A JavaScript API
+which invokes a Lango callback synchronously before the current call stack
+unwinds sees the active context. A callback invoked later by a Promise, timer,
+event, or another asynchronous mechanism sees no context from its registration
+site; it must receive needed values through an explicit local `capture`.
+
+This model needs neither Node `AsyncLocalStorage` nor a browser-specific
+propagation mechanism. It is the same on every JavaScript host and does not
+attempt to retain context through uninstrumented asynchronous JavaScript code.
 
 ## D-014: JSON helpers use explicit conversion boundaries
 

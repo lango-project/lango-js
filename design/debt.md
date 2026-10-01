@@ -5,13 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Context execution model
-
-Specify context shadowing, recursion, exception restoration, re-entrant calls,
-callbacks, and async propagation. Decide the runtime mechanism for Node and
-browsers, and how code that crosses into an uninstrumented JavaScript library
-retains or loses context.
-
 ### Closure capture edge cases
 
 Specify capture behavior for nested closures, mutation of a captured binding,

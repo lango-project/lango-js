@@ -525,6 +525,13 @@ In anywhere below the call stack, you can use this variable whenever you want:
 Context variables are read through their bare name and cannot be assigned with
 a normal assignment.
 
+Context is a synchronous dynamic stack. A nested `context name = value` shadows
+the previous value until its current function activation returns or throws;
+recursive and re-entrant calls get their own layer. A JavaScript API that calls
+a Lango callback synchronously can see the active context. Promise, timer, and
+event callbacks cannot: copy a needed context value to a local binding and
+`capture` it before registering the callback.
+
 You can only assign it inside the *context* statement. This creates a scoped
 value: all calls below the current stack frame use it, and leaving that frame
 restores the previous value.
