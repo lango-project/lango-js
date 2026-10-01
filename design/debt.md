@@ -13,15 +13,6 @@ Design a separate library for explicit connection selection, multiple databases,
 pooling, SQL savepoints, and independent transactions. The core library has one
 contextual default connection and join-only nested transactions (D-054).
 
-### Macro evaluation and generated source
-
-Define the compile-time expression subset available inside macros, macro
-parameters and bindings, `IF` behavior, escaping and validation for `PASTE`,
-hygiene/name-capture rules, source-map provenance, and expansion diagnostics.
-Decide whether a macro may call an imported runtime function (presumably no)
-and whether generated source may contain tests or translation texts. The
-16-round limit applies to macro expansion only, never to resolving module cycles.
-
 ## Tooling
 
 ### Establish executable examples

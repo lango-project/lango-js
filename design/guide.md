@@ -818,34 +818,54 @@ Assert should report the whole failed expression as text.
 
 ## Macros
 
-Macros generate source code while during the compilation. They are distinguished from the normal code by being all caps.
+Macros generate source during compilation. Macro names and macro bindings are
+entirely uppercase; ordinary bindings, functions, classes, and imports cannot
+use an entirely uppercase name. They are intentionally a narrow compile-time
+tool, not runtime functions.
 
-Some examples:
-```lango
-PI = 3.14
-
-f()
-    return PASTE(PI)
-```
 ```lango
 WARN()
     PASTE("println(\"WARNING!\")")
 
-f()
+main(args)
     WARN()
 ```
-```lango
-MYMACRO(A)
-    IF A == 5
-        PASTE("FIVE")
-  
-f()
-    A = 5
-    println("${MYMACRO(A)}")
-```
-At the start of the compilation, all macro calls are evaluated and all PASTE's are pasted into the code until all are resolved.
 
-A PASTE() may paste another macro call. But recursion is not encouraged; the macro expansion fails after 16 rounds.
+Macro conditions use only macro parameters, uppercase macro bindings, and
+literal values. They cannot read a runtime local, global, `context`, import,
+function, method, or JavaScript API. `PASTE(...)` accepts a programmatic string
+or a source fragment and inserts it as source; it does not accept translatable
+Text. The inserted result is parsed and checked as ordinary Lango source.
+
+```lango
+VALUE = 5
+
+FIVE_OR_OTHER(value)
+    IF value == 5
+        PASTE("5")
+      else
+          PASTE("0")
+
+main(args)
+    println(FIVE_OR_OTHER(VALUE))
+```
+
+Macro-local bindings are hygienic: the compiler makes generated binding names
+unique. A name deliberately created by pasted source is explicit and therefore
+not hygienic. A pasted source fragment may contain another macro call, but
+expansion fails after 16 rounds. Macros cannot generate `import` or `export`
+declarations.
+
+Macros themselves use ordinary module headers and may be exported and imported:
+```lango
+# logging.lango
+export
+    WARN()
+
+# app.lango
+import "./logging"
+    WARN()
+```
 
 ## Import/Export
 

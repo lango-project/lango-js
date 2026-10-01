@@ -493,23 +493,35 @@ API, or enum-specific constructor restriction.
 
 ## D-020: Macro names and expansion form a separate compile-time phase
 
-**Status:** Draft
+**Status:** Accepted
 
 All-uppercase identifiers are reserved for macros and macro bindings; ordinary
 variables, parameters, functions, classes, and imports may not use an entirely
 uppercase identifier. Imported JavaScript values with such a name must be given
 a non-all-uppercase alias.
 
-The compiler parses all source files, resolves import/export headers and the
-module graph, registers imported macros, and then expands macro calls. Text
+The compiler parses all source files, resolves ordinary `import`/`export`
+headers and the module graph, registers imported macros, and then expands macro
+calls. Macros therefore may themselves be exported and imported as ordinary
+module members; no uppercase `IMPORT` or `EXPORT` directive exists. Text
 translation extraction runs after macro expansion, so it sees text literals in
 the generated program rather than macro template literals.
 
-`PASTE(value)` inserts source into the expansion result. A pasted source fragment
-may contain another macro call; expansion stops with an error after 16 rounds.
-Macros may not generate `import` or `export` declarations, keeping the already
-resolved module graph stable. Macro diagnostics retain both the macro call site
-and generated-source location where possible.
+Macro evaluation can read only its parameters, uppercase macro bindings, and
+literal values. It cannot read a runtime local, global, context binding, import,
+function, method, or JavaScript API. `IF` uses that same compile-time subset.
+`PASTE(value)` accepts only a programmatic string or a source fragment, inserts
+the resulting source into the expansion, and never accepts translatable Text.
+The compiler reparses and validates pasted source as ordinary Lango.
+
+Bindings introduced directly by a macro body are hygienic: the compiler gives
+them unique generated names. A binding intentionally introduced through pasted
+source is not hygienic, making that possible capture explicit at the `PASTE`
+site. A pasted source fragment may contain another macro call; expansion stops
+with an error after 16 rounds. Macros may not generate `import` or `export`
+declarations, keeping the already-resolved module graph stable. Macro
+diagnostics retain both the macro call site and generated-source location where
+possible.
 
 ## D-021: Relaxed JSON is an ordinary positional object argument
 
