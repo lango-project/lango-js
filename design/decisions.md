@@ -522,16 +522,21 @@ original failed expression. Async-test behavior remains open work.
 
 ## D-023: Reflection exposes JavaScript constructors explicitly
 
-**Status:** Draft
+**Status:** Accepted
 
 `get_class(value)` returns the JavaScript-style constructor associated with a
-value, analogous to `value.constructor`. It therefore returns constructors such
-as `Object`, `Array`, or a Lango class constructor rather than a textual class
-name. `is_kindof(value, Class)` uses inheritance-aware instance semantics
-analogous to JavaScript `instanceof`.
+value, rather than a textual class name. It returns `null` for `null`; primitive
+numbers, strings/texts, and Booleans return `Number`, `String`, and `Boolean`.
+Arrays return `Array`, plain objects return `Object`, and Lango instances return
+their Lango class constructor.
 
-The behavior for null, undefined, primitive values, altered `constructor`
-properties, and cross-realm JavaScript values remains open work.
+The operation obtains an object's constructor through its prototype chain, not
+through a mutable own `constructor` property. `is_kindof(null, Class)` is false.
+For primitives, `is_kindof` compares `get_class(value)` with `Class`; for
+objects it uses inheritance-aware JavaScript `instanceof` behavior. A proxy
+which rejects required prototype access propagates its native error unchanged.
+Lango adds no realm-independent class identity: a value from another JavaScript
+realm follows that realm's native constructor and `instanceof` result.
 
 ## D-024: Dynamic values use explicit, non-coercive operations
 

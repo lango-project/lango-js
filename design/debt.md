@@ -7,13 +7,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## JavaScript interoperability
 
-### Reflection edge cases
-
-Specify `get_class` and `is_kindof` behavior for null, undefined, primitive
-values, objects with an overwritten `constructor`, proxies, and values from a
-different JavaScript realm. Decide whether Lango supplies a stable class
-identity beyond JavaScript's native constructor/`instanceof` behavior.
-
 ### JSON conversion edge cases
 
 Specify `from_json`/`to_json` handling for Text, arbitrary-precision numbers,

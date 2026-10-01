@@ -438,6 +438,11 @@ is_kindof(value, Class)
 `println(value)` writes the host's display form of one value followed by a line
 break and returns `null`. It is the portable Lango output function; source code
 does not use a host `console` global.
+`get_class(null)` is `null`. Primitive values report `Number`, `String`, or
+`Boolean`; objects report their prototype constructor. `is_kindof` follows
+inheritance for objects and is false for `null`. These checks use native
+JavaScript realm identity; values from another realm are not given a special
+Lango identity.
 `from_json` parses a numeric JSON field whose name starts with `$` directly as
 a Decimal. This preserves the numeric token's precision.
 Other JSON numeric fields are native JavaScript Numbers. Assign one to a `$`
