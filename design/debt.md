@@ -62,11 +62,10 @@ argument convention does not replace these positional-call rules.
 
 D-038 defines native Numbers by default and explicit Decimal values through a
 transpiler-selected backend, and D-039 defines exact arithmetic and division
-rounding. Design an optional explicit per-operation rounding API, exact Decimal
-JSON parsing/serialization for external schemas that cannot use `$` field names,
-math-library functions, SQL parameter mapping, and the adapter semantic test
-suite. Define Decimal-flow analysis for mixed return paths, recursion, closures,
-higher-order functions, and module exports.
+rounding. Design exact Decimal JSON parsing/serialization for external schemas
+that cannot use `$` field names, math-library functions, SQL parameter mapping,
+and the adapter semantic test suite. Define Decimal-flow analysis for mixed
+return paths, recursion, closures, higher-order functions, and module exports.
 
 ### Context execution model
 

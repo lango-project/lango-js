@@ -398,7 +398,7 @@ Decimal values too. A Decimal result must be stored in a `$` binding. Use
 `to_js_number($decimal)` only when a JavaScript library needs a native Number.
 Decimal addition, subtraction, and multiplication are exact. Division is valid
 at the configured number of fractional digits, which defaults to six. It uses
-half-even rounding.
+the configured rounding mode, which defaults to half-even.
 `NaN`, `Infinity`, and `-Infinity` are not Lango numbers; producing or receiving
 one is a runtime error.
 Numeric literals support decimal (`12`, `12.50`), scientific notation (`1.2e3`),

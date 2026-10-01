@@ -618,7 +618,9 @@ JavaScript-library boundaries. `is_number(value)` is true for both Number and
 Decimal values.
 
 Each transpiler backend must implement the same numeric protocol and pass the
-same semantic test suite.
+same semantic test suite. When source contains no `$` Decimal binding, parameter,
+or property, the transpiler emits ordinary native JavaScript Number operations
+and does not include a Decimal backend or runtime helper.
 
 ## D-043: `$` also marks Decimal object and JSON fields
 
@@ -648,15 +650,15 @@ Decimal addition, subtraction, and multiplication preserve an exact arbitrary-
 precision decimal result. Decimal division rounds its result to the
 `decimal_division_scale` compiler-profile setting, measured in digits after the
 decimal separator. The default scale is six, so `$one / $three` produces
-`3.333333`. Division uses `half_even` rounding. A finite result with more than
-the configured fractional digits is rounded by the same rule. Division by zero
-is a runtime error.
+`3.333333`. The `decimal_division_rounding` compiler-profile setting selects the
+rounding mode and defaults to `half_even`. A finite result with more than the
+configured fractional digits is rounded by that mode. Division by zero is a
+runtime error.
 
-The compiler profile records its division scale and is used unchanged by builds
-and tests, so a program's numeric result is reproducible. A future
-standard-library API may provide an explicit per-operation rounding scale; it
-does not change the configured behavior of `/`. Native JavaScript Number
-arithmetic continues to follow JavaScript semantics.
+The compiler profile records its division scale and rounding mode and is used
+unchanged by builds and tests, so a program's numeric result is reproducible.
+Lango provides no per-operation rounding API. Native JavaScript Number arithmetic
+continues to follow JavaScript semantics.
 
 ## D-040: Lango numbers are always finite
 
