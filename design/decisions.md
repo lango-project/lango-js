@@ -17,8 +17,17 @@ does not introduce a separate VM or object model. Existing JavaScript values,
 functions, objects, and libraries are callable from Lango unless a Lango
 standard-library name explicitly adapts them.
 
-The first compiler target is modern ECMAScript. The exact supported ECMAScript
-version and module output format are tracked in `debt.md`.
+The first compiler target is ECMAScript 2022 modules. It emits `.mjs` files and
+uses only ESM; CommonJS output is not produced. The Node host baseline is Node
+24 or later. Browser output targets modern browsers with native ESM support;
+bundling is the host or build tool's responsibility rather than Lango source.
+
+The compiler emits an external source map for every generated `.mjs` file,
+including source content, and adds its `sourceMappingURL` reference. Compiler
+runtime helpers, including the embedded Decimal runtime, are private sibling ESM
+modules or are included by the host bundler. Generated code does not require a
+user-installed runtime helper package. A future compatibility target for older
+runtimes is a separate output mode and cannot change this baseline's semantics.
 
 ## D-002: Blocks are line-oriented and indentation-delimited
 

@@ -7,11 +7,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## JavaScript interoperability
 
-### Set the emitted JavaScript baseline
-
-Choose the ECMAScript version, ESM/CommonJS strategy, source-map behavior, and
-whether a runtime helper package is permitted.
-
 ### Imports and exports
 
 The guide defines header-based imports and exports. Specify file-name/module
