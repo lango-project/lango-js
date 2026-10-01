@@ -153,6 +153,12 @@ immutable-binding declaration.
 
 It is a compiler error to read it before defined.
 
+After an `if`, a variable is available only when every normally continuing
+branch assigned it. An assignment made only inside a loop does not make the
+variable available after that loop; assign it before entering the loop instead.
+The same conservative rule applies to captured local variables: they must be
+assigned before the closure is created.
+
 `null` is the only absence value. JavaScript `undefined` and a missing object
 property are seen as `null` in Lango. Use `value == null` to test for absence.
 

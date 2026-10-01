@@ -5,12 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Complete definite-assignment analysis
-
-Decide how assignment facts flow through loops, `break`, `continue`, returns,
-throws, exception handlers, closures, generators, and async functions. Until
-then, the compiler may implement the straight-line and `if`-branch subset only.
-
 ### Protected properties and property initialization
 
 Protected instance properties use the `_name` form. Decide whether protected

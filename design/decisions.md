@@ -63,16 +63,34 @@ other column is a syntax error.
 
 ## D-003: Bindings are lexical and must be definitely assigned
 
-**Status:** Draft
+**Status:** Accepted
 
 The first assignment to a bare identifier creates a binding in the current
 lexical scope. Reading a local binding before it is definitely assigned is a
 compile-time error.
 
-A branch establishes a binding after the branch only when every reachable
-branch assigns it. Function parameters are assigned when the function begins.
-The exact rules for loops, exceptions, closures, and asynchronous code remain
-open work.
+A branch establishes a binding after the branch only when every normally
+continuing branch assigns it. Function parameters are assigned when the
+function begins. A path ending in `return`, `throw`, `break`, or `continue`
+does not normally continue for this analysis.
+
+An assignment made only inside a loop never establishes definite assignment
+after the loop; assign the binding before entering the loop when it is needed
+afterward. This rule applies to every loop form, regardless of its apparent
+condition or `break` statements.
+
+After `try`/`catch`, a binding is definitely assigned only if the normal exit
+of the `try` body and every normal `catch` exit assign it. `finally` is then
+analyzed on those exits: an assignment it performs establishes the binding
+after the construct if the `finally` itself completes normally. A `finally`
+that throws, returns, breaks, or continues has no normal exit through that
+path.
+
+A closure may capture a local binding only when that binding is definitely
+assigned at the closure expression. This deliberately avoids reasoning about
+when a callback is invoked. `global`, `context`, imported names, and instance
+or static properties are resolved by their own declarations and are not local
+definite-assignment facts.
 
 File-level globals use the declaration form `global name = expression`. A
 function or method accesses one with an explicit `global name` declaration.
