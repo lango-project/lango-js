@@ -230,8 +230,16 @@ code does not select a locale. Plural rules, grammatical gender or context,
 custom message IDs, and catalog-loading policy are outside the core language
 and may be supplied by libraries.
 
-Triple double quotes create a multiline text. Its closing delimiter determines
-the end of the literal; formatter indentation stripping rules are open work.
+Triple double quotes create a multiline text. The opening delimiter must end
+its physical line and the closing delimiter must be the only non-whitespace
+content on its line; `"""text"""` is invalid. The line terminator immediately
+after the opening delimiter and the line terminator immediately before the
+closing delimiter are not part of the value. From every remaining nonblank line,
+the compiler removes the shared minimum leading-space indentation. Whitespace
+on otherwise blank lines is removed. The closing delimiter's column has no
+effect on the value, so formatting a surrounding block cannot change the text.
+Use explicit escapes such as `\n` and `\t` when a leading/trailing newline or
+particular indentation is semantically required.
 
 ## D-012: Closures make nonlocal local bindings explicit
 

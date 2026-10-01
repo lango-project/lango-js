@@ -5,11 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Multiline text whitespace
-
-Specify whether the indentation shared with the closing `"""` delimiter is
-removed, and whether a first/last blank line is retained.
-
 ### Promise and error integration edge cases
 
 Specify Promise rejection stack traces, unhandled-rejection reporting, the

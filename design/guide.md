@@ -354,6 +354,12 @@ text = """
     multiline text.
 """
 ```
+The value is `Here is a\nmultiline text.`: the outer line breaks are omitted and
+the shared indentation of nonblank lines is removed. The closing `"""` may be
+aligned for surrounding code without changing the value. Blank lines contain no
+whitespace. A multiline text must place both delimiters on their own lines;
+write short text as `"text"`. Use explicit `\n` or `\t` when those characters
+are part of the value.
 ### Comparison
 
 Comparisons are case-sensitive for programmatic strings. Text comparisons use
