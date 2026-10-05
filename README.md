@@ -54,3 +54,9 @@ See `examples/005-arrays`.
 
 Faz 5 adds multiline object literals, dot access, and `for object as key: value`.
 See `examples/006-objects`.
+
+## Faz 10
+
+Faz 10 adds a class-level `properties` section. Declared `@property` names are
+emitted as JavaScript public fields; other `@property` names remain JavaScript
+private `#fields`. See `examples/010-public-properties`.

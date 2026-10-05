@@ -1,0 +1,17 @@
+class Account
+    properties
+        name
+
+Account(name)
+    @name = name
+    @secret = "only the class can read this"
+
+Account:label()
+    return @name
+
+export main(args)
+
+main(args)
+    account = new Account("Lango")
+    println(account.name)
+    println(account.label())

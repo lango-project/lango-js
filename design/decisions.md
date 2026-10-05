@@ -136,8 +136,9 @@ public instance-property surface; the names listed there are accessed internally
 as `@name` and externally through normal JavaScript property access.
 
 An `@` property that is not listed in `properties` is private to the Lango class
-contract. JavaScript cannot enforce this for interoperable objects, so privacy
-is checked by the Lango compiler rather than by a JavaScript private field.
+contract. The JavaScript backend emits it as a JavaScript private `#field`, so
+ordinary JavaScript cannot access it either. The Lango compiler still checks
+the source-level visibility contract independently of that backend detail.
 
 The `properties` section declares API only: it supplies neither a type nor an
 initializer. A public property therefore need not be initialized by every
