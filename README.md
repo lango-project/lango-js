@@ -66,3 +66,9 @@ private `#fields`. See `examples/010-public-properties`.
 Faz 11 adds initialized class-level values through a `static` section. They are
 read as `Class.Name` outside the class and as `@@Name` in instance methods. See
 `examples/011-static-values`.
+
+## Faz 12
+
+Faz 12 adds the readonly `enum` class section. Its values are accessed like
+static values, but an assignment through `@@Name` is a compiler error. See
+`examples/012-enum-values`.

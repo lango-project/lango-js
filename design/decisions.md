@@ -450,26 +450,31 @@ retain their native dynamic fields and methods; Lango's `@`, `_`, `@@`, and
 JavaScript exposes its public fields and methods as ordinary JavaScript members;
 private and protected restrictions remain compiler-enforced Lango rules.
 
-## D-050: Static values replace enums
+## D-050: Static and readonly enum values
 
 **Status:** Accepted
 
-Lango has no `enum` construct. A class declares initialized public static values
-with a `static` section:
+Lango has no separate enum type. A class declares initialized mutable static
+values with a `static` section, or readonly static values with an `enum` section:
 
 ```lango
 class Color
     static
+        Default = new Color(255, 255, 255)
+    enum
         White = new Color(255, 255, 255)
         Black = new Color(0, 0, 0)
 ```
 
 Each entry is evaluated once, in source order, when the class is defined. It is
 an ordinary static property: source outside the class accesses `Color.White`,
-and class code accesses `@@White`. Static values remain mutable under D-030,
-use ordinary instance identity equality, and serialize as ordinary values. There
-is no closed-member rule, exhaustive `switch` analysis, generated `values()`
-API, or enum-specific constructor restriction.
+and class code accesses `@@White`. `static` values remain mutable under D-030.
+An `enum` binding cannot be assigned through `@@White`; the compiler reports an
+error before emitting JavaScript. This readonly guarantee applies to the binding,
+not recursively to an object or array held by it. Both forms use ordinary
+instance identity equality and serialize as ordinary values. There is no
+closed-member rule, exhaustive `switch` analysis, generated `values()` API, or
+enum-specific constructor restriction.
 
 ## D-020: Macro names and expansion form a separate compile-time phase
 

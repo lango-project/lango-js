@@ -1,0 +1,14 @@
+class Color
+    enum
+        White = "white"
+        Black = "black"
+
+Color:default()
+    return @@White
+
+export main(args)
+
+main(args)
+    color = new Color()
+    println(Color.Black)
+    println(color.default())
