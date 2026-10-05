@@ -1,0 +1,7 @@
+import "./greeting"
+    greet(name)
+
+export main(args)
+
+main(args)
+    println(greet('Savaş'))

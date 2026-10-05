@@ -1,0 +1,4 @@
+export greet(name)
+
+greet(name)
+    return _("Hello, ${name}")
