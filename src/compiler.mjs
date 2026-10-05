@@ -27,18 +27,30 @@ class Parser {
     constructor(source, name) { this.lines = source.split(/\r?\n/); this.name = name; this.i = 0; }
     parse() {
         const functions = [];
+        const exports = [];
         this.blank();
         while (this.i < this.lines.length) {
             const line = this.line();
+            const exportHeader = /^export ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
+            if (exportHeader) {
+                exports.push({ name: exportHeader[1], parameters: exportHeader[2] ? exportHeader[2].split(", ") : [], line: line.number });
+                this.blank();
+                continue;
+            }
             const header = /^(export )?([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
             if (!header) this.fail(line, "LNG1101", "expected a function declaration");
             const parameters = header[3] ? header[3].split(", ") : [];
             if (parameters.some((item) => !/^[A-Za-z_]\w*$/.test(item))) this.fail(line, "LNG1102", "invalid parameter list");
             if (header[1] && header[2] !== "main") this.fail(line, "LNG1103", "Faz 2 exports only main(args)");
-            functions.push({ name: header[2], parameters, exported: Boolean(header[1]), line: line.number, body: this.block(4) });
+            functions.push({ name: header[2], parameters, exported: false, line: line.number, body: this.block(4) });
             this.blank();
         }
-        if (functions.filter((item) => item.exported && item.name === "main" && item.parameters.join() === "args").length !== 1) throw new LangoError("LNG1104", 1, `${this.name}: exactly one export main(args) is required`);
+        for (const exported of exports) {
+            const target = functions.find((item) => item.name === exported.name && item.parameters.join("\0") === exported.parameters.join("\0"));
+            if (!target) throw new LangoError("LNG1104", exported.line, `${this.name}: export does not match a function declaration`);
+            target.exported = true;
+        }
+        if (functions.filter((item) => item.exported && item.name === "main" && item.parameters.join() === "args").length !== 1) throw new LangoError("LNG1105", 1, `${this.name}: exactly one export main(args) is required`);
         return { functions };
     }
     block(indent) {

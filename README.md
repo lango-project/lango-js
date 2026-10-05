@@ -8,7 +8,7 @@ programs. Its language decisions are in `design/`.
 Faz 1 is the first executable vertical slice. It compiles the
 `examples/002-main-branch` program and supports:
 
-- `export main(args)`
+- separate `export main(args)` header followed by `main(args)`
 - local assignments
 - `if` / `else`
 - numeric `>` conditions

@@ -1,3 +1,5 @@
+export main(args)
+
 sum(values)
     total = 0
 
@@ -6,7 +8,7 @@ sum(values)
 
     return total
 
-export main(args)
+main(args)
     values = [2, 3, 5]
     values.add(7)
     println(sum(values))

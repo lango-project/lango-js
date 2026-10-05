@@ -1,3 +1,5 @@
+export main(args)
+
 sum_to(limit)
     number = 0
     total = 0
@@ -8,5 +10,5 @@ sum_to(limit)
 
     return total
 
-export main(args)
+main(args)
     println(sum_to(5))

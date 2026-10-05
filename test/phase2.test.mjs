@@ -21,5 +21,5 @@ test("Faz 2 functions compile and run", async () => {
 });
 
 test("Faz 2 rejects bad Lango call arity", () => {
-    assert.throws(() => compile("greet(name)\n    return name\n\nexport main(args)\n    println(greet())\n"), (error) => error instanceof LangoError && error.code === "LNG1203");
+    assert.throws(() => compile("export main(args)\n\ngreet(name)\n    return name\n\nmain(args)\n    println(greet())\n"), (error) => error instanceof LangoError && error.code === "LNG1203");
 });

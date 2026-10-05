@@ -1,7 +1,9 @@
+export main(args)
+
 greet(name)
     return _("Hello, ${name}")
 
-export main(args)
+main(args)
     name = 'world'
 
     if args.length > 0

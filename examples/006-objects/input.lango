@@ -1,7 +1,9 @@
+export main(args)
+
 show_order(order)
     return _("Order ${order.id}: ${order.customer}")
 
-export main(args)
+main(args)
     order = {
         id: 42
         customer: 'Savaş'
