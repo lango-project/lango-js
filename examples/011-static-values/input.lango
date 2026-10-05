@@ -1,0 +1,18 @@
+class Constants
+    static
+        Answer = 42
+
+Constants:value()
+    return @@Answer
+
+Constants:increase()
+    @@Answer = @@Answer + 1
+    return @@Answer
+
+export main(args)
+
+main(args)
+    constants = new Constants()
+    println(Constants.Answer)
+    println(constants.value())
+    println(constants.increase())

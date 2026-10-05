@@ -60,3 +60,9 @@ See `examples/006-objects`.
 Faz 10 adds a class-level `properties` section. Declared `@property` names are
 emitted as JavaScript public fields; other `@property` names remain JavaScript
 private `#fields`. See `examples/010-public-properties`.
+
+## Faz 11
+
+Faz 11 adds initialized class-level values through a `static` section. They are
+read as `Class.Name` outside the class and as `@@Name` in instance methods. See
+`examples/011-static-values`.
