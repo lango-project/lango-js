@@ -1,0 +1,12 @@
+sum(values)
+    total = 0
+
+    for values as value
+        total = total + value
+
+    return total
+
+export main(args)
+    values = [2, 3, 5]
+    values.add(7)
+    println(sum(values))

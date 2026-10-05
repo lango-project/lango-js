@@ -44,3 +44,8 @@ See `examples/003-functions`.
 
 Faz 3 adds `loop while`, `<`, `break`, `continue`, and `name++`. See
 `examples/004-loops`.
+
+## Faz 4
+
+Faz 4 adds single-line array literals, `for values as value`, and `Array#add()`.
+See `examples/005-arrays`.
