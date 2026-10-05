@@ -49,3 +49,8 @@ Faz 3 adds `loop while`, `<`, `break`, `continue`, and `name++`. See
 
 Faz 4 adds single-line array literals, `for values as value`, and `Array#add()`.
 See `examples/005-arrays`.
+
+## Faz 5
+
+Faz 5 adds multiline object literals, dot access, and `for object as key: value`.
+See `examples/006-objects`.

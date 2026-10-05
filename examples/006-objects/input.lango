@@ -1,0 +1,13 @@
+show_order(order)
+    return _("Order ${order.id}: ${order.customer}")
+
+export main(args)
+    order = {
+        id: 42
+        customer: 'Savaş'
+    }
+
+    for order as key: value
+        println(_("${key}=${value}"))
+
+    println(show_order(order))

@@ -55,6 +55,9 @@ class Parser {
                 body.push({ type: "if", condition: expr(text.slice(3), line, this), thenBody, elseBody });
             } else if (text.startsWith("loop while ")) {
                 body.push({ type: "loop", condition: expr(text.slice(11), line, this), body: this.block(indent + 4) });
+            } else if (/^for ([A-Za-z_]\w*) as ([A-Za-z_]\w*): ([A-Za-z_]\w*)$/.test(text)) {
+                const [, collection, key, value] = /^for ([A-Za-z_]\w*) as ([A-Za-z_]\w*): ([A-Za-z_]\w*)$/.exec(text);
+                body.push({ type: "forObject", collection, key, value, body: this.block(indent + 4) });
             } else if (/^for ([A-Za-z_]\w*) as ([A-Za-z_]\w*)$/.test(text)) {
                 const [, collection, item] = /^for ([A-Za-z_]\w*) as ([A-Za-z_]\w*)$/.exec(text);
                 body.push({ type: "for", collection, item, body: this.block(indent + 4) });
@@ -63,7 +66,10 @@ class Parser {
             else if (/^[A-Za-z_]\w*\+\+$/.test(text)) body.push({ type: "increment", name: text.slice(0, -2) });
             else if (/^([A-Za-z_]\w*)\.add\((.+)\)$/.test(text)) { const [, target, value] = /^([A-Za-z_]\w*)\.add\((.+)\)$/.exec(text); body.push({ type: "add", target, value: expr(value, line, this) }); }
             else if (/^println\((.*)\)$/.test(text)) body.push({ type: "println", value: expr(text.slice(8, -1), line, this) });
-            else {
+            else if (/^([A-Za-z_]\w*) = \{$/.test(text)) {
+                const [, name] = /^([A-Za-z_]\w*) = \{$/.exec(text);
+                body.push({ type: "assign", name, value: this.object(indent) });
+            } else {
                 const assignment = /^([A-Za-z_]\w*) = (.+)$/.exec(text);
                 if (!assignment) this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
                 body.push({ type: "assign", name: assignment[1], value: expr(assignment[2], line, this) });
@@ -71,6 +77,19 @@ class Parser {
         }
         if (!body.length) this.fail({ text: "", number: this.i + 1 }, "LNG1107", "expected a statement");
         return body;
+    }
+    object(indent) {
+        const fields = [];
+        while (true) {
+            this.blank();
+            if (this.peek() === `${" ".repeat(indent)}}`) { this.i += 1; break; }
+            if (!this.peek() || spaces(this.peek()) !== indent + 4) this.fail({ number: this.i + 1 }, "LNG1110", "expected an object field or closing brace");
+            const line = this.line();
+            const match = /^([A-Za-z_]\w*): (.+)$/.exec(line.text.slice(indent + 4));
+            if (!match) this.fail(line, "LNG1111", "expected `key: value`");
+            fields.push({ key: match[1], value: expr(match[2], line, this) });
+        }
+        return { type: "object", fields };
     }
     blank() { while (this.peek()?.trim() === "") this.i += 1; }
     peek() { return this.lines[this.i]; }
@@ -92,7 +111,7 @@ function expr(source, line, parser) {
     if (/^['"].*['"]$/.test(text)) return { type: "string", literal: literal(text, line, parser) };
     if (/^\d+$/.test(text)) return { type: "raw", value: text };
     if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
-    if (/^[A-Za-z_]\w*\.length$/.test(text)) return { type: "raw", value: text };
+    if (/^[A-Za-z_]\w*\.[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
     if (/^[A-Za-z_]\w*\[\d+\]$/.test(text)) return { type: "raw", value: text };
     if (/^[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
     parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
@@ -102,7 +121,7 @@ function literal(value, line, parser) {
     const quote = value[0];
     if (!((quote === "'" || quote === '"') && value.at(-1) === quote)) parser.fail(line, "LNG1109", "expected a string literal");
     const decoded = value.slice(1, -1).replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\(['"\\])/g, "$1");
-    const parts = []; let at = 0; const regex = /\$\{([A-Za-z_]\w*(?:\.length|\[\d+\])?)\}/g; let match;
+    const parts = []; let at = 0; const regex = /\$\{([A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\[\d+\])?)\}/g; let match;
     while ((match = regex.exec(decoded))) { parts.push({ text: decoded.slice(at, match.index), value: match[1] }); at = match.index + match[0].length; }
     parts.push({ text: decoded.slice(at), value: null }); return parts;
 }
@@ -122,7 +141,7 @@ function emit(program) {
     return `${imports}${functions}//# sourceMappingURL=main.mjs.map\n`;
 }
 function emitFunction(fn, flags) { const declared = new Set(fn.parameters); return `${fn.exported ? "export " : ""}function ${fn.name}(${fn.parameters.join(", ")}) {\n${fn.body.map((item) => emitStatement(item, 1, declared, flags)).join("")}    return null;\n}\n`; }
-function emitStatement(node, depth, declared, flags) { const pad = "    ".repeat(depth); if (node.type === "assign") { const prefix = declared.has(node.name) ? "" : "let "; declared.add(node.name); return `${pad}${prefix}${node.name} = ${emitExpr(node.value, flags)};\n`; } if (node.type === "increment") return `${pad}${node.name} += 1;\n`; if (node.type === "add") return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`; if (node.type === "return") return `${pad}return ${emitExpr(node.value, flags)};\n`; if (node.type === "println") { flags.print = true; return `${pad}__println(${emitExpr(node.value, flags)});\n`; } if (node.type === "break" || node.type === "continue") return `${pad}${node.type};\n`; if (node.type === "loop") return `${pad}while (${emitExpr(node.condition, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "for") return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; let out = `${pad}if (${emitExpr(node.condition, flags)}) {\n${node.thenBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.elseBody) out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; return `${out}\n`; }
-function emitExpr(node, flags) { if (node.type === "raw") return node.value; if (node.type === "array") return `[${node.values.map((item) => emitExpr(item, flags)).join(", ")}]`; if (node.type === "binary") return `${emitExpr(node.left, flags)} ${node.operator} ${emitExpr(node.right, flags)}`; if (node.type === "call") return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`; if (node.type === "string") return emitString(node.literal, flags); flags.translate = true; const template = node.literal.map((item, index) => `${item.text}${item.value === null ? "" : `{${index}}`}`).join(""); const values = node.literal.filter((item) => item.value).map((item) => item.value); return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`; }
+function emitStatement(node, depth, declared, flags) { const pad = "    ".repeat(depth); if (node.type === "assign") { const prefix = declared.has(node.name) ? "" : "let "; declared.add(node.name); return `${pad}${prefix}${node.name} = ${emitExpr(node.value, flags)};\n`; } if (node.type === "increment") return `${pad}${node.name} += 1;\n`; if (node.type === "add") return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`; if (node.type === "return") return `${pad}return ${emitExpr(node.value, flags)};\n`; if (node.type === "println") { flags.print = true; return `${pad}__println(${emitExpr(node.value, flags)});\n`; } if (node.type === "break" || node.type === "continue") return `${pad}${node.type};\n`; if (node.type === "loop") return `${pad}while (${emitExpr(node.condition, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "for") return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "forObject") return `${pad}for (const [${node.key}, ${node.value}] of Object.entries(${node.collection})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; let out = `${pad}if (${emitExpr(node.condition, flags)}) {\n${node.thenBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.elseBody) out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; return `${out}\n`; }
+function emitExpr(node, flags) { if (node.type === "raw") return node.value; if (node.type === "array") return `[${node.values.map((item) => emitExpr(item, flags)).join(", ")}]`; if (node.type === "object") return `{ ${node.fields.map((field) => `${field.key}: ${emitExpr(field.value, flags)}`).join(", ")} }`; if (node.type === "binary") return `${emitExpr(node.left, flags)} ${node.operator} ${emitExpr(node.right, flags)}`; if (node.type === "call") return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`; if (node.type === "string") return emitString(node.literal, flags); flags.translate = true; const template = node.literal.map((item, index) => `${item.text}${item.value === null ? "" : `{${index}}`}`).join(""); const values = node.literal.filter((item) => item.value).map((item) => item.value); return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`; }
 function emitString(parts) { if (parts.length === 1) return JSON.stringify(parts[0].text); return `\`${parts.map((item) => `${item.text.replaceAll("`", "\\`")}${item.value === null ? "" : `\${${item.value}}`}`).join("")}\``; }
 function spaces(line) { return line.length - line.trimStart().length; }
