@@ -2,9 +2,9 @@
 
 Each example fixes one observable part of the language contract. Formatter
 fixtures contain parseable source and its canonical form. Transpiler fixtures
-will add an expected ES2022 module and a runtime assertion once the core
-JavaScript runtime-import surface is specified; they must not invent that
-surface in a fixture.
+contain an expected ES2022 module and a Node runtime assertion. A fixture may
+include a minimal `.lango/runtime.mjs` test double; its helper names are a
+compiler-output detail, never Lango source API.
 
 Add a fixture when accepting a new decision or when implementing an existing
 one. Example names start with a stable numeric prefix so test discovery and
