@@ -1,0 +1,10 @@
+greet(name)
+    return _("Hello, ${name}")
+
+export main(args)
+    name = 'world'
+
+    if args.length > 0
+        name = args[0]
+
+    println(greet(name))

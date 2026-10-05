@@ -1,318 +1,119 @@
 import path from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-
 import { RUNTIME_SOURCE } from "./runtime.mjs";
 
 export class LangoError extends Error {
-    constructor(code, line, message) {
-        super(`${code} at line ${line}: ${message}`);
-        this.code = code;
-        this.line = line;
-    }
+    constructor(code, line, message) { super(`${code} at line ${line}: ${message}`); this.code = code; }
 }
 
 export async function buildFile(inputPath, outputPath) {
-    const source = await readFile(inputPath, "utf8");
-    const output = compile(source, inputPath);
-    const outputDir = path.dirname(outputPath);
-    const runtimeDir = path.join(outputDir, ".lango");
-
-    await mkdir(runtimeDir, { recursive: true });
-    await writeFile(outputPath, output.javascript, "utf8");
-    await writeFile(`${outputPath}.map`, JSON.stringify({
-        version: 3,
-        file: path.basename(outputPath),
-        sources: [path.basename(inputPath)],
-        names: [],
-        mappings: "",
-    }, null, 2) + "\n", "utf8");
-    await writeFile(path.join(runtimeDir, "runtime.mjs"), RUNTIME_SOURCE, "utf8");
+    const output = compile(await readFile(inputPath, "utf8"), inputPath).javascript;
+    const directory = path.dirname(outputPath);
+    await mkdir(path.join(directory, ".lango"), { recursive: true });
+    await writeFile(outputPath, output, "utf8");
+    await writeFile(`${outputPath}.map`, JSON.stringify({ version: 3, file: path.basename(outputPath), sources: [path.basename(inputPath)], names: [], mappings: "" }) + "\n");
+    await writeFile(path.join(directory, ".lango/runtime.mjs"), RUNTIME_SOURCE);
 }
 
 export function compile(source, sourceName = "<source>") {
-    if (source.includes("\t")) {
-        throw new LangoError("LNG1001", 1, "TAB characters are not allowed");
-    }
-
-    const lines = source.split(/\r?\n/).map((text, index) => ({
-        text,
-        number: index + 1,
-    }));
-    const parser = new Parser(lines, sourceName);
-    const program = parser.parseProgram();
-    const emitter = new Emitter();
-
-    return { javascript: emitter.emitProgram(program) };
+    if (source.includes("\t")) throw new LangoError("LNG1001", 1, "TAB characters are not allowed");
+    const parser = new Parser(source, sourceName);
+    const program = parser.parse();
+    validate(program);
+    return { javascript: emit(program) };
 }
 
 class Parser {
-    constructor(lines, sourceName) {
-        this.lines = lines;
-        this.sourceName = sourceName;
-        this.index = 0;
-    }
-
-    parseProgram() {
-        this.skipBlank();
-        const header = this.take();
-
-        if (header?.text !== "export main(args)") {
-            this.fail(header, "LNG1101", "Faz 1 requires `export main(args)`");
+    constructor(source, name) { this.lines = source.split(/\r?\n/); this.name = name; this.i = 0; }
+    parse() {
+        const functions = [];
+        this.blank();
+        while (this.i < this.lines.length) {
+            const line = this.line();
+            const header = /^(export )?([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
+            if (!header) this.fail(line, "LNG1101", "expected a function declaration");
+            const parameters = header[3] ? header[3].split(", ") : [];
+            if (parameters.some((item) => !/^[A-Za-z_]\w*$/.test(item))) this.fail(line, "LNG1102", "invalid parameter list");
+            if (header[1] && header[2] !== "main") this.fail(line, "LNG1103", "Faz 2 exports only main(args)");
+            functions.push({ name: header[2], parameters, exported: Boolean(header[1]), line: line.number, body: this.block(4) });
+            this.blank();
         }
-
-        const body = this.parseBlock(4);
-        this.skipBlank();
-        if (this.index !== this.lines.length) {
-            this.fail(this.peek(), "LNG1102", "unexpected source after main");
-        }
-
-        return { type: "main", body };
+        if (functions.filter((item) => item.exported && item.name === "main" && item.parameters.join() === "args").length !== 1) throw new LangoError("LNG1104", 1, `${this.name}: exactly one export main(args) is required`);
+        return { functions };
     }
-
-    parseBlock(indent) {
-        const statements = [];
-
+    block(indent) {
+        const body = [];
         while (true) {
-            this.skipBlank();
-            const line = this.peek();
-            if (!line || indentation(line.text) < indent) {
-                break;
+            this.blank();
+            const next = this.peek();
+            if (!next || spaces(next) < indent) break;
+            if (spaces(next) !== indent) this.fail({ text: next, number: this.i + 1 }, "LNG1105", `expected ${indent} spaces`);
+            const line = this.line(); const text = line.text.slice(indent);
+            if (text.startsWith("if ")) {
+                const thenBody = this.block(indent + 4); this.blank(); let elseBody = null;
+                if (this.peek() === `${" ".repeat(indent + 2)}else`) { this.i += 1; elseBody = this.block(indent + 6); }
+                body.push({ type: "if", condition: expr(text.slice(3), line, this), thenBody, elseBody });
+            } else if (text.startsWith("return ")) body.push({ type: "return", value: expr(text.slice(7), line, this) });
+            else if (/^println\((.*)\)$/.test(text)) body.push({ type: "println", value: expr(text.slice(8, -1), line, this) });
+            else {
+                const assignment = /^([A-Za-z_]\w*) = (.+)$/.exec(text);
+                if (!assignment) this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
+                body.push({ type: "assign", name: assignment[1], value: expr(assignment[2], line, this) });
             }
-            if (indentation(line.text) !== indent) {
-                this.fail(line, "LNG1103", `expected ${indent} spaces of indentation`);
-            }
-
-            const content = line.text.slice(indent);
-            if (content.startsWith("if ")) {
-                statements.push(this.parseIf(indent));
-                continue;
-            }
-            if (content === "else") {
-                break;
-            }
-
-            this.index += 1;
-            statements.push(this.parseStatement(content, line));
         }
-
-        if (statements.length === 0) {
-            const line = this.peek() ?? this.lines[this.lines.length - 1];
-            this.fail(line, "LNG1104", "expected a statement");
-        }
-
-        return statements;
+        if (!body.length) this.fail({ text: "", number: this.i + 1 }, "LNG1107", "expected a statement");
+        return body;
     }
-
-    parseIf(indent) {
-        const header = this.take();
-        const condition = header.text.slice(indent + 3);
-        const thenBody = this.parseBlock(indent + 4);
-        this.skipBlank();
-        const elseLine = this.peek();
-        let elseBody = null;
-
-        if (elseLine?.text === `${" ".repeat(indent + 2)}else`) {
-            this.index += 1;
-            elseBody = this.parseBlock(indent + 6);
-        }
-
-        return { type: "if", condition: this.parseExpression(condition, header), thenBody, elseBody };
-    }
-
-    parseStatement(content, line) {
-        const assignment = /^([A-Za-z_][A-Za-z0-9_]*) = (.+)$/.exec(content);
-        if (assignment) {
-            return {
-                type: "assignment",
-                name: assignment[1],
-                value: this.parseExpression(assignment[2], line),
-            };
-        }
-
-        const println = /^println\((.*)\)$/.exec(content);
-        if (println) {
-            return { type: "println", value: this.parseExpression(println[1], line) };
-        }
-
-        this.fail(line, "LNG1105", `unsupported Faz 1 statement: ${content}`);
-    }
-
-    parseExpression(source, line) {
-        const text = source.trim();
-        const greaterThan = /^(.+) > (.+)$/.exec(text);
-        if (greaterThan) {
-            return {
-                type: "greaterThan",
-                left: this.parseExpression(greaterThan[1], line),
-                right: this.parseExpression(greaterThan[2], line),
-            };
-        }
-        const translation = /^_\((.*)\)$/.exec(text);
-        if (translation) {
-            return { type: "translate", literal: this.parseString(translation[1], line) };
-        }
-        if (isStringLiteral(text)) {
-            return { type: "string", literal: this.parseString(text, line) };
-        }
-        if (/^[A-Za-z_][A-Za-z0-9_]*\.length$/.test(text)) {
-            return { type: "length", value: text.slice(0, -7) };
-        }
-        if (/^[A-Za-z_][A-Za-z0-9_]*\[\d+\]$/.test(text)) {
-            const bracket = text.indexOf("[");
-            return { type: "index", value: text.slice(0, bracket), index: Number(text.slice(bracket + 1, -1)) };
-        }
-        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(text)) {
-            return { type: "name", value: text };
-        }
-        if (/^\d+$/.test(text)) {
-            return { type: "number", value: Number(text) };
-        }
-        this.fail(line, "LNG1106", `unsupported Faz 1 expression: ${text}`);
-    }
-
-    parseString(source, line) {
-        if (!isStringLiteral(source)) {
-            this.fail(line, "LNG1107", "_() requires a string literal");
-        }
-        const quote = source[0];
-        const inner = source.slice(1, -1);
-        const decoded = decodeString(inner, quote, line, this);
-        const parts = [];
-        let cursor = 0;
-        const interpolation = /\$\{([A-Za-z_][A-Za-z0-9_]*(?:\.length|\[\d+\])?)\}/g;
-        let match;
-
-        while ((match = interpolation.exec(decoded)) !== null) {
-            parts.push({ text: decoded.slice(cursor, match.index), expression: match[1] });
-            cursor = match.index + match[0].length;
-        }
-        parts.push({ text: decoded.slice(cursor), expression: null });
-        return { parts };
-    }
-
-    skipBlank() {
-        while (this.peek()?.text.trim() === "") {
-            this.index += 1;
-        }
-    }
-
-    take() {
-        const line = this.peek();
-        this.index += 1;
-        return line;
-    }
-
-    peek() {
-        return this.lines[this.index];
-    }
-
-    fail(line, code, message) {
-        throw new LangoError(code, line?.number ?? 1, `${this.sourceName}: ${message}`);
-    }
+    blank() { while (this.peek()?.trim() === "") this.i += 1; }
+    peek() { return this.lines[this.i]; }
+    line() { return { text: this.lines[this.i++], number: this.i }; }
+    fail(line, code, message) { throw new LangoError(code, line.number, `${this.name}: ${message}`); }
 }
 
-class Emitter {
-    constructor() {
-        this.needsPrintln = false;
-        this.needsTranslate = false;
-        this.declared = new Set();
+function expr(source, line, parser) {
+    const text = source.trim();
+    for (const operator of ["==", ">", "+", "-", "*", "/"]) {
+        const index = text.indexOf(` ${operator} `);
+        if (index > -1) return { type: "binary", operator, left: expr(text.slice(0, index), line, parser), right: expr(text.slice(index + operator.length + 2), line, parser) };
     }
-
-    emitProgram(program) {
-        const body = this.emitBlock(program.body, 1);
-        const imports = [];
-        if (this.needsPrintln) imports.push("println as __println");
-        if (this.needsTranslate) imports.push("translate as __translate");
-        const importBlock = imports.length === 0 ? "" : `import {\n${imports.map((name) => `    ${name},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n`;
-
-        return `${importBlock}export function main(args) {\n${body}    return null;\n}\n//# sourceMappingURL=main.mjs.map\n`;
-    }
-
-    emitBlock(statements, depth) {
-        return statements.map((statement) => this.emitStatement(statement, depth)).join("");
-    }
-
-    emitStatement(statement, depth) {
-        const indent = "    ".repeat(depth);
-        if (statement.type === "assignment") {
-            const keyword = this.declared.has(statement.name) ? "" : "let ";
-            this.declared.add(statement.name);
-            return `${indent}${keyword}${statement.name} = ${this.emitExpression(statement.value)};\n`;
-        }
-        if (statement.type === "println") {
-            this.needsPrintln = true;
-            return `${indent}__println(${this.emitExpression(statement.value)});\n`;
-        }
-        if (statement.type === "if") {
-            let result = `${indent}if (${this.emitExpression(statement.condition)}) {\n`;
-            result += this.emitBlock(statement.thenBody, depth + 1);
-            result += `${indent}}`;
-            if (statement.elseBody !== null) {
-                result += " else {\n";
-                result += this.emitBlock(statement.elseBody, depth + 1);
-                result += `${indent}}`;
-            }
-            return `${result}\n`;
-        }
-        throw new Error(`Unhandled statement ${statement.type}`);
-    }
-
-    emitExpression(expression) {
-        if (expression.type === "greaterThan") {
-            return `${this.emitExpression(expression.left)} > ${this.emitExpression(expression.right)}`;
-        }
-        if (expression.type === "name") return expression.value;
-        if (expression.type === "number") return String(expression.value);
-        if (expression.type === "length") return `${expression.value}.length`;
-        if (expression.type === "index") return `${expression.value}[${expression.index}]`;
-        if (expression.type === "string") return this.emitString(expression.literal);
-        if (expression.type === "translate") {
-            this.needsTranslate = true;
-            const template = expression.literal.parts.map((part, index) => `${part.text}${part.expression === null ? "" : `{${index}}`}`).join("");
-            const values = expression.literal.parts.filter((part) => part.expression !== null).map((part) => this.emitInterpolation(part.expression));
-            return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`;
-        }
-        throw new Error(`Unhandled expression ${expression.type}`);
-    }
-
-    emitString(literal) {
-        if (literal.parts.length === 1) return JSON.stringify(literal.parts[0].text);
-        return `\`${literal.parts.map((part) => `${escapeTemplate(part.text)}${part.expression === null ? "" : `\${${this.emitInterpolation(part.expression)}}`}`).join("")}\``;
-    }
-
-    emitInterpolation(source) {
-        if (source.endsWith(".length")) return source;
-        return source;
-    }
+    const localize = /^_\((.*)\)$/.exec(text);
+    if (localize) return { type: "translate", literal: literal(localize[1], line, parser) };
+    const call = /^([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+    if (call) return { type: "call", name: call[1], arguments: call[2] ? call[2].split(", ").map((item) => expr(item, line, parser)) : [], line: line.number };
+    if (/^['"].*['"]$/.test(text)) return { type: "string", literal: literal(text, line, parser) };
+    if (/^\d+$/.test(text)) return { type: "raw", value: text };
+    if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
+    if (/^[A-Za-z_]\w*\.length$/.test(text)) return { type: "raw", value: text };
+    if (/^[A-Za-z_]\w*\[\d+\]$/.test(text)) return { type: "raw", value: text };
+    if (/^[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
+    parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
 }
 
-function isStringLiteral(source) {
-    return source.length >= 2 && ((source.startsWith("'") && source.endsWith("'")) || (source.startsWith('"') && source.endsWith('"')));
+function literal(value, line, parser) {
+    const quote = value[0];
+    if (!((quote === "'" || quote === '"') && value.at(-1) === quote)) parser.fail(line, "LNG1109", "expected a string literal");
+    const decoded = value.slice(1, -1).replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\(['"\\])/g, "$1");
+    const parts = []; let at = 0; const regex = /\$\{([A-Za-z_]\w*(?:\.length|\[\d+\])?)\}/g; let match;
+    while ((match = regex.exec(decoded))) { parts.push({ text: decoded.slice(at, match.index), value: match[1] }); at = match.index + match[0].length; }
+    parts.push({ text: decoded.slice(at), value: null }); return parts;
 }
 
-function decodeString(inner, quote, line, parser) {
-    let result = "";
-    for (let index = 0; index < inner.length; index += 1) {
-        const character = inner[index];
-        if (character !== "\\") {
-            result += character;
-            continue;
-        }
-        const escaped = inner[index + 1];
-        index += 1;
-        if (escaped === "n") result += "\n";
-        else if (escaped === "t") result += "\t";
-        else if (escaped === "r") result += "\r";
-        else if (escaped === "\\" || escaped === quote || escaped === '"' || escaped === "'") result += escaped;
-        else parser.fail(line, "LNG1108", `unsupported string escape \\${escaped ?? ""}`);
-    }
-    return result;
+function validate(program) {
+    const names = new Map(program.functions.map((item) => [item.name, item]));
+    if (names.size !== program.functions.length) throw new LangoError("LNG1201", 1, "duplicate function name");
+    const walk = (value) => { if (!value || typeof value !== "object") return; if (value.type === "call") { const target = names.get(value.name); if (!target) throw new LangoError("LNG1202", value.line, `unknown Lango function ${value.name}`); if (target.parameters.length !== value.arguments.length) throw new LangoError("LNG1203", value.line, `${value.name} expects ${target.parameters.length} arguments, got ${value.arguments.length}`); } Object.values(value).forEach((item) => Array.isArray(item) ? item.forEach(walk) : walk(item)); };
+    program.functions.forEach(walk);
 }
 
-function escapeTemplate(value) {
-    return value.replaceAll("`", "\\`").replaceAll("${", "\\${");
+function emit(program) {
+    const flags = { print: false, translate: false };
+    const functions = program.functions.map((fn) => emitFunction(fn, flags)).join("\n");
+    const helpers = [flags.print && "println as __println", flags.translate && "translate as __translate"].filter(Boolean);
+    const imports = helpers.length ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n` : "";
+    return `${imports}${functions}//# sourceMappingURL=main.mjs.map\n`;
 }
-
-function indentation(line) {
-    return line.length - line.trimStart().length;
-}
+function emitFunction(fn, flags) { const declared = new Set(fn.parameters); return `${fn.exported ? "export " : ""}function ${fn.name}(${fn.parameters.join(", ")}) {\n${fn.body.map((item) => emitStatement(item, 1, declared, flags)).join("")}    return null;\n}\n`; }
+function emitStatement(node, depth, declared, flags) { const pad = "    ".repeat(depth); if (node.type === "assign") { const prefix = declared.has(node.name) ? "" : "let "; declared.add(node.name); return `${pad}${prefix}${node.name} = ${emitExpr(node.value, flags)};\n`; } if (node.type === "return") return `${pad}return ${emitExpr(node.value, flags)};\n`; if (node.type === "println") { flags.print = true; return `${pad}__println(${emitExpr(node.value, flags)});\n`; } let out = `${pad}if (${emitExpr(node.condition, flags)}) {\n${node.thenBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.elseBody) out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; return `${out}\n`; }
+function emitExpr(node, flags) { if (node.type === "raw") return node.value; if (node.type === "binary") return `${emitExpr(node.left, flags)} ${node.operator} ${emitExpr(node.right, flags)}`; if (node.type === "call") return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`; if (node.type === "string") return emitString(node.literal, flags); flags.translate = true; const template = node.literal.map((item, index) => `${item.text}${item.value === null ? "" : `{${index}}`}`).join(""); const values = node.literal.filter((item) => item.value).map((item) => item.value); return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`; }
+function emitString(parts) { if (parts.length === 1) return JSON.stringify(parts[0].text); return `\`${parts.map((item) => `${item.text.replaceAll("`", "\\`")}${item.value === null ? "" : `\${${item.value}}`}`).join("")}\``; }
+function spaces(line) { return line.length - line.trimStart().length; }

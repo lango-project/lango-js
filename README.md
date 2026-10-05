@@ -33,3 +33,9 @@ npm test
 Faz 1 deliberately rejects all syntax outside this vertical slice. It is the
 base for progressively implementing the accepted language decisions rather than
 a claim of full-language support.
+
+## Faz 2
+
+Faz 2 adds same-module functions, `return`, calls with arity validation,
+Boolean/null literals, and numeric `+`, `-`, `*`, `/`, `>`, and `==` expressions.
+See `examples/003-functions`.
