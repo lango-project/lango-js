@@ -1,0 +1,12 @@
+sum_to(limit)
+    number = 0
+    total = 0
+
+    loop while number < limit
+        total = total + number
+        number++
+
+    return total
+
+export main(args)
+    println(sum_to(5))

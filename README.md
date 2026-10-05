@@ -39,3 +39,8 @@ a claim of full-language support.
 Faz 2 adds same-module functions, `return`, calls with arity validation,
 Boolean/null literals, and numeric `+`, `-`, `*`, `/`, `>`, and `==` expressions.
 See `examples/003-functions`.
+
+## Faz 3
+
+Faz 3 adds `loop while`, `<`, `break`, `continue`, and `name++`. See
+`examples/004-loops`.
