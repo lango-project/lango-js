@@ -32,6 +32,7 @@ class Parser {
     constructor(source, name) { this.lines = source.split(/\r?\n/); this.name = name; this.i = 0; }
     parse() {
         const functions = [];
+        const classes = [];
         const exports = [];
         this.blank();
         while (this.i < this.lines.length) {
@@ -41,17 +42,23 @@ class Parser {
                 this.blank();
                 continue;
             }
+            const classHeader = /^class ([A-Za-z_]\w*)$/.exec(line.text);
+            if (classHeader) { classes.push({ name: classHeader[1], methods: [], line: line.number }); this.blank(); continue; }
             const exportHeader = /^export ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
             if (exportHeader) {
                 exports.push({ name: exportHeader[1], parameters: this.parameters(exportHeader[2], line), line: line.number });
                 this.blank();
                 continue;
             }
-            const header = /^(export )?([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
+            const methodHeader = /^([A-Za-z_]\w*):([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
+            const header = methodHeader ?? /^(export )?([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
             if (!header) this.fail(line, "LNG1101", "expected a function declaration");
-            const parameters = this.parameters(header[3], line);
-            if (header[1] && header[2] !== "main") this.fail(line, "LNG1103", "Faz 2 exports only main(args)");
-            functions.push({ name: header[2], parameters, exported: false, line: line.number, body: this.block(4) });
+            const parameters = this.parameters(methodHeader ? methodHeader[3] : header[3], line);
+            if (!methodHeader && header[1] && header[2] !== "main") this.fail(line, "LNG1103", "Faz 2 exports only main(args)");
+            const owner = methodHeader ? classes.find((item) => item.name === methodHeader[1]) : classes.find((item) => item.name === header[2]);
+            const body = this.block(4);
+            if (owner) owner.methods.push({ name: methodHeader ? methodHeader[2] : "constructor", parameters, line: line.number, body });
+            else functions.push({ name: header[2], parameters, exported: false, line: line.number, body });
             this.blank();
         }
         for (const exported of exports) {
@@ -61,7 +68,7 @@ class Parser {
         }
         const mains = functions.filter((item) => item.exported && item.name === "main" && item.parameters.length === 1 && item.parameters[0].name === "args");
         if (mains.length > 1) throw new LangoError("LNG1105", 1, `${this.name}: main(args) may be exported once`);
-        return { functions };
+        return { functions, classes };
     }
     block(indent) {
         const body = [];
@@ -100,7 +107,7 @@ class Parser {
                 const [, name] = /^([A-Za-z_]\w*) = \{$/.exec(text);
                 body.push({ type: "assign", name, value: this.object(indent) });
             } else {
-                const assignment = /^([A-Za-z_]\w*) = (.+)$/.exec(text);
+                const assignment = /^(@?[A-Za-z_]\w*) = (.+)$/.exec(text);
                 if (!assignment) this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
                 body.push({ type: "assign", name: assignment[1], value: expr(assignment[2], line, this) });
             }
@@ -144,6 +151,10 @@ function expr(source, line, parser) {
     }
     const localize = /^_\((.*)\)$/.exec(text);
     if (localize) return { type: "translate", literal: literal(localize[1], line, parser) };
+    const construct = /^new ([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+    if (construct) return { type: "new", name: construct[1], arguments: construct[2] ? construct[2].split(", ").map((item) => expr(item, line, parser)) : [] };
+    const methodCall = /^([A-Za-z_]\w*)\.([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+    if (methodCall) return { type: "methodCall", receiver: methodCall[1], name: methodCall[2], arguments: methodCall[3] ? methodCall[3].split(", ").map((item) => expr(item, line, parser)) : [] };
     const call = /^([A-Za-z_]\w*)\((.*)\)$/.exec(text);
     if (call) return { type: "call", name: call[1], arguments: call[2] ? call[2].split(", ").map((item) => expr(item, line, parser)) : [], line: line.number };
     if (/^['"].*['"]$/.test(text)) return { type: "string", literal: literal(text, line, parser) };
@@ -151,7 +162,7 @@ function expr(source, line, parser) {
     if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
     if (/^[A-Za-z_]\w*\.[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
     if (/^[A-Za-z_]\w*\[\d+\]$/.test(text)) return { type: "raw", value: text };
-    if (/^[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
+    if (/^@?[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
     parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
 }
 
@@ -174,15 +185,17 @@ function validate(program, imports = []) {
 
 function emit(program, moduleImports = []) {
     const flags = { print: false, translate: false };
+    const classes = program.classes.map((item) => emitClass(item, flags)).join("\n");
     const functions = program.functions.map((fn) => emitFunction(fn, flags)).join("\n");
     const helpers = [flags.print && "println as __println", flags.translate && "translate as __translate"].filter(Boolean);
     const imports = helpers.length ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n` : "";
     const modules = moduleImports.map((item) => `import { ${item.names.join(", ")} } from ${JSON.stringify(item.specifier)};\n`).join("");
-    return `${modules}${imports}${functions}//# sourceMappingURL=main.mjs.map\n`;
+    return `${modules}${imports}${classes}${functions}//# sourceMappingURL=main.mjs.map\n`;
 }
+function emitClass(item, flags) { const fields = [...new Set(item.methods.flatMap((method) => JSON.stringify(method.body).match(/@([A-Za-z_]\w*)/g) ?? []).map((name) => name.slice(1)))]; const body = item.methods.map((method) => { const declared = new Set(method.parameters.map((p) => p.name)); const parameters = method.parameters.map((p) => p.defaultValue === null ? p.name : `${p.name} = ${emitExpr(p.defaultValue, flags)}`).join(", "); const suffix = method.name === "constructor" ? "" : "    return null;\n"; return `    ${method.name}(${parameters}) {\n${method.body.map((node) => emitStatement(node, 2, declared, flags)).join("")}${suffix}    }\n`; }).join(""); return `class ${item.name} {\n${fields.map((field) => `    #${field};\n`).join("")}${body}}\n`; }
 function emitFunction(fn, flags) { const declared = new Set(fn.parameters.map((p) => p.name)); const parameters = fn.parameters.map((p) => p.defaultValue === null ? p.name : `${p.name} = ${emitExpr(p.defaultValue, flags)}`).join(", "); return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n${fn.body.map((item) => emitStatement(item, 1, declared, flags)).join("")}    return null;\n}\n`; }
-function emitStatement(node, depth, declared, flags) { const pad = "    ".repeat(depth); if (node.type === "assign") { const prefix = declared.has(node.name) ? "" : "let "; declared.add(node.name); return `${pad}${prefix}${node.name} = ${emitExpr(node.value, flags)};\n`; } if (node.type === "increment") return `${pad}${node.name} += 1;\n`; if (node.type === "add") return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`; if (node.type === "return") return `${pad}return ${emitExpr(node.value, flags)};\n`; if (node.type === "throw") return `${pad}throw ${emitExpr(node.value, flags)};\n`; if (node.type === "println") { flags.print = true; return `${pad}__println(${emitExpr(node.value, flags)});\n`; } if (node.type === "break" || node.type === "continue") return `${pad}${node.type};\n`; if (node.type === "try") { let out = `${pad}try {\n${node.tryBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.catchBody) out += ` catch (${node.catchName}) {\n${node.catchBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.finallyBody) out += ` finally {\n${node.finallyBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; return `${out}\n`; } if (node.type === "loop") return `${pad}while (${emitExpr(node.condition, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "for") return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "forObject") return `${pad}for (const [${node.key}, ${node.value}] of Object.entries(${node.collection})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; let out = `${pad}if (${emitExpr(node.condition, flags)}) {\n${node.thenBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.elseBody) out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; return `${out}\n`; }
-function emitExpr(node, flags) { if (node.type === "raw") return node.value; if (node.type === "array") return `[${node.values.map((item) => emitExpr(item, flags)).join(", ")}]`; if (node.type === "object") return `{ ${node.fields.map((field) => `${field.key}: ${emitExpr(field.value, flags)}`).join(", ")} }`; if (node.type === "binary") return `${emitExpr(node.left, flags)} ${node.operator} ${emitExpr(node.right, flags)}`; if (node.type === "call") return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`; if (node.type === "string") return emitString(node.literal, flags); flags.translate = true; const template = node.literal.map((item, index) => `${item.text}${item.value === null ? "" : `{${index}}`}`).join(""); const values = node.literal.filter((item) => item.value).map((item) => item.value); return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`; }
+function emitStatement(node, depth, declared, flags) { const pad = "    ".repeat(depth); if (node.type === "assign") { const target = node.name.startsWith("@") ? `this.#${node.name.slice(1)}` : node.name; const prefix = node.name.startsWith("@") || declared.has(node.name) ? "" : "let "; declared.add(node.name); return `${pad}${prefix}${target} = ${emitExpr(node.value, flags)};\n`; } if (node.type === "increment") return `${pad}${node.name} += 1;\n`; if (node.type === "add") return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`; if (node.type === "return") return `${pad}return ${emitExpr(node.value, flags)};\n`; if (node.type === "throw") return `${pad}throw ${emitExpr(node.value, flags)};\n`; if (node.type === "println") { flags.print = true; return `${pad}__println(${emitExpr(node.value, flags)});\n`; } if (node.type === "break" || node.type === "continue") return `${pad}${node.type};\n`; if (node.type === "try") { let out = `${pad}try {\n${node.tryBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.catchBody) out += ` catch (${node.catchName}) {\n${node.catchBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.finallyBody) out += ` finally {\n${node.finallyBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; return `${out}\n`; } if (node.type === "loop") return `${pad}while (${emitExpr(node.condition, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "for") return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "forObject") return `${pad}for (const [${node.key}, ${node.value}] of Object.entries(${node.collection})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; let out = `${pad}if (${emitExpr(node.condition, flags)}) {\n${node.thenBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.elseBody) out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; return `${out}\n`; }
+function emitExpr(node, flags) { if (node.type === "raw") return node.value.startsWith("@") ? `this.#${node.value.slice(1)}` : node.value; if (node.type === "new") return `new ${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`; if (node.type === "methodCall") return `${node.receiver}.${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`; if (node.type === "array") return `[${node.values.map((item) => emitExpr(item, flags)).join(", ")}]`; if (node.type === "object") return `{ ${node.fields.map((item) => `${item.key}: ${emitExpr(item.value, flags)}`).join(", ")} }`; if (node.type === "binary") return `${emitExpr(node.left, flags)} ${node.operator} ${emitExpr(node.right, flags)}`; if (node.type === "call") return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`; if (node.type === "string") return emitString(node.literal, flags); flags.translate = true; const template = node.literal.map((item, index) => `${item.text}${item.value === null ? "" : `{${index}}`}`).join(""); const values = node.literal.filter((item) => item.value).map((item) => item.value); return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`; }
 function emitString(parts) { if (parts.length === 1) return JSON.stringify(parts[0].text); return `\`${parts.map((item) => `${item.text.replaceAll("`", "\\`")}${item.value === null ? "" : `\${${item.value}}`}`).join("")}\``; }
 function spaces(line) { return line.length - line.trimStart().length; }
 function collectImports(source, inputPath, outputPath) {
