@@ -1,0 +1,8 @@
+export main(args)
+
+greet(name, prefix = 'Hello')
+    return "${prefix}, ${name}"
+
+main(args)
+    println(greet('Savaş'))
+    println(greet('Savaş', 'Merhaba'))

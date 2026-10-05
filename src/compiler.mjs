@@ -33,24 +33,23 @@ class Parser {
             const line = this.line();
             const exportHeader = /^export ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
             if (exportHeader) {
-                exports.push({ name: exportHeader[1], parameters: exportHeader[2] ? exportHeader[2].split(", ") : [], line: line.number });
+                exports.push({ name: exportHeader[1], parameters: this.parameters(exportHeader[2], line), line: line.number });
                 this.blank();
                 continue;
             }
             const header = /^(export )?([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
             if (!header) this.fail(line, "LNG1101", "expected a function declaration");
-            const parameters = header[3] ? header[3].split(", ") : [];
-            if (parameters.some((item) => !/^[A-Za-z_]\w*$/.test(item))) this.fail(line, "LNG1102", "invalid parameter list");
+            const parameters = this.parameters(header[3], line);
             if (header[1] && header[2] !== "main") this.fail(line, "LNG1103", "Faz 2 exports only main(args)");
             functions.push({ name: header[2], parameters, exported: false, line: line.number, body: this.block(4) });
             this.blank();
         }
         for (const exported of exports) {
-            const target = functions.find((item) => item.name === exported.name && item.parameters.join("\0") === exported.parameters.join("\0"));
+            const target = functions.find((item) => item.name === exported.name && item.parameters.map((p) => p.name).join("\0") === exported.parameters.map((p) => p.name).join("\0"));
             if (!target) throw new LangoError("LNG1104", exported.line, `${this.name}: export does not match a function declaration`);
             target.exported = true;
         }
-        if (functions.filter((item) => item.exported && item.name === "main" && item.parameters.join() === "args").length !== 1) throw new LangoError("LNG1105", 1, `${this.name}: exactly one export main(args) is required`);
+        if (functions.filter((item) => item.exported && item.name === "main" && item.parameters.length === 1 && item.parameters[0].name === "args").length !== 1) throw new LangoError("LNG1105", 1, `${this.name}: exactly one export main(args) is required`);
         return { functions };
     }
     block(indent) {
@@ -89,6 +88,14 @@ class Parser {
         }
         if (!body.length) this.fail({ text: "", number: this.i + 1 }, "LNG1107", "expected a statement");
         return body;
+    }
+    parameters(raw, line) {
+        if (raw === "") return [];
+        return raw.split(", ").map((item) => {
+            const match = /^([A-Za-z_]\w*)(?: = (.+))?$/.exec(item);
+            if (!match) this.fail(line, "LNG1102", "invalid parameter list");
+            return { name: match[1], defaultValue: match[2] === undefined ? null : expr(match[2], line, this) };
+        });
     }
     object(indent) {
         const fields = [];
@@ -141,7 +148,7 @@ function literal(value, line, parser) {
 function validate(program) {
     const names = new Map(program.functions.map((item) => [item.name, item]));
     if (names.size !== program.functions.length) throw new LangoError("LNG1201", 1, "duplicate function name");
-    const walk = (value) => { if (!value || typeof value !== "object") return; if (value.type === "call") { const target = names.get(value.name); if (!target) throw new LangoError("LNG1202", value.line, `unknown Lango function ${value.name}`); if (target.parameters.length !== value.arguments.length) throw new LangoError("LNG1203", value.line, `${value.name} expects ${target.parameters.length} arguments, got ${value.arguments.length}`); } Object.values(value).forEach((item) => Array.isArray(item) ? item.forEach(walk) : walk(item)); };
+    const walk = (value) => { if (!value || typeof value !== "object") return; if (value.type === "call") { const target = names.get(value.name); if (!target) throw new LangoError("LNG1202", value.line, `unknown Lango function ${value.name}`); const required = target.parameters.filter((p) => p.defaultValue === null).length; if (value.arguments.length < required || value.arguments.length > target.parameters.length) throw new LangoError("LNG1203", value.line, `${value.name} expects ${required}-${target.parameters.length} arguments, got ${value.arguments.length}`); } Object.values(value).forEach((item) => Array.isArray(item) ? item.forEach(walk) : walk(item)); };
     program.functions.forEach(walk);
 }
 
@@ -152,7 +159,7 @@ function emit(program) {
     const imports = helpers.length ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n` : "";
     return `${imports}${functions}//# sourceMappingURL=main.mjs.map\n`;
 }
-function emitFunction(fn, flags) { const declared = new Set(fn.parameters); return `${fn.exported ? "export " : ""}function ${fn.name}(${fn.parameters.join(", ")}) {\n${fn.body.map((item) => emitStatement(item, 1, declared, flags)).join("")}    return null;\n}\n`; }
+function emitFunction(fn, flags) { const declared = new Set(fn.parameters.map((p) => p.name)); const parameters = fn.parameters.map((p) => p.defaultValue === null ? p.name : `${p.name} = ${emitExpr(p.defaultValue, flags)}`).join(", "); return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n${fn.body.map((item) => emitStatement(item, 1, declared, flags)).join("")}    return null;\n}\n`; }
 function emitStatement(node, depth, declared, flags) { const pad = "    ".repeat(depth); if (node.type === "assign") { const prefix = declared.has(node.name) ? "" : "let "; declared.add(node.name); return `${pad}${prefix}${node.name} = ${emitExpr(node.value, flags)};\n`; } if (node.type === "increment") return `${pad}${node.name} += 1;\n`; if (node.type === "add") return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`; if (node.type === "return") return `${pad}return ${emitExpr(node.value, flags)};\n`; if (node.type === "println") { flags.print = true; return `${pad}__println(${emitExpr(node.value, flags)});\n`; } if (node.type === "break" || node.type === "continue") return `${pad}${node.type};\n`; if (node.type === "loop") return `${pad}while (${emitExpr(node.condition, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "for") return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; if (node.type === "forObject") return `${pad}for (const [${node.key}, ${node.value}] of Object.entries(${node.collection})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`; let out = `${pad}if (${emitExpr(node.condition, flags)}) {\n${node.thenBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; if (node.elseBody) out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`; return `${out}\n`; }
 function emitExpr(node, flags) { if (node.type === "raw") return node.value; if (node.type === "array") return `[${node.values.map((item) => emitExpr(item, flags)).join(", ")}]`; if (node.type === "object") return `{ ${node.fields.map((field) => `${field.key}: ${emitExpr(field.value, flags)}`).join(", ")} }`; if (node.type === "binary") return `${emitExpr(node.left, flags)} ${node.operator} ${emitExpr(node.right, flags)}`; if (node.type === "call") return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`; if (node.type === "string") return emitString(node.literal, flags); flags.translate = true; const template = node.literal.map((item, index) => `${item.text}${item.value === null ? "" : `{${index}}`}`).join(""); const values = node.literal.filter((item) => item.value).map((item) => item.value); return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`; }
 function emitString(parts) { if (parts.length === 1) return JSON.stringify(parts[0].text); return `\`${parts.map((item) => `${item.text.replaceAll("`", "\\`")}${item.value === null ? "" : `\${${item.value}}`}`).join("")}\``; }
