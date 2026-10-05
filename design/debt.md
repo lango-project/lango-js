@@ -15,8 +15,8 @@ contextual default connection and join-only nested transactions (D-054).
 
 ## Tooling
 
-### Establish executable examples
+### Expand executable conformance examples
 
-Every accepted decision should gain at least one Lango input, expected JavaScript
-output, and a runtime assertion. Start with parsing/formatting fixtures before
-the full transpiler exists.
+Faz 1 establishes the first formatting and compiler/runtime fixtures. Every
+accepted decision should gain at least one Lango input, expected JavaScript
+output, and a runtime assertion as its implementation becomes available.

@@ -1,0 +1,12 @@
+{
+  "name": "lango",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node src/cli.mjs build",
+    "test": "node --test test/**/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
