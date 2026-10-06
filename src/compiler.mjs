@@ -744,17 +744,15 @@ function validate(program, imports = []) {
           `unknown Lango function ${value.name}`,
         );
       if (target) {
-        const required = target.parameters.filter(
-          (p) => p.defaultValue === null,
-        ).length;
-        if (
-          value.arguments.length < required ||
-          value.arguments.length > target.parameters.length
-        )
+        const missing = target.parameters.findIndex(
+          (parameter, index) =>
+            parameter.defaultValue === null && value.arguments.length <= index,
+        );
+        if (missing !== -1)
           throw new LangoError(
             "LNG1203",
             value.line,
-            `${value.name} expects ${required}-${target.parameters.length} arguments, got ${value.arguments.length}`,
+            `${value.name} is missing required argument ${missing + 1}`,
           );
       }
       if (

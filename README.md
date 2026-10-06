@@ -303,3 +303,9 @@ values, and public static methods.
 
 Faz 57 rejects duplicate public instance members and duplicate class-method
 implementations.
+
+## Faz 58
+
+Faz 58 aligns statically known Lango calls with the default-parameter rule:
+excess arguments are ignored, while every required parameter must receive its
+own positional argument.
