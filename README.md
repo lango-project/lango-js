@@ -420,3 +420,8 @@ Faz 79 supports nested JavaScript namespace method calls such as
 
 Faz 80 reserves slash-separated namespace paths for imported JavaScript
 namespaces; object properties and methods remain dot-separated.
+
+## Faz 81
+
+Faz 81 treats a JavaScript namespace itself as non-callable and reports
+`NotCallable`.

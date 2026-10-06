@@ -1561,12 +1561,11 @@ function emit(program, moduleImports = [], includeTests = false) {
     loopCounter: 0,
     loopStack: [],
     functionNames: new Set(program.functions.map((item) => item.name)),
-    importedNames: new Set([
-      ...moduleImports.flatMap((item) =>
+    importedFunctionNames: new Set(
+      moduleImports.flatMap((item) =>
         item.names.map((name) => name.split(" as ").at(-1)),
       ),
-      ...program.jsImports.map((item) => item.name),
-    ]),
+    ),
   };
   const classes = program.classes
     .map((item) => emitClass(item, flags))
@@ -2074,7 +2073,7 @@ function emitExpr(node, flags) {
   if (node.type === "call")
     if (
       !flags.functionNames.has(node.name) &&
-      !flags.importedNames.has(node.name)
+      !flags.importedFunctionNames.has(node.name)
     ) {
       flags.call = true;
       return `__call(${node.name}, ${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
