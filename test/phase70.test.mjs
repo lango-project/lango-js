@@ -32,3 +32,14 @@ import js "node:url" as path
         (error) => error instanceof LangoError && error.code === "LNG1122",
     );
 });
+
+test("Faz 70 rejects a JavaScript namespace that conflicts with Lango", () => {
+    assert.throws(
+        () => compile(`import js "node:path" as path
+
+path(value)
+    return value
+`),
+        (error) => error instanceof LangoError && error.code === "LNG1123",
+    );
+});

@@ -281,6 +281,18 @@ class Parser {
         1,
         `${this.name}: main(args) may be exported once`,
       );
+    const declarations = new Set([
+      ...functions.map((item) => item.name),
+      ...classes.map((item) => item.name),
+      ...globals.map((item) => item.name),
+    ]);
+    for (const jsImport of jsImports)
+      if (declarations.has(jsImport.name))
+        throw new LangoError(
+          "LNG1123",
+          1,
+          `${this.name}: JavaScript import name ${jsImport.name} conflicts with a Lango declaration`,
+        );
     return { functions, classes, globals, tests, jsImports };
   }
   block(indent) {
