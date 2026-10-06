@@ -615,6 +615,7 @@ function expr(source, line, parser) {
       arguments: construct[2]
         ? construct[2].split(", ").map((item) => expr(item, line, parser))
         : [],
+      line: line.number,
     };
   const superMethodCall = /^super\.([A-Za-z_]\w*)\((.*)\)$/.exec(text);
   if (superMethodCall)
@@ -624,6 +625,7 @@ function expr(source, line, parser) {
       arguments: superMethodCall[2]
         ? superMethodCall[2].split(", ").map((item) => expr(item, line, parser))
         : [],
+      line: line.number,
     };
   const methodCall = /^([A-Za-z_]\w*)\.([A-Za-z_]\w*)\((.*)\)$/.exec(text);
   if (methodCall)
@@ -634,6 +636,7 @@ function expr(source, line, parser) {
       arguments: methodCall[3]
         ? methodCall[3].split(", ").map((item) => expr(item, line, parser))
         : [],
+      line: line.number,
     };
   const call = /^([A-Za-z_]\w*)\((.*)\)$/.exec(text);
   if (call)
@@ -707,6 +710,9 @@ function validate(program, imports = []) {
     throw new LangoError("LNG1201", 1, "duplicate function name");
   if (globals.size !== program.globals.length)
     throw new LangoError("LNG1216", 1, "duplicate global name");
+  const classes = new Map(program.classes.map((item) => [item.name, item]));
+  if (classes.size !== program.classes.length)
+    throw new LangoError("LNG1205", 1, "duplicate class name");
   const closureNames = (body, result = new Set()) => {
     for (const node of body) {
       if (node.type === "closureAssign") result.add(node.name);
@@ -728,7 +734,32 @@ function validate(program, imports = []) {
     }
     return result;
   };
-  const walk = (value, localCallables) => {
+  const validateRequiredArguments = (target, value, label) => {
+    const missing = target.parameters.findIndex(
+      (parameter, index) =>
+        parameter.defaultValue === null && value.arguments.length <= index,
+    );
+    if (missing !== -1)
+      throw new LangoError(
+        "LNG1203",
+        value.line,
+        `${label} is missing required argument ${missing + 1}`,
+      );
+  };
+  const findMethod = (classNode, name, staticMethod) => {
+    let current = classNode;
+    while (current) {
+      const method = current.methods.find(
+        (item) => item.name === name && item.static === staticMethod,
+      );
+      if (method) return method;
+      current = current.ancestor ? classes.get(current.ancestor) : null;
+    }
+    return null;
+  };
+  const findConstructor = (classNode) =>
+    findMethod(classNode, "constructor", false);
+  const walk = (value, localCallables, classNode = null, staticMethod = false) => {
     if (!value || typeof value !== "object") return;
     if (value.type === "call") {
       const target = names.get(value.name);
@@ -744,16 +775,7 @@ function validate(program, imports = []) {
           `unknown Lango function ${value.name}`,
         );
       if (target) {
-        const missing = target.parameters.findIndex(
-          (parameter, index) =>
-            parameter.defaultValue === null && value.arguments.length <= index,
-        );
-        if (missing !== -1)
-          throw new LangoError(
-            "LNG1203",
-            value.line,
-            `${value.name} is missing required argument ${missing + 1}`,
-          );
+        validateRequiredArguments(target, value, value.name);
       }
       if (
         standardFunctions.has(value.name) &&
@@ -765,14 +787,52 @@ function validate(program, imports = []) {
           `${value.name} expects ${standardFunctions.get(value.name)} arguments, got ${value.arguments.length}`,
         );
     }
+    if (value.type === "new") {
+      const target = classes.get(value.name);
+      const constructor = target && findConstructor(target);
+      if (constructor) validateRequiredArguments(constructor, value, value.name);
+    }
+    if (value.type === "methodCall") {
+      const targetClass =
+        value.receiver === "this"
+          ? classNode
+          : classes.get(value.receiver) ?? null;
+      const target =
+        targetClass &&
+        findMethod(
+          targetClass,
+          value.name,
+          value.receiver === "this" ? staticMethod : true,
+        );
+      if (target)
+        validateRequiredArguments(
+          target,
+          value,
+          `${targetClass.name}${target.static ? "::" : ":"}${value.name}`,
+        );
+    }
+    if (value.type === "superMethodCall" && classNode?.ancestor) {
+      const target = findMethod(
+        classes.get(classNode.ancestor),
+        value.name,
+        staticMethod,
+      );
+      if (target)
+        validateRequiredArguments(target, value, `super.${value.name}`);
+    }
     Object.values(value).forEach((item) =>
       Array.isArray(item)
-        ? item.forEach((child) => walk(child, localCallables))
-        : walk(item, localCallables),
+        ? item.forEach((child) => walk(child, localCallables, classNode, staticMethod))
+        : walk(item, localCallables, classNode, staticMethod),
     );
   };
   [...program.functions, ...program.tests].forEach((fn) =>
     walk(fn, closureNames(fn.body)),
+  );
+  program.classes.forEach((classNode) =>
+    classNode.methods.forEach((method) =>
+      walk(method, closureNames(method.body), classNode, method.static),
+    ),
   );
 
   const expressionReferences = (node, references) => {
@@ -1053,9 +1113,6 @@ function validate(program, imports = []) {
   };
   program.functions.forEach((fn) => validateLoopLevels(fn.body));
   program.tests.forEach((test) => validateLoopLevels(test.body));
-  const classes = new Map(program.classes.map((item) => [item.name, item]));
-  if (classes.size !== program.classes.length)
-    throw new LangoError("LNG1205", 1, "duplicate class name");
   for (const classNode of program.classes) {
     if (classNode.ancestor && !classes.has(classNode.ancestor))
       throw new LangoError(

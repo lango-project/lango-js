@@ -314,3 +314,8 @@ own positional argument.
 
 Faz 59 adds runtime arity checks for dynamically called Lango functions,
 methods, and closures; excess arguments remain ignored.
+
+## Faz 60
+
+Faz 60 applies compile-time arity validation to direct constructor and
+statically known class-method calls.
