@@ -59,7 +59,10 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
     }
   }
 
-  const output = compile(source, inputPath, imports, includeTests).javascript;
+  const output = compile(source, inputPath, imports, includeTests).javascript.replace(
+    "//# sourceMappingURL=main.mjs.map",
+    `//# sourceMappingURL=${path.basename(outputPath)}.map`,
+  );
   const directory = path.dirname(outputPath);
 
   await mkdir(path.join(directory, ".lango"), { recursive: true });
