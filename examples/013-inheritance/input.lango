@@ -1,0 +1,22 @@
+export main(args)
+
+class Person
+
+Person(name)
+    @name = name
+
+Person:describe()
+    return @name
+
+export class Employee : Person
+
+Employee(name, id)
+    super(name)
+    @id = id
+
+Employee:describe()
+    return super.describe() + ": " + @id
+
+main(args)
+    employee = new Employee("Ada", 7)
+    println(employee.describe())

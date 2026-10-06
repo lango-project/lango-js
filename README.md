@@ -72,3 +72,8 @@ read as `Class.Name` outside the class and as `@@Name` in instance methods. See
 Faz 12 adds the readonly `enum` class section. Its values are accessed like
 static values, but an assignment through `@@Name` is a compiler error. See
 `examples/012-enum-values`.
+
+## Faz 13
+
+Faz 13 adds single inheritance with `class Child : Parent`, `super(...)`, and
+`super.method(...)`. See `examples/013-inheritance`.
