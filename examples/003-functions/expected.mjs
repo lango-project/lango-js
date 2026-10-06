@@ -1,6 +1,7 @@
 import {
     println as __println,
     translate as __translate,
+    requireBoolean as __requireBoolean,
 } from "./.lango/runtime.mjs";
 
 function greet(name) {
@@ -10,7 +11,7 @@ function greet(name) {
 
 export function main(args) {
     let name = "world";
-    if (args.length > 0) {
+    if (__requireBoolean(args.length > 0)) {
         name = args[0];
     }
     __println(greet(name));

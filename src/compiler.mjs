@@ -1124,6 +1124,7 @@ function emit(program, moduleImports = []) {
     flags.predicates && "isBool as __isBool",
     flags.predicates && "isObject as __isObject",
     flags.predicates && "isArray as __isArray",
+    flags.boolean && "requireBoolean as __requireBoolean",
   ].filter(Boolean);
   const imports = helpers.length
     ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n`
@@ -1336,7 +1337,7 @@ function emitStatement(node, depth, declared, flags) {
     return `${out}\n`;
   }
   if (node.type === "loop")
-    return `${pad}while (${emitExpr(node.condition, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+    return `${pad}while (${emitBoolean(node.condition, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
   if (node.type === "for")
     return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
   if (node.type === "forObject")
@@ -1347,7 +1348,7 @@ function emitStatement(node, depth, declared, flags) {
         .map((test) =>
           node.value
             ? `${emitExpr(node.value, flags)} === ${emitExpr(test, flags)}`
-            : emitExpr(test, flags),
+            : emitBoolean(test, flags),
         )
         .join(" || "),
     );
@@ -1361,7 +1362,7 @@ function emitStatement(node, depth, declared, flags) {
       out += ` else {\n${node.elseBody.map((child) => emitStatement(child, depth + 1, declared, flags)).join("")}${pad}}`;
     return `${out}\n`;
   }
-  let out = `${pad}if (${emitExpr(node.condition, flags)}) {\n${node.thenBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
+  let out = `${pad}if (${emitBoolean(node.condition, flags)}) {\n${node.thenBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
   if (node.elseBody)
     out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
   return `${out}\n`;
@@ -1405,7 +1406,7 @@ function emitExpr(node, flags) {
         : flags.className && node.value.startsWith("_")
           ? `this.${node.value}`
           : node.value;
-  if (node.type === "unary") return `!${emitExpr(node.value, flags)}`;
+  if (node.type === "unary") return `!${emitBoolean(node.value, flags)}`;
   if (node.type === "new")
     return `new ${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "superMethodCall")
@@ -1429,6 +1430,8 @@ function emitExpr(node, flags) {
     return `{ ${node.fields.map((item) => `${item.key}: ${emitExpr(item.value, flags)}`).join(", ")} }`;
   if (node.type === "binary") {
     const operators = { "==": "===", and: "&&", or: "||" };
+    if (node.operator === "and" || node.operator === "or")
+      return `${emitBoolean(node.left, flags)} ${operators[node.operator]} ${emitBoolean(node.right, flags)}`;
     return `${emitExpr(node.left, flags)} ${operators[node.operator] ?? node.operator} ${emitExpr(node.right, flags)}`;
   }
   if (node.type === "call")
@@ -1468,6 +1471,10 @@ function emitExpr(node, flags) {
     .filter((item) => item.value)
     .map((item) => item.value);
   return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`;
+}
+function emitBoolean(node, flags) {
+  flags.boolean = true;
+  return `__requireBoolean(${emitExpr(node, flags)})`;
 }
 function emitString(parts) {
   if (parts.length === 1) return JSON.stringify(parts[0].text);

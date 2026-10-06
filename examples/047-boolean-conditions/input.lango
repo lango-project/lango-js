@@ -1,0 +1,6 @@
+export main(args)
+
+main(args)
+    enabled = true
+    if enabled and not false
+        println("enabled")

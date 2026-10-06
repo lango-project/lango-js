@@ -1,11 +1,12 @@
 import {
     println as __println,
     translate as __translate,
+    requireBoolean as __requireBoolean,
 } from "./.lango/runtime.mjs";
 
 export function main(args) {
     let name = "world";
-    if (args.length > 0) {
+    if (__requireBoolean(args.length > 0)) {
         name = args[0];
     } else {
         name = "world";

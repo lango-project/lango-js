@@ -1,11 +1,12 @@
 import {
     println as __println,
+    requireBoolean as __requireBoolean,
 } from "./.lango/runtime.mjs";
 
 function sum_to(limit) {
     let number = 0;
     let total = 0;
-    while (number < limit) {
+    while (__requireBoolean(number < limit)) {
         total = total + number;
         number += 1;
     }

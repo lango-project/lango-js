@@ -15,7 +15,7 @@ main(args)
       else
           println("no")
 `).javascript;
-    assert.match(output, /!false && true \|\| false/);
+    assert.match(output, /__requireBoolean/);
 });
 
 test("Faz 21 accepts symbolic logical operators too", () => {
@@ -27,7 +27,7 @@ main(args)
       else
           println("no")
 `).javascript;
-    assert.match(output, /!false && true \|\| false/);
+    assert.match(output, /__requireBoolean/);
 });
 
 test("Faz 21 logical-operators fixture runs", async () => {

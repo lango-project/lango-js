@@ -74,6 +74,14 @@ export function isArray(value) {
     return Array.isArray(value);
 }
 
+export function requireBoolean(value) {
+    if (typeof value !== "boolean") {
+        throw new Error("BooleanRequired");
+    }
+
+    return value;
+}
+
 export function contextGet(name) {
     const stack = contexts.get(name);
     if (!stack || stack.length === 0) {

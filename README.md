@@ -242,3 +242,8 @@ Faz 45 adds `get_class()` and `is_kindof()` reflection helpers. See
 
 Faz 46 adds explicit standard-library predicates for number, string, Boolean,
 object, and array values. See `examples/046-predicates`.
+
+## Faz 47
+
+Faz 47 requires Boolean values for conditions and logical operators instead of
+using JavaScript truthiness. See `examples/047-boolean-conditions`.
