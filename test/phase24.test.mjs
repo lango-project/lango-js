@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-test("Faz 24 emits a value-free return", () => {
+test("Faz 24 emits null for a value-free return", () => {
     const output = compile(`export main(args)
 
 finish()
@@ -15,7 +15,7 @@ finish()
 main(args)
     finish()
 `).javascript;
-    assert.match(output, /return;\n/);
+    assert.match(output, /return null;\n/);
 });
 
 test("Faz 24 empty-return fixture runs", async () => {

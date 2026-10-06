@@ -1367,6 +1367,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.predicates && "isArray as __isArray",
     flags.boolean && "requireBoolean as __requireBoolean",
     flags.assert && "assert as __assert",
+    flags.normalize && "normalize as __normalize",
     flags.arity && "requireArity as __requireArity",
     flags.closureArity && "withArity as __withArity",
   ].filter(Boolean);
@@ -1616,7 +1617,7 @@ function emitStatement(node, depth, declared, flags) {
   if (node.type === "add")
     return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`;
   if (node.type === "return")
-    return `${pad}return${node.value === null ? "" : node.value.type === "closure" ? ` ${emitClosure(node.value, depth, flags)}` : ` ${emitExpr(node.value, flags)}`};\n`;
+    return `${pad}return${node.value === null ? " null" : node.value.type === "closure" ? ` ${emitClosure(node.value, depth, flags)}` : ` ${emitExpr(node.value, flags)}`};\n`;
   if (node.type === "throw")
     return `${pad}throw ${emitExpr(node.value, flags)};\n`;
   if (node.type === "println") {
@@ -1709,9 +1710,10 @@ function emitClosure(node, depth, flags) {
     flags.closureArity = true;
     return `__withArity(${value}, [${requiredPositions.join(", ")}], "closure")`;
   };
-  if (!contextNames.size) return wrap(`(${parameters}) => {\n${body}${pad}}`);
+  if (!contextNames.size)
+    return wrap(`(${parameters}) => {\n${body}${pad}    return null;\n${pad}}`);
   flags.context = true;
-  return wrap(`(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${body}${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`);
+  return wrap(`(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${body}${pad}        return null;\n${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`);
 }
 function emitArityGuard(parameters, actual, name, depth, flags) {
   const positions = parameters
@@ -1757,7 +1759,15 @@ function emitExpr(node, flags) {
       node.name === "add" && flags.arrayBindings?.has(node.receiver)
         ? "push"
         : node.name;
-    return `${receiver}${visibility === false ? ".#" : "."}${method}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    const call = `${receiver}${visibility === false ? ".#" : "."}${method}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    if (
+      visibility === undefined &&
+      !(node.name === "add" && flags.arrayBindings?.has(node.receiver))
+    ) {
+      flags.normalize = true;
+      return `__normalize(${call})`;
+    }
+    return call;
   }
   if (node.type === "array")
     return `[${node.values.map((item) => emitExpr(item, flags)).join(", ")}]`;

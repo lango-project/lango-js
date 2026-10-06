@@ -88,6 +88,10 @@ export function assert(value, location) {
     return null;
 }
 
+export function normalize(value) {
+    return value === undefined ? null : value;
+}
+
 export function requireArity(actual, requiredPositions, name) {
     const missing = requiredPositions.find((position) => actual <= position);
     if (missing !== undefined) {

@@ -319,3 +319,8 @@ methods, and closures; excess arguments remain ignored.
 
 Faz 60 applies compile-time arity validation to direct constructor and
 statically known class-method calls.
+
+## Faz 61
+
+Faz 61 normalizes JavaScript `undefined` at method boundaries and makes a
+bare Lango `return` produce `null`.
