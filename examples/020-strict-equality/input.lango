@@ -1,0 +1,7 @@
+export main(args)
+
+main(args)
+    if 1 == "1"
+        println("coerced")
+      else
+          println("strict")

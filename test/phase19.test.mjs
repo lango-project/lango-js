@@ -25,7 +25,7 @@ main(args)
 `;
     const output = compile(source).javascript;
     assert.match(output, /n === 3 \|\| n === 5/);
-    assert.match(output, /if \(n == 5\)/);
+    assert.match(output, /if \(n === 5\)/);
 });
 
 test("Faz 19 switch fixture runs", async () => {

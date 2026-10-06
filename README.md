@@ -109,3 +109,8 @@ private methods. See `examples/018-public-methods`.
 
 Faz 19 adds value and condition-only `switch` with grouped non-fallthrough
 cases. See `examples/019-switch`.
+
+## Faz 20
+
+Faz 20 makes Lango's sole equality spelling, `==`, compile to JavaScript strict
+equality. See `examples/020-strict-equality`.
