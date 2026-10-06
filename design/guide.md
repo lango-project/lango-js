@@ -51,7 +51,8 @@ The formatter operates only on parseable source. It preserves comments and
 intentional blank-line separation, collapses repeated blank lines to one,
 removes trailing whitespace, rejects TAB characters, and applies the indentation
 and delimiter-alignment rules in this guide. It does not silently reformat an
-invalid file.
+invalid file. Run `node src/cli.mjs format file.lango` to format a file in
+place.
 
 ## Function Definition
 

@@ -86,9 +86,22 @@ export function compile(source, sourceName = "<source>", imports = [], includeTe
   return { javascript: emit(program, imports, includeTests) };
 }
 
+export function formatSource(source, sourceName = "<source>") {
+  if (source.includes("\t"))
+    throw new LangoError("LNG1001", 1, "TAB characters are not allowed");
+  new Parser(source, sourceName).parse();
+  const lines = source.split(/\r?\n/).map((line) => line.trimEnd());
+  while (lines[0] === "") lines.shift();
+  while (lines.at(-1) === "") lines.pop();
+  const formatted = [];
+  for (const line of lines)
+    if (line !== "" || formatted.at(-1) !== "") formatted.push(line);
+  return formatted.length ? `${formatted.join("\n")}\n` : "";
+}
+
 class Parser {
   constructor(source, name) {
-    this.lines = source.split(/\r?\n/);
+    this.lines = source.split(/\r?\n/).map((line) => stripComment(line).trimEnd());
     this.name = name;
     this.i = 0;
   }
@@ -756,6 +769,28 @@ function expr(source, line, parser) {
     return { type: "raw", value: text };
   if (/^@{0,2}[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
   parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
+}
+
+function stripComment(line) {
+  let quote = null;
+  let escaped = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (quote && character === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = quote === character ? null : quote ?? character;
+      continue;
+    }
+    if (!quote && character === "#") return line.slice(0, index).trimEnd();
+  }
+  return line;
 }
 
 function literal(value, line, parser) {

@@ -1,9 +1,9 @@
 import path from "node:path";
 import os from "node:os";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
-import { buildFile, LangoError } from "./compiler.mjs";
+import { buildFile, formatSource, LangoError } from "./compiler.mjs";
 
 const [command, inputPath, ...rest] = process.argv.slice(2);
 
@@ -54,7 +54,16 @@ if (command === "build" && inputPath && rest.length === 2 && rest[0] === "--out"
         console.error(error instanceof Error ? error.message : error);
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
+} else if (command === "format" && inputPath && rest.length === 0) {
+    try {
+        const input = path.resolve(inputPath);
+        const source = await readFile(input, "utf8");
+        await writeFile(input, formatSource(source, input), "utf8");
+    } catch (error) {
+        console.error(error instanceof Error ? error.message : error);
+        process.exitCode = error instanceof LangoError ? 1 : 2;
+    }
 } else {
-    console.error("Usage: node src/cli.mjs build <input.lango> --out <output.mjs>\n       node src/cli.mjs run <input.lango> [args...]\n       node src/cli.mjs test <input.lango>");
+    console.error("Usage: node src/cli.mjs build <input.lango> --out <output.mjs>\n       node src/cli.mjs run <input.lango> [args...]\n       node src/cli.mjs test <input.lango>\n       node src/cli.mjs format <input.lango>");
     process.exitCode = 2;
 }
