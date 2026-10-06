@@ -334,3 +334,8 @@ but unassigned class properties, to Lango `null`.
 
 Faz 63 rejects non-finite native-number arithmetic and JavaScript boundary
 values with `NonFiniteNumber`.
+
+## Faz 64
+
+Faz 64 rejects a numeric literal that would compile to a non-finite JavaScript
+Number.

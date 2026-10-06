@@ -653,8 +653,11 @@ function expr(source, line, parser) {
   if (
     /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text) ||
     /^0[xX][0-9a-fA-F]+$/.test(text)
-  )
+  ) {
+    if (!Number.isFinite(Number(text)))
+      parser.fail(line, "LNG1120", "numeric literal must be finite");
     return { type: "raw", value: text };
+  }
   if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
   if (/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\._[A-Za-z_]\w*$/.test(text))
     parser.fail(
