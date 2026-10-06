@@ -663,7 +663,7 @@ function expr(source, line, parser) {
   const localize = /^_\((.*)\)$/.exec(text);
   if (localize)
     return { type: "translate", literal: literal(localize[1], line, parser) };
-  const construct = /^new ([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+  const construct = /^new ([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\((.*)\)$/.exec(text);
   if (construct)
     return {
       type: "new",

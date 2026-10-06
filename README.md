@@ -400,3 +400,13 @@ declared in the import header.
 
 Faz 76 requires an imported Lango function signature to match its target
 export.
+
+## Faz 77
+
+Faz 77 rejects `@instance` and protected-property access from static class
+methods.
+
+## Faz 78
+
+Faz 78 allows qualified JavaScript construction such as
+`new events.EventEmitter()` after a namespace import.
