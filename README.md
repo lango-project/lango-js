@@ -375,3 +375,8 @@ declaration.
 
 Faz 71 lets closures explicitly capture JavaScript namespace imports and
 resolves imported aliases by their local name.
+
+## Faz 72
+
+Faz 72 adds aliased Lango function imports, for example
+`alias sum = add(left, right)`.

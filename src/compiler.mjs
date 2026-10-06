@@ -1969,13 +1969,15 @@ function collectImports(source, inputPath, outputPath) {
     while (true) {
       const item = lines[index + 1] ?? "";
       const functionImport = /^    ([A-Za-z_]\w*)\([^)]*\)$/.exec(item);
+      const functionAlias =
+        /^    alias ([A-Za-z_]\w*) = ([A-Za-z_]\w*)\([^)]*\)$/.exec(item);
       const classImport = /^    class ([A-Za-z_]\w*)$/.exec(item);
       const classAlias =
         /^    alias ([A-Za-z_]\w*) = class ([A-Za-z_]\w*)$/.exec(item);
-      if (!functionImport && !classImport && !classAlias) break;
+      if (!functionImport && !functionAlias && !classImport && !classAlias) break;
       names.push(
-        classAlias
-          ? `${classAlias[2]} as ${classAlias[1]}`
+        classAlias || functionAlias
+          ? `${(classAlias ?? functionAlias)[2]} as ${(classAlias ?? functionAlias)[1]}`
           : (functionImport ?? classImport)[1],
       );
       index += 1;
