@@ -830,7 +830,13 @@ function validate(program, imports = []) {
     );
   };
   [...program.functions, ...program.tests].forEach((fn) =>
-    walk(fn, closureNames(fn.body)),
+    walk(
+      fn,
+      new Set([
+        ...closureNames(fn.body),
+        ...(fn.parameters ?? []).map((parameter) => parameter.name),
+      ]),
+    ),
   );
   program.classes.forEach((classNode) =>
     classNode.methods.forEach((method) =>
@@ -1341,7 +1347,15 @@ function validate(program, imports = []) {
 }
 
 function emit(program, moduleImports = [], includeTests = false) {
-  const flags = { print: false, translate: false, context: false, loopCounter: 0, loopStack: [] };
+  const flags = {
+    print: false,
+    translate: false,
+    context: false,
+    loopCounter: 0,
+    loopStack: [],
+    functionNames: new Set(program.functions.map((item) => item.name)),
+    importedNames: new Set(moduleImports.flatMap((item) => item.names)),
+  };
   const classes = program.classes
     .map((item) => emitClass(item, flags))
     .join("\n");
@@ -1372,6 +1386,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.assert && "assert as __assert",
     flags.normalize && "normalize as __normalize",
     flags.finite && "finite as __finite",
+    flags.call && "call as __call",
     flags.arity && "requireArity as __requireArity",
     flags.closureArity && "withArity as __withArity",
   ].filter(Boolean);
@@ -1819,7 +1834,14 @@ function emitExpr(node, flags) {
       return `${helper}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
     }
   if (node.type === "call")
-    return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    if (
+      !flags.functionNames.has(node.name) &&
+      !flags.importedNames.has(node.name)
+    ) {
+      flags.call = true;
+      return `__call(${node.name}, ${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    } else
+      return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "string") return emitString(node.literal, flags);
   flags.translate = true;
   const template = node.literal

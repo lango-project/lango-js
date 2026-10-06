@@ -339,3 +339,8 @@ values with `NonFiniteNumber`.
 
 Faz 64 rejects a numeric literal that would compile to a non-finite JavaScript
 Number.
+
+## Faz 65
+
+Faz 65 supports dynamic callback values and reports `NotCallable` for a
+non-callable dynamic value.
