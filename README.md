@@ -410,3 +410,8 @@ methods.
 
 Faz 78 allows qualified JavaScript construction such as
 `new events.EventEmitter()` after a namespace import.
+
+## Faz 79
+
+Faz 79 supports nested JavaScript namespace method calls such as
+`fs.promises.readFile(...)`.

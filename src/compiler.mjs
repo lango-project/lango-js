@@ -683,7 +683,10 @@ function expr(source, line, parser) {
         : [],
       line: line.number,
     };
-  const methodCall = /^([A-Za-z_]\w*)\.([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+  const methodCall =
+    /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\.([A-Za-z_]\w*)\((.*)\)$/.exec(
+      text,
+    );
   if (methodCall)
     return {
       type: "methodCall",
@@ -979,7 +982,7 @@ function validate(program, imports = []) {
       return;
     }
     if (node.type === "methodCall") {
-      if (node.receiver !== "this") references.add(node.receiver);
+      if (node.receiver !== "this") references.add(node.receiver.split(".")[0]);
       node.arguments.forEach((argument) =>
         expressionReferences(argument, references),
       );
