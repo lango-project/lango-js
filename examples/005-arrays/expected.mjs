@@ -1,5 +1,6 @@
 import {
     println as __println,
+    finite as __finite,
     requireArity as __requireArity,
 } from "./.lango/runtime.mjs";
 
@@ -7,7 +8,7 @@ function sum(values) {
     __requireArity(arguments.length, [0], "sum");
     let total = 0;
     for (const value of values) {
-        total = total + value;
+        total = __finite(total + value);
     }
     return total;
     return null;

@@ -89,7 +89,18 @@ export function assert(value, location) {
 }
 
 export function normalize(value) {
-    return value === undefined ? null : value;
+    if (value === undefined) return null;
+    if (typeof value === "number" && !Number.isFinite(value)) {
+        throw new Error("NonFiniteNumber");
+    }
+    return value;
+}
+
+export function finite(value) {
+    if (typeof value === "number" && !Number.isFinite(value)) {
+        throw new Error("NonFiniteNumber");
+    }
+    return value;
 }
 
 export function requireArity(actual, requiredPositions, name) {

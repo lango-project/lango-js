@@ -1368,6 +1368,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.boolean && "requireBoolean as __requireBoolean",
     flags.assert && "assert as __assert",
     flags.normalize && "normalize as __normalize",
+    flags.finite && "finite as __finite",
     flags.arity && "requireArity as __requireArity",
     flags.closureArity && "withArity as __withArity",
   ].filter(Boolean);
@@ -1783,7 +1784,12 @@ function emitExpr(node, flags) {
     const operators = { "==": "===", and: "&&", or: "||" };
     if (node.operator === "and" || node.operator === "or")
       return `${emitBoolean(node.left, flags)} ${operators[node.operator]} ${emitBoolean(node.right, flags)}`;
-    return `${emitExpr(node.left, flags)} ${operators[node.operator] ?? node.operator} ${emitExpr(node.right, flags)}`;
+    const value = `${emitExpr(node.left, flags)} ${operators[node.operator] ?? node.operator} ${emitExpr(node.right, flags)}`;
+    if (["+", "-", "*", "/"].includes(node.operator)) {
+      flags.finite = true;
+      return `__finite(${value})`;
+    }
+    return value;
   }
   if (node.type === "call")
     if (node.name === "from_json" || node.name === "to_json") {

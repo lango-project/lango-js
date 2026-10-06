@@ -329,3 +329,8 @@ bare Lango `return` produce `null`.
 
 Faz 62 normalizes missing JavaScript property and index reads, including known
 but unassigned class properties, to Lango `null`.
+
+## Faz 63
+
+Faz 63 rejects non-finite native-number arithmetic and JavaScript boundary
+values with `NonFiniteNumber`.

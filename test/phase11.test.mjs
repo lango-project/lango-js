@@ -32,7 +32,7 @@ main(args)
     const output = compile(source).javascript;
     assert.match(output, /static Answer = 42;/);
     assert.match(output, /return __normalize\(Constants\.Answer\);/);
-    assert.match(output, /Constants\.Answer = __normalize\(Constants\.Answer\) \+ 1;/);
+    assert.match(output, /Constants\.Answer = __finite\(__normalize\(Constants\.Answer\) \+ 1\);/);
     assert.doesNotMatch(output, /#Answer/);
 });
 
