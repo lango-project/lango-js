@@ -203,3 +203,13 @@ Faz 37 adds synchronous, dynamically scoped `context` bindings. See
 
 Faz 38 verifies nested context shadowing and restoration on function return.
 See `examples/038-context-restoration`.
+
+## Faz 39
+
+Faz 39 makes declared context bindings available in class methods. See
+`examples/039-class-context`.
+
+## Faz 40
+
+Faz 40 gives closures their own explicit context declarations. See
+`examples/040-closure-context`.

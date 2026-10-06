@@ -1086,6 +1086,9 @@ function emitClass(item, flags) {
     .map((method) => {
       flags.staticMethod = method.static;
       const declared = new Set(method.parameters.map((p) => p.name));
+      const priorContextNames = flags.contextNames;
+      const contextNames = collectContextNames(method.body);
+      flags.contextNames = contextNames;
       const parameters = method.parameters
         .map((p) =>
           p.defaultValue === null
@@ -1098,7 +1101,17 @@ function emitClass(item, flags) {
         method.name === "constructor" || method.public
           ? method.name
           : `#${method.name}`;
-      return `    ${method.static ? "static " : ""}${name}(${parameters}) {\n${method.body.map((node) => emitStatement(node, 2, declared, flags)).join("")}${suffix}    }\n`;
+      const methodBody = method.body
+        .map((node) =>
+          emitStatement(node, contextNames.size ? 3 : 2, declared, flags),
+        )
+        .join("");
+      flags.contextNames = priorContextNames;
+      if (!contextNames.size)
+        return `    ${method.static ? "static " : ""}${name}(${parameters}) {\n${methodBody}${suffix}    }\n`;
+      flags.context = true;
+      const returnNull = method.name === "constructor" ? "" : "            return null;\n";
+      return `    ${method.static ? "static " : ""}${name}(${parameters}) {\n        const __contextScope = [];\n        try {\n${methodBody}${returnNull}        } finally {\n            __contextRestore(__contextScope);\n        }\n    }\n`;
     })
     .join("");
   const statics = [...item.staticValues, ...item.enumValues]
@@ -1228,7 +1241,18 @@ function emitClosure(node, depth, flags) {
     ...node.captures.filter((name) => !name.startsWith("@") && !name.startsWith("_")),
   ]);
   const pad = "    ".repeat(depth);
-  return `(${parameters}) => {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
+  const priorContextNames = flags.contextNames;
+  const contextNames = collectContextNames(node.body);
+  flags.contextNames = contextNames;
+  const body = node.body
+    .map((item) =>
+      emitStatement(item, depth + (contextNames.size ? 2 : 1), declared, flags),
+    )
+    .join("");
+  flags.contextNames = priorContextNames;
+  if (!contextNames.size) return `(${parameters}) => {\n${body}${pad}}`;
+  flags.context = true;
+  return `(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${body}${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`;
 }
 function emitExpr(node, flags) {
   if (node.type === "raw")

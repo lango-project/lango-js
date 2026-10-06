@@ -1,0 +1,8 @@
+export main(args)
+
+main(args)
+    context tenant = "Ada"
+    callback = ()
+        context tenant
+        println(tenant)
+    callback()

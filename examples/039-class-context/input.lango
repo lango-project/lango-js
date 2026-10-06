@@ -1,0 +1,14 @@
+export main(args)
+
+export class Reporter
+    methods
+        tenant()
+
+Reporter:tenant()
+    context tenant
+    return tenant
+
+main(args)
+    context tenant = "Ada"
+    reporter = new Reporter()
+    println(reporter.tenant())
