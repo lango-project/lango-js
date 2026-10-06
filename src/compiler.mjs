@@ -1365,6 +1365,38 @@ function validate(program, imports = []) {
         );
       staticNames.add(name);
     }
+    const inheritedMethods = [];
+    for (
+      let ancestor = classNode.ancestor ? classes.get(classNode.ancestor) : null;
+      ancestor;
+      ancestor = ancestor.ancestor ? classes.get(ancestor.ancestor) : null
+    )
+      inheritedMethods.push(...ancestor.methods);
+    for (const method of classNode.methods) {
+      if (method.name === "constructor") continue;
+      const inherited = inheritedMethods.find(
+        (candidate) =>
+          candidate.name === method.name && candidate.static === method.static,
+      );
+      if (!inherited) continue;
+      if (!inherited.public)
+        throw new LangoError(
+          "LNG1237",
+          method.line,
+          `${classNode.name}: method ${method.name} conflicts with an ancestor private method`,
+        );
+      if (
+        !classNode.publicMethods.some(
+          (candidate) =>
+            candidate.name === method.name && candidate.static === method.static,
+        )
+      )
+        throw new LangoError(
+          "LNG1238",
+          method.line,
+          `${classNode.name}: override of public method ${method.name} cannot be private`,
+        );
+    }
     const implementations = new Set();
     for (const method of classNode.methods) {
       const key = `${method.static ? "static" : "instance"}:${method.name}`;
