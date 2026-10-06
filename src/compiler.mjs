@@ -1425,6 +1425,28 @@ function validate(program, imports = []) {
         else validateProperties(item);
       });
     };
+    const validateStaticInstanceAccess = (value) => {
+      if (!value || typeof value !== "object") return;
+      const name =
+        value.type === "assign"
+          ? value.name
+          : value.type === "raw"
+            ? value.value
+            : null;
+      if (
+        name &&
+        (/^@[A-Za-z_]\w*$/.test(name) || /^_[A-Za-z_]\w*$/.test(name))
+      )
+        throw new LangoError(
+          "LNG1231",
+          classNode.line,
+          `${classNode.name}: static method cannot access instance property ${name}`,
+        );
+      Object.values(value).forEach((item) => {
+        if (Array.isArray(item)) item.forEach(validateStaticInstanceAccess);
+        else validateStaticInstanceAccess(item);
+      });
+    };
     classNode.methods.forEach((method) => {
       validateClosures(
         method.body,
@@ -1440,6 +1462,7 @@ function validate(program, imports = []) {
       );
       validateGlobalAccess(method.body);
       validateLoopLevels(method.body);
+      if (method.static) validateStaticInstanceAccess(method.body);
       validateProperties(method.body);
       superCalls.length = 0;
       validateMethod(method.body);
