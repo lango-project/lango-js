@@ -107,8 +107,8 @@ Faz 17 adds class-import aliases with `alias Local = class Exported`. See
 
 ## Faz 18
 
-Faz 18 adds class `methods` API declarations. Listed instance methods and
-`::static` methods are public; other implementations compile to JavaScript
+Faz 18 adds class API declarations. Listed `methods` are public instance
+methods; listed `static` methods are public static methods. Other implementations compile to JavaScript
 private methods. See `examples/018-public-methods`.
 
 ## Faz 19

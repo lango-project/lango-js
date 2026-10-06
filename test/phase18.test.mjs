@@ -11,7 +11,8 @@ const source = `export main(args)
 export class Account
     methods
         total()
-        ::zero()
+    static
+        zero()
 
 Account(value)
     @value = value

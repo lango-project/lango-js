@@ -128,19 +128,36 @@ class Parser {
               const method = /^        ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(
                 methodLine,
               );
-              const staticMethod = /^        ::([A-Za-z_]\w*)\(([^)]*)\)$/.exec(
-                methodLine,
-              );
-              if (!method && !staticMethod) break;
-              const declaration = method ?? staticMethod;
+              if (!method) break;
               classNode.publicMethods.push({
-                name: declaration[1],
-                static: Boolean(staticMethod),
-                parameters: this.parameters(declaration[2], {
+                name: method[1],
+                static: false,
+                parameters: this.parameters(method[2], {
                   number: this.i + 1,
                 }),
               });
               this.i += 1;
+            }
+          } else if (section === "static") {
+            while (true) {
+              const valueLine = this.peek() ?? "";
+              const value = /^        ([A-Za-z_]\w*) = (.+)$/.exec(valueLine);
+              const method = /^        ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(valueLine);
+              if (!value && !method) break;
+              if (value) {
+                const line = this.line();
+                classNode.staticValues.push({
+                  name: value[1],
+                  value: expr(value[2], line, this),
+                });
+              } else {
+                classNode.publicMethods.push({
+                  name: method[1],
+                  static: true,
+                  parameters: this.parameters(method[2], { number: this.i + 1 }),
+                });
+                this.i += 1;
+              }
             }
           } else {
             while (/^        [A-Za-z_]\w* = .+$/.test(this.peek() ?? "")) {

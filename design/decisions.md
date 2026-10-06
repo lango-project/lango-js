@@ -373,14 +373,15 @@ visibility inline as `export class Name`; at most one class may be exported from
 a source file. This keeps the file's public surface visible before its
 implementation without separating a class from its own declaration.
 
-A class's `properties` and `methods` sections declare its member API; they do
-not themselves export the class from its file. An external caller can use that
+A class's `properties`, `methods`, and `static` sections declare its member API;
+they do not themselves export the class from its file. An external caller can use that
 API only after the class has been exported and imported. This keeps module
 visibility separate from private/protected member visibility.
 
-The `methods` section lists public instance methods as `name(parameters)` and
-public static methods as `::name(parameters)`. A method implementation omitted
-from this section is private. Lango source never spells JavaScript's `#`: code
+The `methods` section lists public instance methods as `name(parameters)`. The
+`static` section lists initialized static values and public static methods as
+`name(parameters)`. A method implementation omitted from its API section is
+private. Lango source never spells JavaScript's `#`: code
 inside the defining class uses ordinary `this.name()` or `Class.name()` calls,
 and the JavaScript backend emits `#name` only for private implementations and
 their resolved calls.
