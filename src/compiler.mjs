@@ -737,6 +737,30 @@ function validate(program, imports = []) {
     }
     return result;
   };
+  const dynamicBindingNames = (body, result = new Set()) => {
+    for (const node of body) {
+      if (node.type === "assign" && !node.name.startsWith("@"))
+        result.add(node.name);
+      if (node.type === "closureAssign") result.add(node.name);
+      if (node.type === "for") result.add(node.item);
+      if (node.type === "forObject") {
+        result.add(node.key);
+        result.add(node.value);
+      }
+      [
+        node.body,
+        node.thenBody,
+        node.elseBody,
+        node.tryBody,
+        node.catchBody,
+        node.finallyBody,
+        ...(node.cases?.map((item) => item.body) ?? []),
+      ]
+        .filter(Boolean)
+        .forEach((child) => dynamicBindingNames(child, result));
+    }
+    return result;
+  };
   const validateRequiredArguments = (target, value, label) => {
     const missing = target.parameters.findIndex(
       (parameter, index) =>
@@ -833,14 +857,22 @@ function validate(program, imports = []) {
     walk(
       fn,
       new Set([
-        ...closureNames(fn.body),
+        ...dynamicBindingNames(fn.body),
         ...(fn.parameters ?? []).map((parameter) => parameter.name),
       ]),
     ),
   );
   program.classes.forEach((classNode) =>
     classNode.methods.forEach((method) =>
-      walk(method, closureNames(method.body), classNode, method.static),
+      walk(
+        method,
+        new Set([
+          ...dynamicBindingNames(method.body),
+          ...method.parameters.map((parameter) => parameter.name),
+        ]),
+        classNode,
+        method.static,
+      ),
     ),
   );
 

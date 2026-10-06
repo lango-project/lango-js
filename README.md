@@ -344,3 +344,8 @@ Number.
 
 Faz 65 supports dynamic callback values and reports `NotCallable` for a
 non-callable dynamic value.
+
+## Faz 66
+
+Faz 66 permits calls through local dynamic bindings and reports `NotCallable`
+when the bound value is not a function.
