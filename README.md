@@ -129,3 +129,8 @@ Faz 22 adds decimal, scientific, and hexadecimal number literals. See
 
 Faz 23 adds variable-index and string-key bracket access. See
 `examples/023-bracket-access`.
+
+## Faz 25
+
+Faz 25 adds nested dot access such as `order.customer.name`. See
+`examples/025-nested-access`.
