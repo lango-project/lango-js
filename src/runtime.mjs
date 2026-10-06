@@ -82,6 +82,11 @@ export function requireBoolean(value) {
     return value;
 }
 
+export function assert(value, location) {
+    if (!value) throw new Error(\`AssertionFailed at \${location}\`);
+    return null;
+}
+
 export function contextGet(name) {
     const stack = contexts.get(name);
     if (!stack || stack.length === 0) {

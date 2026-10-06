@@ -5,6 +5,7 @@
   "scripts": {
     "build": "node src/cli.mjs build",
     "run": "node src/cli.mjs run",
+    "test:lango": "node src/cli.mjs test",
     "test": "node --test test/**/*.test.mjs"
   },
   "engines": {

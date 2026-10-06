@@ -273,3 +273,8 @@ Faz 50 adds `run <input.lango> [args...]` to the CLI for programs that export
 
 Faz 51 adds validated `break N` and `continue N` for nested loops. See
 `examples/051-loop-levels`.
+
+## Faz 52
+
+Faz 52 adds discoverable `test` blocks and `assert` statements. Production
+builds omit them; `npm run test:lango -- <input.lango>` runs them synchronously.

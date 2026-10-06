@@ -9,16 +9,16 @@ export class LangoError extends Error {
   }
 }
 
-export async function buildFile(inputPath, outputPath, seen = new Set()) {
+export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false) {
   if (seen.has(inputPath)) return;
   seen.add(inputPath);
 
   const source = await readFile(inputPath, "utf8");
   const imports = collectImports(source, inputPath, outputPath);
   for (const item of imports)
-    await buildFile(item.sourcePath, item.outputPath, seen);
+    await buildFile(item.sourcePath, item.outputPath, seen, includeTests);
 
-  const output = compile(source, inputPath, imports).javascript;
+  const output = compile(source, inputPath, imports, includeTests).javascript;
   const directory = path.dirname(outputPath);
 
   await mkdir(path.join(directory, ".lango"), { recursive: true });
@@ -36,13 +36,13 @@ export async function buildFile(inputPath, outputPath, seen = new Set()) {
   await writeFile(path.join(directory, ".lango/runtime.mjs"), RUNTIME_SOURCE);
 }
 
-export function compile(source, sourceName = "<source>", imports = []) {
+export function compile(source, sourceName = "<source>", imports = [], includeTests = false) {
   if (source.includes("\t"))
     throw new LangoError("LNG1001", 1, "TAB characters are not allowed");
   const parser = new Parser(source, sourceName);
   const program = parser.parse();
   validate(program, imports);
-  return { javascript: emit(program, imports) };
+  return { javascript: emit(program, imports, includeTests) };
 }
 
 class Parser {
@@ -56,6 +56,7 @@ class Parser {
     const classes = [];
     const exports = [];
     const globals = [];
+    const tests = [];
     let declarationSeen = false;
     let exportedClassSeen = false;
     this.blank();
@@ -76,6 +77,16 @@ class Parser {
           name: globalDeclaration[1],
           value: expr(globalDeclaration[2], line, this),
           line: line.number,
+        });
+        this.blank();
+        continue;
+      }
+      const testHeader = /^test(?: "([^"]*)")?$/.exec(line.text);
+      if (testHeader) {
+        tests.push({
+          name: testHeader[1] ?? `${this.name}:${line.number}`,
+          line: line.number,
+          body: this.block(4),
         });
         this.blank();
         continue;
@@ -242,7 +253,7 @@ class Parser {
         1,
         `${this.name}: main(args) may be exported once`,
       );
-    return { functions, classes, globals };
+    return { functions, classes, globals, tests };
   }
   block(indent) {
     const body = [];
@@ -258,7 +269,13 @@ class Parser {
         );
       const line = this.line();
       const text = line.text.slice(indent);
-      if (/^global ([A-Za-z_]\w*)$/.test(text)) {
+      if (text.startsWith("assert ")) {
+        body.push({
+          type: "assert",
+          value: expr(text.slice(7), line, this),
+          line: line.number,
+        });
+      } else if (/^global ([A-Za-z_]\w*)$/.test(text)) {
         const [, name] = /^global ([A-Za-z_]\w*)$/.exec(text);
         body.push({ type: "globalDeclare", name, line: line.number });
       } else if (/^context ([A-Za-z_]\w*) = (.+)$/.test(text)) {
@@ -738,7 +755,9 @@ function validate(program, imports = []) {
         : walk(item, localCallables),
     );
   };
-  program.functions.forEach((fn) => walk(fn, closureNames(fn.body)));
+  [...program.functions, ...program.tests].forEach((fn) =>
+    walk(fn, closureNames(fn.body)),
+  );
 
   const expressionReferences = (node, references) => {
     if (!node || typeof node !== "object") return;
@@ -940,6 +959,7 @@ function validate(program, imports = []) {
       new Set(fn.parameters.map((parameter) => parameter.name)),
     ),
   );
+  program.tests.forEach((test) => validateClosures(test.body, new Set()));
   const validateContextAssignments = (body, contextNames) => {
     for (const node of body) {
       if (node.type === "assign" && contextNames.has(node.name))
@@ -995,7 +1015,11 @@ function validate(program, imports = []) {
   program.functions.forEach((fn) =>
     validateContextAssignments(fn.body, contextDeclarations(fn.body)),
   );
+  program.tests.forEach((test) =>
+    validateContextAssignments(test.body, contextDeclarations(test.body)),
+  );
   program.functions.forEach((fn) => validateGlobalAccess(fn.body));
+  program.tests.forEach((test) => validateGlobalAccess(test.body));
   const validateLoopLevels = (body, depth = 0) => {
     for (const node of body) {
       if (
@@ -1012,6 +1036,7 @@ function validate(program, imports = []) {
     }
   };
   program.functions.forEach((fn) => validateLoopLevels(fn.body));
+  program.tests.forEach((test) => validateLoopLevels(test.body));
   const classes = new Map(program.classes.map((item) => [item.name, item]));
   if (classes.size !== program.classes.length)
     throw new LangoError("LNG1205", 1, "duplicate class name");
@@ -1129,7 +1154,7 @@ function validate(program, imports = []) {
   }
 }
 
-function emit(program, moduleImports = []) {
+function emit(program, moduleImports = [], includeTests = false) {
   const flags = { print: false, translate: false, context: false, loopCounter: 0, loopStack: [] };
   const classes = program.classes
     .map((item) => emitClass(item, flags))
@@ -1137,6 +1162,11 @@ function emit(program, moduleImports = []) {
   const functions = program.functions
     .map((fn) => emitFunction(fn, flags))
     .join("\n");
+  const tests = includeTests
+    ? `export const __langoTests = [\n${program.tests
+        .map((test) => emitTest(test, flags))
+        .join(",\n")}\n];\n`
+    : "";
   const helpers = [
     flags.print && "println as __println",
     flags.translate && "translate as __translate",
@@ -1153,6 +1183,7 @@ function emit(program, moduleImports = []) {
     flags.predicates && "isObject as __isObject",
     flags.predicates && "isArray as __isArray",
     flags.boolean && "requireBoolean as __requireBoolean",
+    flags.assert && "assert as __assert",
   ].filter(Boolean);
   const imports = helpers.length
     ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n`
@@ -1166,7 +1197,20 @@ function emit(program, moduleImports = []) {
   const globals = program.globals
     .map((item) => `let ${item.name} = ${emitExpr(item.value, flags)};\n`)
     .join("");
-  return `${modules}${imports}${globals}${classes}${functions}//# sourceMappingURL=main.mjs.map\n`;
+  return `${modules}${imports}${globals}${classes}${functions}${tests}//# sourceMappingURL=main.mjs.map\n`;
+}
+function emitTest(test, flags) {
+  const priorGlobalNames = flags.globalNames;
+  const priorContextNames = flags.contextNames;
+  flags.globalNames = collectGlobalNames(test.body);
+  flags.contextNames = collectContextNames(test.body);
+  const declared = new Set();
+  const body = test.body
+    .map((node) => emitStatement(node, 3, declared, flags))
+    .join("");
+  flags.globalNames = priorGlobalNames;
+  flags.contextNames = priorContextNames;
+  return `    { name: ${JSON.stringify(test.name)}, run() {\n${body}    } }`;
 }
 function collectGlobalNames(body, names = new Set()) {
   for (const node of body) {
@@ -1320,6 +1364,10 @@ function emitStatement(node, depth, declared, flags) {
   if (node.type === "contextSet") {
     flags.context = true;
     return `${pad}__contextScope.push(__contextSet(${JSON.stringify(node.name)}, ${emitExpr(node.value, flags)}));\n`;
+  }
+  if (node.type === "assert") {
+    flags.assert = true;
+    return `${pad}__assert(${emitBoolean(node.value, flags)}, ${JSON.stringify(`line ${node.line}`)});\n`;
   }
   if (node.type === "assign") {
     const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
