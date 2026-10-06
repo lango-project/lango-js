@@ -17,7 +17,7 @@ test("Faz 79 calls a nested JavaScript namespace method", async () => {
 export read(file)
 
 read(file)
-    return fs.promises.readFile(file, "utf8")
+    return fs/promises/readFile(file, "utf8")
 `);
     await buildFile(input, output);
     const emitted = await (await import("node:fs/promises")).readFile(output, "utf8");

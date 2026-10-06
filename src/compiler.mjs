@@ -663,7 +663,8 @@ function expr(source, line, parser) {
   const localize = /^_\((.*)\)$/.exec(text);
   if (localize)
     return { type: "translate", literal: literal(localize[1], line, parser) };
-  const construct = /^new ([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\((.*)\)$/.exec(text);
+  const construct =
+    /^new ([A-Za-z_]\w*(?:[./][A-Za-z_]\w*)*)\((.*)\)$/.exec(text);
   if (construct)
     return {
       type: "new",
@@ -687,6 +688,22 @@ function expr(source, line, parser) {
     /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\.([A-Za-z_]\w*)\((.*)\)$/.exec(
       text,
     );
+  const namespaceMethodCall =
+    /^([A-Za-z_]\w*(?:\/[A-Za-z_]\w*)*)\/([A-Za-z_]\w*)\((.*)\)$/.exec(
+      text,
+    );
+  if (namespaceMethodCall)
+    return {
+      type: "namespaceMethodCall",
+      receiver: namespaceMethodCall[1],
+      name: namespaceMethodCall[2],
+      arguments: namespaceMethodCall[3]
+        ? namespaceMethodCall[3]
+            .split(", ")
+            .map((item) => expr(item, line, parser))
+        : [],
+      line: line.number,
+    };
   if (methodCall)
     return {
       type: "methodCall",
@@ -763,6 +780,7 @@ function validate(program, imports = []) {
     ...program.jsImports.map((item) => item.name),
   ];
   const imported = new Set(importNames);
+  const jsImportNames = new Set(program.jsImports.map((item) => item.name));
   const importedFunctions = new Map(
     imports.flatMap((item) =>
       (item.selections ?? [])
@@ -904,11 +922,29 @@ function validate(program, imports = []) {
         );
     }
     if (value.type === "new") {
+      if (
+        value.name.includes(".") &&
+        jsImportNames.has(value.name.split(".")[0])
+      )
+        throw new LangoError(
+          "LNG1232",
+          value.line,
+          `use / between JavaScript namespace segments in new ${value.name}(...)`,
+        );
       const target = classes.get(value.name);
       const constructor = target && findConstructor(target);
       if (constructor) validateRequiredArguments(constructor, value, value.name);
     }
     if (value.type === "methodCall") {
+      if (
+        value.receiver.includes(".") &&
+        jsImportNames.has(value.receiver.split(".")[0])
+      )
+        throw new LangoError(
+          "LNG1232",
+          value.line,
+          `use / between JavaScript namespace segments in ${value.receiver}.${value.name}(...)`,
+        );
       const targetClass =
         value.receiver === "this"
           ? classNode
@@ -925,6 +961,15 @@ function validate(program, imports = []) {
           target,
           value,
           `${targetClass.name}${target.static ? "::" : ":"}${value.name}`,
+        );
+    }
+    if (value.type === "namespaceMethodCall") {
+      const root = value.receiver.split("/")[0];
+      if (!jsImportNames.has(root))
+        throw new LangoError(
+          "LNG1233",
+          value.line,
+          `${root} is not an imported JavaScript namespace`,
         );
     }
     if (value.type === "superMethodCall" && classNode?.ancestor) {
@@ -981,8 +1026,9 @@ function validate(program, imports = []) {
       );
       return;
     }
-    if (node.type === "methodCall") {
-      if (node.receiver !== "this") references.add(node.receiver.split(".")[0]);
+    if (node.type === "methodCall" || node.type === "namespaceMethodCall") {
+      if (node.receiver !== "this")
+        references.add(node.receiver.split(/[./]/)[0]);
       node.arguments.forEach((argument) =>
         expressionReferences(argument, references),
       );
@@ -1944,28 +1990,33 @@ function emitExpr(node, flags) {
             : node.value;
   if (node.type === "unary") return `!${emitBoolean(node.value, flags)}`;
   if (node.type === "new")
-    return `new ${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    return `new ${node.name.replaceAll("/", ".")}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "superMethodCall")
     return `super.${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
-  if (node.type === "methodCall") {
+  if (node.type === "methodCall" || node.type === "namespaceMethodCall") {
+    const namespace = node.type === "namespaceMethodCall";
+    const sourceReceiver = namespace
+      ? node.receiver.replaceAll("/", ".")
+      : node.receiver;
     const type =
-      node.receiver === flags.className ||
-      (node.receiver === "this" && flags.staticMethod)
+      sourceReceiver === flags.className ||
+      (sourceReceiver === "this" && flags.staticMethod)
         ? "static"
         : "instance";
     const visibility = flags.methods?.get(`${type}:${node.name}`);
     const receiver =
-      node.receiver === "this" && flags.staticMethod && visibility === false
+      sourceReceiver === "this" && flags.staticMethod && visibility === false
         ? flags.className
-        : node.receiver;
+        : sourceReceiver;
     const method =
+      !namespace &&
       node.name === "add" && flags.arrayBindings?.has(node.receiver)
         ? "push"
         : node.name;
     const call = `${receiver}${visibility === false ? ".#" : "."}${method}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
     if (
       visibility === undefined &&
-      !(node.name === "add" && flags.arrayBindings?.has(node.receiver))
+      !(!namespace && node.name === "add" && flags.arrayBindings?.has(node.receiver))
     ) {
       flags.normalize = true;
       return `__normalize(${call})`;

@@ -15,7 +15,7 @@ test("Faz 78 constructs a qualified JavaScript class", async () => {
 export create()
 
 create()
-    return new events.EventEmitter()
+    return new events/EventEmitter()
 `);
     await buildFile(input, output);
     const emitted = await (await import("node:fs/promises")).readFile(output, "utf8");
