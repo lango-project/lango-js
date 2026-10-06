@@ -2337,7 +2337,13 @@ function validateImportedClassInterface(
     if (!hierarchy.some((item) => item.publicProperties.includes(name)))
       missing("property", name);
   for (const name of api.staticValues)
-    if (!hierarchy.some((item) => item.staticValues.some((value) => value.name === name)))
+    if (
+      !hierarchy.some((item) =>
+        [...item.staticValues, ...item.enumValues].some(
+          (value) => value.name === name,
+        ),
+      )
+    )
       missing("static value", name);
   for (const [kind, methods] of [
     ["method", api.methods],
