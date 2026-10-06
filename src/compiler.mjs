@@ -800,6 +800,13 @@ function validate(program, imports = []) {
         ]),
     ),
   );
+  const importedClasses = new Map(
+    imports.flatMap((item) =>
+      (item.selections ?? [])
+        .filter((selection) => selection.kind === "class")
+        .map((selection) => [selection.localName, selection.interface]),
+    ),
+  );
   const standardFunctions = new Map([
     ["from_json", 1],
     ["to_json", 1],
@@ -994,6 +1001,18 @@ function validate(program, imports = []) {
         value.receiver === "this"
           ? classNode
           : classes.get(value.receiver) ?? null;
+      const importedStaticMethod =
+        !targetClass &&
+        importedClasses
+          .get(value.receiver)
+          ?.staticMethods.find((item) => item.name === value.name);
+      if (importedStaticMethod) {
+        validateRequiredArguments(
+          importedStaticMethod,
+          value,
+          `${value.receiver}.${value.name}`,
+        );
+      }
       const target =
         targetClass &&
         findMethodWithOwner(
