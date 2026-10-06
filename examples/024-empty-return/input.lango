@@ -1,5 +1,8 @@
 export main(args)
 
-main(args)
+finish()
     println("done")
     return
+
+main(args)
+    finish()

@@ -143,3 +143,7 @@ Faz 25 adds nested dot access such as `order.customer.name`. See
 
 Faz 26 adds nested multiline object literals. See
 `examples/026-nested-objects`.
+
+## Faz 27
+
+Faz 27 adds standalone function-call statements such as `finish()`.

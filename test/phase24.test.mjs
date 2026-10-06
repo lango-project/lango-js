@@ -9,8 +9,11 @@ import { pathToFileURL } from "node:url";
 test("Faz 24 emits a value-free return", () => {
     const output = compile(`export main(args)
 
-main(args)
+finish()
     return
+
+main(args)
+    finish()
 `).javascript;
     assert.match(output, /return;\n/);
 });

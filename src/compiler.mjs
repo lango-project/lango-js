@@ -156,6 +156,7 @@ class Parser {
             else if (/^([A-Za-z_]\w*)\.add\((.+)\)$/.test(text)) { const [, target, value] = /^([A-Za-z_]\w*)\.add\((.+)\)$/.exec(text); body.push({ type: "add", target, value: expr(value, line, this) }); }
             else if (/^println\((.*)\)$/.test(text)) body.push({ type: "println", value: expr(text.slice(8, -1), line, this) });
             else if (/^[A-Za-z_]\w*\.[A-Za-z_]\w*\(.*\)$/.test(text)) body.push({ type: "expression", value: expr(text, line, this) });
+            else if (/^[A-Za-z_]\w*\(.*\)$/.test(text)) body.push({ type: "expression", value: expr(text, line, this) });
             else if (/^([A-Za-z_]\w*) = \{$/.test(text)) {
                 const [, name] = /^([A-Za-z_]\w*) = \{$/.exec(text);
                 body.push({ type: "assign", name, value: this.object(indent) });
