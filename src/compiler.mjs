@@ -1565,7 +1565,10 @@ function validate(program, imports = []) {
         collectInheritedProtectedMembers(method.body, inheritedInstanceMembers),
       );
       ancestor.staticValues.forEach((value) => inheritedStaticMembers.add(value.name));
-      ancestor.enumValues.forEach((value) => inheritedStaticMembers.add(value.name));
+      ancestor.enumValues.forEach((value) => {
+        inheritedStaticMembers.add(value.name);
+        readonly.add(value.name);
+      });
       ancestor = ancestor.ancestor ? classes.get(ancestor.ancestor) : null;
     }
     const classScope = {
