@@ -1,0 +1,7 @@
+export main(args)
+
+main(args)
+    if not false and true
+        println("yes")
+      else
+          println("no")

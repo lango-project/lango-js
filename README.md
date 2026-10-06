@@ -114,3 +114,8 @@ cases. See `examples/019-switch`.
 
 Faz 20 makes Lango's sole equality spelling, `==`, compile to JavaScript strict
 equality. See `examples/020-strict-equality`.
+
+## Faz 21
+
+Faz 21 adds `not`, `and`, and `or` logical aliases. See
+`examples/021-logical-operators`.
