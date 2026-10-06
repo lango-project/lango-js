@@ -1,0 +1,20 @@
+export main(args)
+
+export class Counter
+    methods
+        callback()
+
+Counter(start)
+    _value = start
+
+Counter:callback()
+    callback = ()
+        capture _value
+        _value = _value + 1
+        return _value
+    return callback
+
+main(args)
+    counter = new Counter(7)
+    callback = counter.callback()
+    println(callback())

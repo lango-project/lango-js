@@ -178,3 +178,18 @@ while the captured binding remains shared. See `examples/032-nested-closures`.
 
 Faz 33 validates captured instance and static properties against the enclosing
 class, and rejects property captures outside class methods.
+
+## Faz 34
+
+Faz 34 verifies static-property capture and rejects malformed or duplicate
+capture declarations. See `examples/034-static-capture`.
+
+## Faz 35
+
+Faz 35 extends explicit closure capture to protected properties. See
+`examples/035-protected-capture`.
+
+## Faz 36
+
+Faz 36 preserves a captured local as one shared, mutable binding rather than a
+new closure-local variable. See `examples/036-shared-capture`.

@@ -1,0 +1,14 @@
+export main(args)
+
+make_counter()
+    count = 0
+    increment = ()
+        capture count
+        count = count + 1
+        return count
+    return increment
+
+main(args)
+    increment = make_counter()
+    println(increment())
+    println(increment())

@@ -1,0 +1,18 @@
+export main(args)
+
+export class Limits
+    static
+        maximum = 9
+    methods
+        callback()
+
+Limits:callback()
+    callback = ()
+        capture @@maximum
+        return @@maximum
+    return callback
+
+main(args)
+    limits = new Limits()
+    callback = limits.callback()
+    println(callback())

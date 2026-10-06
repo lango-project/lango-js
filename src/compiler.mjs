@@ -343,16 +343,12 @@ class Parser {
       } else if (text === "return") body.push({ type: "return", value: null });
       else if (/^return \(([^)]*)\)$/.test(text)) {
         const [, rawParameters] = /^return \(([^)]*)\)$/.exec(text);
-        const captures = [];
-        if ((this.peek() ?? "").trimStart().startsWith("capture ")) {
-          captures.push(...this.line().text.trim().slice(8).split(", "));
-        }
         body.push({
           type: "return",
           value: {
             type: "closure",
             parameters: this.parameters(rawParameters, line),
-            captures,
+            captures: this.captures(),
             line: line.number,
             body: this.block(indent + 4),
           },
@@ -389,15 +385,11 @@ class Parser {
         const [, name, rawParameters] = /^([A-Za-z_]\w*) = \(([^)]*)\)$/.exec(
           text,
         );
-        const captures = [];
-        if ((this.peek() ?? "").trimStart().startsWith("capture ")) {
-          captures.push(...this.line().text.trim().slice(8).split(", "));
-        }
         body.push({
           type: "closureAssign",
           name,
           parameters: this.parameters(rawParameters, line),
-          captures,
+          captures: this.captures(),
           line: line.number,
           body: this.block(indent + 4),
         });
@@ -434,6 +426,22 @@ class Parser {
           match[2] === undefined ? null : expr(match[2], line, this),
       };
     });
+  }
+  captures() {
+    if (!(this.peek() ?? "").trimStart().startsWith("capture ")) return [];
+    const line = this.line();
+    const names = line.text.trim().slice(8).split(", ");
+    if (
+      names.some(
+        (name) =>
+          !/^(?:@{1,2}[A-Za-z_]\w*|[A-Za-z_]\w*)$/.test(name) ||
+          name.startsWith("@@_"),
+      )
+    )
+      this.fail(line, "LNG1117", "invalid capture list");
+    if (new Set(names).size !== names.length)
+      this.fail(line, "LNG1118", "duplicate capture name");
+    return names;
   }
   object(indent) {
     const fields = [];
@@ -771,6 +779,13 @@ function validate(program, imports = []) {
           ...closure.parameters.map((parameter) => parameter.name),
           ...directBindings(closure.body),
         ]);
+        if (classScope)
+          [...localBindings]
+            .filter((name) => name.startsWith("_"))
+            .forEach((name) => localBindings.delete(name));
+        closure.captures
+          .filter((name) => !name.startsWith("@") && !name.startsWith("_"))
+          .forEach((name) => localBindings.delete(name));
         const needed = [...directReferences(closure.body)].filter(
           (name) => !localBindings.has(name),
         );
@@ -789,15 +804,19 @@ function validate(program, imports = []) {
               closure.line,
               `unused capture ${name}`,
             );
-          if (!name.startsWith("@") && !available.has(name))
+          const protectedMember = Boolean(classScope && name.startsWith("_"));
+          const propertyCapture = name.startsWith("@") || protectedMember;
+          if (!propertyCapture && !available.has(name))
             throw new LangoError(
               "LNG1212",
               closure.line,
               `capture ${name} is not assigned before this closure`,
             );
-          if (name.startsWith("@")) {
+          if (propertyCapture) {
             const staticMember = name.startsWith("@@");
-            const property = name.slice(staticMember ? 2 : 1);
+            const property = name.startsWith("@")
+              ? name.slice(staticMember ? 2 : 1)
+              : name;
             const members = staticMember
               ? classScope?.staticMembers
               : classScope?.instanceMembers;
@@ -900,6 +919,8 @@ function validate(program, imports = []) {
       for (const node of body) {
         if (node.type === "assign" && /^@[A-Za-z_]\w*$/.test(node.name))
           instanceMembers.add(node.name.slice(1));
+        if (node.type === "assign" && /^_[A-Za-z_]\w*$/.test(node.name))
+          instanceMembers.add(node.name);
         nestedBodies(node).forEach(collectInstanceMembers);
       }
     };
@@ -1128,7 +1149,10 @@ function emitStatement(node, depth, declared, flags) {
 }
 function emitClosure(node, depth, flags) {
   const parameters = node.parameters.map((item) => item.name).join(", ");
-  const declared = new Set(node.parameters.map((parameter) => parameter.name));
+  const declared = new Set([
+    ...node.parameters.map((parameter) => parameter.name),
+    ...node.captures.filter((name) => !name.startsWith("@") && !name.startsWith("_")),
+  ]);
   const pad = "    ".repeat(depth);
   return `(${parameters}) => {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
 }
