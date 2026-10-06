@@ -33,8 +33,8 @@ representation.
 
 Validate selected imported globals and macros against their exported module
 interfaces. Imported class properties, methods, static values, and static
-methods are already checked, including inherited public members. Add
-cyclic-module initializer-read analysis.
+methods are already checked, including inherited public members. Class
+inheritance cycles are rejected. Add cyclic-module initializer-read analysis.
 
 ### Remaining host-boundary coverage
 

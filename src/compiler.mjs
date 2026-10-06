@@ -831,6 +831,22 @@ function validate(program, imports = []) {
   const classes = new Map(program.classes.map((item) => [item.name, item]));
   if (classes.size !== program.classes.length)
     throw new LangoError("LNG1205", 1, "duplicate class name");
+  const ancestorState = new Map();
+  const visitAncestor = (classNode) => {
+    const state = ancestorState.get(classNode.name);
+    if (state === "visiting")
+      throw new LangoError(
+        "LNG1236",
+        classNode.line,
+        `${classNode.name}: cyclic class inheritance`,
+      );
+    if (state === "done") return;
+    ancestorState.set(classNode.name, "visiting");
+    const ancestor = classes.get(classNode.ancestor);
+    if (ancestor) visitAncestor(ancestor);
+    ancestorState.set(classNode.name, "done");
+  };
+  program.classes.forEach(visitAncestor);
   const closureNames = (body, result = new Set()) => {
     for (const node of body) {
       if (node.type === "closureAssign") result.add(node.name);
