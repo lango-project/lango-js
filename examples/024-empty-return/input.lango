@@ -1,0 +1,5 @@
+export main(args)
+
+main(args)
+    println("done")
+    return
