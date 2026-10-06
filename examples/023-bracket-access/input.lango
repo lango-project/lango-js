@@ -1,0 +1,10 @@
+export main(args)
+
+main(args)
+    values = [10, 20]
+    index = 1
+    order = {
+        name: "Ada"
+    }
+    println(values[index])
+    println(order["name"])

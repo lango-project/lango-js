@@ -217,7 +217,7 @@ function expr(source, line, parser) {
     if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
     if (/^[A-Za-z_]\w*\._[A-Za-z_]\w*$/.test(text)) parser.fail(line, "LNG1115", "protected properties are not accessible outside a class");
     if (/^[A-Za-z_]\w*\.[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
-    if (/^[A-Za-z_]\w*\[\d+\]$/.test(text)) return { type: "raw", value: text };
+    if (/^[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(text)) return { type: "raw", value: text };
     if (/^@{0,2}[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
     parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
 }

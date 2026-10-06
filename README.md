@@ -124,3 +124,8 @@ Faz 21 adds `not`, `and`, and `or` logical aliases. See
 
 Faz 22 adds decimal, scientific, and hexadecimal number literals. See
 `examples/022-number-literals`.
+
+## Faz 23
+
+Faz 23 adds variable-index and string-key bracket access. See
+`examples/023-bracket-access`.
