@@ -380,7 +380,8 @@ visibility separate from private/protected member visibility.
 
 The `methods` section lists public instance methods as `name(parameters)`. The
 `static` section lists initialized static values and public static methods as
-`name(parameters)`. A method implementation omitted from its API section is
+`name(parameters)`. Every static member name must be unique across `static`
+values, `enum` values, and public static methods. A method implementation omitted from its API section is
 private. Lango source never spells JavaScript's `#`: code
 inside the defining class uses ordinary `this.name()` or `Class.name()` calls,
 and the JavaScript backend emits `#name` only for private implementations and

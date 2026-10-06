@@ -293,3 +293,8 @@ class code.
 
 Faz 55 validates that declared public instance and static method signatures
 match their implementations.
+
+## Faz 56
+
+Faz 56 rejects duplicate static member names across `static` values, `enum`
+values, and public static methods.

@@ -1065,6 +1065,22 @@ function validate(program, imports = []) {
         classNode.line,
         `${classNode.name}: unknown ancestor ${classNode.ancestor}`,
       );
+    const staticNames = new Set();
+    for (const name of [
+      ...classNode.staticValues.map((item) => item.name),
+      ...classNode.enumValues.map((item) => item.name),
+      ...classNode.publicMethods
+        .filter((item) => item.static)
+        .map((item) => item.name),
+    ]) {
+      if (staticNames.has(name))
+        throw new LangoError(
+          "LNG1224",
+          classNode.line,
+          `${classNode.name}: duplicate static member ${name}`,
+        );
+      staticNames.add(name);
+    }
     for (const method of classNode.publicMethods) {
       const implementation = classNode.methods.find(
         (item) => item.name === method.name && item.static === method.static,
