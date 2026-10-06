@@ -1752,6 +1752,11 @@ function emitClosure(node, depth, flags) {
       emitStatement(item, depth + (contextNames.size ? 2 : 1), declared, flags),
     )
     .join("");
+  const boundary = emitBoundaryChecks(
+    node.parameters,
+    depth + (contextNames.size ? 2 : 1),
+    flags,
+  );
   flags.contextNames = priorContextNames;
   flags.globalNames = priorGlobalNames;
   flags.arrayBindings = priorArrayBindings;
@@ -1764,9 +1769,9 @@ function emitClosure(node, depth, flags) {
     return `__withArity(${value}, [${requiredPositions.join(", ")}], "closure")`;
   };
   if (!contextNames.size)
-    return wrap(`(${parameters}) => {\n${body}${pad}    return null;\n${pad}}`);
+    return wrap(`(${parameters}) => {\n${boundary}${body}${pad}    return null;\n${pad}}`);
   flags.context = true;
-  return wrap(`(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${body}${pad}        return null;\n${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`);
+  return wrap(`(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${boundary}${body}${pad}        return null;\n${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`);
 }
 function emitArityGuard(parameters, actual, name, depth, flags) {
   const positions = parameters

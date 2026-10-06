@@ -354,3 +354,8 @@ when the bound value is not a function.
 
 Faz 67 normalizes and validates JavaScript arguments at every Lango function
 and method entry.
+
+## Faz 68
+
+Faz 68 applies the same JavaScript-boundary normalization and validation to
+Lango closures.
