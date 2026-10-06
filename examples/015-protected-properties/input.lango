@@ -1,0 +1,18 @@
+export main(args)
+
+class Person
+
+Person(label)
+    _label = label
+
+export class Employee : Person
+
+Employee(label)
+    super(label)
+
+Employee:describe()
+    return _label
+
+main(args)
+    employee = new Employee("Ada")
+    println(employee.describe())

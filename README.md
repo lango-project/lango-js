@@ -82,3 +82,9 @@ Faz 13 adds single inheritance with `class Child : Parent`, `super(...)`, and
 
 Faz 14 adds direct imports of exported Lango classes with `class Name` in an
 import header. See `examples/014-class-modules`.
+
+## Faz 15
+
+Faz 15 adds protected instance properties with `_name`, accessible from a class
+and its descendants but not through Lango external member access. See
+`examples/015-protected-properties`.
