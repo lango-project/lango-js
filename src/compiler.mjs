@@ -916,6 +916,17 @@ function validate(program, imports = []) {
     }
     return null;
   };
+  const findMethodWithOwner = (classNode, name, staticMethod) => {
+    let current = classNode;
+    while (current) {
+      const method = current.methods.find(
+        (item) => item.name === name && item.static === staticMethod,
+      );
+      if (method) return { method, owner: current };
+      current = current.ancestor ? classes.get(current.ancestor) : null;
+    }
+    return null;
+  };
   const findConstructor = (classNode) =>
     findMethod(classNode, "constructor", false);
   const walk = (value, localCallables, classNode = null, staticMethod = false) => {
@@ -985,16 +996,32 @@ function validate(program, imports = []) {
           : classes.get(value.receiver) ?? null;
       const target =
         targetClass &&
-        findMethod(
+        findMethodWithOwner(
           targetClass,
           value.name,
           value.receiver === "this" ? staticMethod : true,
         );
+      if (targetClass && !target)
+        throw new LangoError(
+          "LNG1241",
+          value.line,
+          `${targetClass.name}: unknown ${value.receiver === "this" ? "instance" : "static"} method ${value.name}`,
+        );
+      if (
+        target &&
+        !target.method.public &&
+        target.owner !== classNode
+      )
+        throw new LangoError(
+          "LNG1242",
+          value.line,
+          `${targetClass.name}: method ${value.name} is private`,
+        );
       if (target)
         validateRequiredArguments(
-          target,
+          target.method,
           value,
-          `${targetClass.name}${target.static ? "::" : ":"}${value.name}`,
+          `${targetClass.name}${target.method.static ? "::" : ":"}${value.name}`,
         );
     }
     if (value.type === "namespaceMethodCall") {
