@@ -25,7 +25,7 @@ main(args)
 test("Faz 16 emits static methods and @@ access", () => {
     const output = compile(source).javascript;
     assert.match(output, /static next\(\)/);
-    assert.match(output, /Counter\.Start = Counter\.Start \+ 1;/);
+    assert.match(output, /Counter\.Start = __normalize\(Counter\.Start\) \+ 1;/);
     assert.match(output, /Counter\.next\(\)/);
 });
 

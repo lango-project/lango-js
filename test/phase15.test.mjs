@@ -31,7 +31,7 @@ main(args)
 test("Faz 15 emits protected properties as inherited fields", () => {
     const output = compile(source).javascript;
     assert.match(output, /this\._label = label;/);
-    assert.match(output, /return this\._label;/);
+    assert.match(output, /return __normalize\(this\._label\);/);
 });
 
 test("Faz 15 rejects external protected-property access", () => {

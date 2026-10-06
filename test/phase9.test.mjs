@@ -27,7 +27,7 @@ main(args)
     const output = compile(source).javascript;
     assert.match(output, /export class Counter/);
     assert.match(output, /#value;/);
-    assert.match(output, /this\.\#value = this\.\#value \+ amount/);
+    assert.match(output, /this\.\#value = __normalize\(this\.\#value\) \+ amount/);
     assert.match(output, /new Counter\(10\)/);
 });
 

@@ -324,3 +324,8 @@ statically known class-method calls.
 
 Faz 61 normalizes JavaScript `undefined` at method boundaries and makes a
 bare Lango `return` produce `null`.
+
+## Faz 62
+
+Faz 62 normalizes missing JavaScript property and index reads, including known
+but unassigned class properties, to Lango `null`.

@@ -1724,6 +1724,10 @@ function emitArityGuard(parameters, actual, name, depth, flags) {
   return `${"    ".repeat(depth)}__requireArity(${actual}, [${positions.join(", ")}], ${JSON.stringify(name)});\n`;
 }
 function emitExpr(node, flags) {
+  const normalize = (value) => {
+    flags.normalize = true;
+    return `__normalize(${value})`;
+  };
   if (node.type === "raw")
     if (flags.contextNames?.has(node.value)) {
       flags.context = true;
@@ -1731,14 +1735,16 @@ function emitExpr(node, flags) {
     }
   if (node.type === "raw")
     return node.value.startsWith("@@")
-      ? `${flags.className}.${node.value.slice(2)}`
+      ? normalize(`${flags.className}.${node.value.slice(2)}`)
       : node.value.startsWith("@")
         ? flags.publicProperties?.has(node.value.slice(1))
-          ? `this.${node.value.slice(1)}`
-          : `this.#${node.value.slice(1)}`
+          ? normalize(`this.${node.value.slice(1)}`)
+          : normalize(`this.#${node.value.slice(1)}`)
         : flags.className && node.value.startsWith("_")
-          ? `this.${node.value}`
-          : node.value;
+          ? normalize(`this.${node.value}`)
+          : /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value)
+            ? normalize(node.value)
+            : node.value;
   if (node.type === "unary") return `!${emitBoolean(node.value, flags)}`;
   if (node.type === "new")
     return `new ${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;

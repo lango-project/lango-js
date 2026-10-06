@@ -28,7 +28,7 @@ test("Faz 12 emits enum values as readonly Lango static values", () => {
     const output = compile(source).javascript;
     assert.match(output, /static White = "white";/);
     assert.match(output, /static Black = "black";/);
-    assert.match(output, /return Color\.White;/);
+    assert.match(output, /return __normalize\(Color\.White\);/);
 });
 
 test("Faz 12 rejects assignment to an enum value", () => {

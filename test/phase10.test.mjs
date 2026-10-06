@@ -31,7 +31,7 @@ main(args)
     assert.match(output, /    name;\n/);
     assert.match(output, /    #secret;\n/);
     assert.match(output, /this\.name = name/);
-    assert.match(output, /return this\.name/);
+    assert.match(output, /return __normalize\(this\.name\)/);
     assert.doesNotMatch(output, /#name/);
 });
 
