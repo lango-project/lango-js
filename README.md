@@ -349,3 +349,8 @@ non-callable dynamic value.
 
 Faz 66 permits calls through local dynamic bindings and reports `NotCallable`
 when the bound value is not a function.
+
+## Faz 67
+
+Faz 67 normalizes and validates JavaScript arguments at every Lango function
+and method entry.

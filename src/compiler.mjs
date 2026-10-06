@@ -1419,6 +1419,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.normalize && "normalize as __normalize",
     flags.finite && "finite as __finite",
     flags.call && "call as __call",
+    flags.boundary && "boundary as __boundary",
     flags.arity && "requireArity as __requireArity",
     flags.closureArity && "withArity as __withArity",
   ].filter(Boolean);
@@ -1564,10 +1565,11 @@ function emitClass(item, flags) {
         statementDepth,
         flags,
       );
+      const boundary = emitBoundaryChecks(method.parameters, statementDepth, flags);
       const methodBody =
         method.name === "constructor" && item.ancestor
-          ? `${statements.shift() ?? ""}${arityGuard}${statements.join("")}`
-          : `${arityGuard}${statements.join("")}`;
+          ? `${statements.shift() ?? ""}${arityGuard}${boundary}${statements.join("")}`
+          : `${arityGuard}${boundary}${statements.join("")}`;
       flags.contextNames = priorContextNames;
       flags.globalNames = priorGlobalNames;
       flags.arrayBindings = priorArrayBindings;
@@ -1612,7 +1614,7 @@ function emitFunction(fn, flags) {
     fn.name,
     contextNames.size ? 2 : 1,
     flags,
-  )}${fn.body
+  )}${emitBoundaryChecks(fn.parameters, contextNames.size ? 2 : 1, flags)}${fn.body
     .map((item) => emitStatement(item, contextNames.size ? 2 : 1, declared, flags))
     .join("")}`;
   flags.contextNames = priorContextNames;
@@ -1773,6 +1775,14 @@ function emitArityGuard(parameters, actual, name, depth, flags) {
   if (!positions.length) return "";
   flags.arity = true;
   return `${"    ".repeat(depth)}__requireArity(${actual}, [${positions.join(", ")}], ${JSON.stringify(name)});\n`;
+}
+function emitBoundaryChecks(parameters, depth, flags) {
+  if (!parameters.length) return "";
+  flags.boundary = true;
+  const pad = "    ".repeat(depth);
+  return parameters
+    .map((parameter) => `${pad}${parameter.name} = __boundary(${parameter.name});\n`)
+    .join("");
 }
 function emitExpr(node, flags) {
   const normalize = (value) => {

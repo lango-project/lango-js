@@ -108,6 +108,10 @@ export function call(value, ...arguments_) {
     return normalize(value(...arguments_));
 }
 
+export function boundary(value) {
+    return finite(normalize(value));
+}
+
 export function requireArity(actual, requiredPositions, name) {
     const missing = requiredPositions.find((position) => actual <= position);
     if (missing !== undefined) {
