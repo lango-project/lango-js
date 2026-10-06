@@ -370,3 +370,8 @@ non-finite numbers, plain objects, and cycles.
 Faz 70 adds header-only JavaScript namespace imports such as
 `import js "node:path" as path`; their namespace cannot collide with a Lango
 declaration.
+
+## Faz 71
+
+Faz 71 lets closures explicitly capture JavaScript namespace imports and
+resolves imported aliases by their local name.

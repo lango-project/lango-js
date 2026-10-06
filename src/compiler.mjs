@@ -720,7 +720,12 @@ function literal(value, line, parser) {
 function validate(program, imports = []) {
   const names = new Map(program.functions.map((item) => [item.name, item]));
   const globals = new Set(program.globals.map((item) => item.name));
-  const imported = new Set(imports.flatMap((item) => item.names));
+  const imported = new Set([
+    ...imports.flatMap((item) =>
+      item.names.map((name) => name.split(" as ").at(-1)),
+    ),
+    ...program.jsImports.map((item) => item.name),
+  ]);
   const standardFunctions = new Map([
     ["from_json", 1],
     ["to_json", 1],
@@ -1096,10 +1101,15 @@ function validate(program, imports = []) {
   program.functions.forEach((fn) =>
     validateClosures(
       fn.body,
-      new Set(fn.parameters.map((parameter) => parameter.name)),
+      new Set([
+        ...fn.parameters.map((parameter) => parameter.name),
+        ...imported,
+      ]),
     ),
   );
-  program.tests.forEach((test) => validateClosures(test.body, new Set()));
+  program.tests.forEach((test) =>
+    validateClosures(test.body, new Set(imported)),
+  );
   const validateContextAssignments = (body, contextNames) => {
     for (const node of body) {
       if (node.type === "assign" && contextNames.has(node.name))
@@ -1360,7 +1370,10 @@ function validate(program, imports = []) {
     classNode.methods.forEach((method) => {
       validateClosures(
         method.body,
-        new Set(method.parameters.map((parameter) => parameter.name)),
+        new Set([
+          ...method.parameters.map((parameter) => parameter.name),
+          ...imported,
+        ]),
         classScope,
       );
       validateContextAssignments(
@@ -1409,7 +1422,12 @@ function emit(program, moduleImports = [], includeTests = false) {
     loopCounter: 0,
     loopStack: [],
     functionNames: new Set(program.functions.map((item) => item.name)),
-    importedNames: new Set(moduleImports.flatMap((item) => item.names)),
+    importedNames: new Set([
+      ...moduleImports.flatMap((item) =>
+        item.names.map((name) => name.split(" as ").at(-1)),
+      ),
+      ...program.jsImports.map((item) => item.name),
+    ]),
   };
   const classes = program.classes
     .map((item) => emitClass(item, flags))
