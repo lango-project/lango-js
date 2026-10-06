@@ -33,11 +33,41 @@ export function fromJson(text) {
 
 export function toJson(value) {
     try {
-        const result = JSON.stringify(value);
-        if (result === undefined) throw new Error("unsupported value");
-        return result;
+        return JSON.stringify(jsonValue(value));
     } catch (error) {
+        if (error.message === "NonFiniteNumber" || error.message === "JsonCycle") {
+            throw error;
+        }
         throw new Error(\`JsonUnsupported: \${error.message}\`);
+    }
+}
+
+function jsonValue(value, ancestors = new Set()) {
+    if (value === undefined) return null;
+    if (value === null || typeof value === "string" || typeof value === "boolean") {
+        return value;
+    }
+    if (typeof value === "number") {
+        if (!Number.isFinite(value)) throw new Error("NonFiniteNumber");
+        return value;
+    }
+    if (typeof value === "function" || typeof value !== "object") {
+        throw new Error("unsupported value");
+    }
+    if (ancestors.has(value)) throw new Error("JsonCycle");
+
+    ancestors.add(value);
+    try {
+        if (Array.isArray(value)) return value.map((item) => jsonValue(item, ancestors));
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== Object.prototype && prototype !== null) {
+            throw new Error("unsupported value");
+        }
+        return Object.fromEntries(
+            Object.entries(value).map(([key, item]) => [key, jsonValue(item, ancestors)]),
+        );
+    } finally {
+        ancestors.delete(value);
     }
 }
 

@@ -359,3 +359,8 @@ and method entry.
 
 Faz 68 applies the same JavaScript-boundary normalization and validation to
 Lango closures.
+
+## Faz 69
+
+Faz 69 gives `to_json` Lango boundary semantics for nested `undefined`,
+non-finite numbers, plain objects, and cycles.
