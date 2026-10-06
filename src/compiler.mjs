@@ -1006,13 +1006,33 @@ function validate(program, imports = []) {
         );
     }
     if (value.type === "superMethodCall" && classNode?.ancestor) {
-      const target = findMethod(
-        classes.get(classNode.ancestor),
-        value.name,
-        staticMethod,
-      );
-      if (target)
-        validateRequiredArguments(target, value, `super.${value.name}`);
+      if (staticMethod)
+        throw new LangoError(
+          "LNG1239",
+          value.line,
+          "super.method(...) is only valid in an instance method",
+        );
+      let target = null;
+      for (
+        let ancestor = classes.get(classNode.ancestor);
+        ancestor;
+        ancestor = ancestor.ancestor ? classes.get(ancestor.ancestor) : null
+      ) {
+        const candidate = ancestor.methods.find(
+          (item) => item.name === value.name && !item.static && item.public,
+        );
+        if (candidate) {
+          target = candidate;
+          break;
+        }
+      }
+      if (!target)
+        throw new LangoError(
+          "LNG1240",
+          value.line,
+          `${classNode.name}: unknown or private ancestor method ${value.name}`,
+        );
+      validateRequiredArguments(target, value, `super.${value.name}`);
     }
     Object.values(value).forEach((item) =>
       Array.isArray(item)
