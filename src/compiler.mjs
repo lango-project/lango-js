@@ -1065,6 +1065,21 @@ function validate(program, imports = []) {
         classNode.line,
         `${classNode.name}: unknown ancestor ${classNode.ancestor}`,
       );
+    const publicInstanceNames = new Set();
+    for (const name of [
+      ...classNode.publicProperties,
+      ...classNode.publicMethods
+        .filter((item) => !item.static)
+        .map((item) => item.name),
+    ]) {
+      if (publicInstanceNames.has(name))
+        throw new LangoError(
+          "LNG1225",
+          classNode.line,
+          `${classNode.name}: duplicate public instance member ${name}`,
+        );
+      publicInstanceNames.add(name);
+    }
     const staticNames = new Set();
     for (const name of [
       ...classNode.staticValues.map((item) => item.name),
@@ -1080,6 +1095,17 @@ function validate(program, imports = []) {
           `${classNode.name}: duplicate static member ${name}`,
         );
       staticNames.add(name);
+    }
+    const implementations = new Set();
+    for (const method of classNode.methods) {
+      const key = `${method.static ? "static" : "instance"}:${method.name}`;
+      if (implementations.has(key))
+        throw new LangoError(
+          "LNG1226",
+          method.line,
+          `${classNode.name}: duplicate ${method.static ? "static" : "instance"} method ${method.name}`,
+        );
+      implementations.add(key);
     }
     for (const method of classNode.publicMethods) {
       const implementation = classNode.methods.find(

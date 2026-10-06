@@ -298,3 +298,8 @@ match their implementations.
 
 Faz 56 rejects duplicate static member names across `static` values, `enum`
 values, and public static methods.
+
+## Faz 57
+
+Faz 57 rejects duplicate public instance members and duplicate class-method
+implementations.

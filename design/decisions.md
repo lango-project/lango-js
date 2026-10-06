@@ -387,6 +387,10 @@ inside the defining class uses ordinary `this.name()` or `Class.name()` calls,
 and the JavaScript backend emits `#name` only for private implementations and
 their resolved calls.
 
+Within the public instance API, a property and a method may not share a name,
+and each instance or static method has exactly one implementation. An instance
+method and a static method may share a name because their call surfaces differ.
+
 A Lango source import names a quoted relative path without its `.lango`
 extension, such as `import "./invoice"`; it resolves relative to the importing
 source file. Its header selects exported declarations and uses an explicit
