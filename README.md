@@ -395,3 +395,8 @@ collisions.
 
 Faz 75 validates direct calls to imported Lango functions against the signature
 declared in the import header.
+
+## Faz 76
+
+Faz 76 requires an imported Lango function signature to match its target
+export.

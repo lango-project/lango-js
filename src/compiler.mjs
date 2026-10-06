@@ -23,21 +23,30 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
       item.sourcePath,
     ).parse();
     for (const selection of item.selections) {
-      const exists =
+      const target =
         selection.kind === "class"
-          ? importedProgram.classes.some(
+          ? importedProgram.classes.find(
               (candidate) =>
                 candidate.name === selection.sourceName && candidate.exported,
             )
-          : importedProgram.functions.some(
+          : importedProgram.functions.find(
               (candidate) =>
                 candidate.name === selection.sourceName && candidate.exported,
             );
-      if (!exists)
+      if (!target)
         throw new LangoError(
           "LNG1227",
           1,
           `${inputPath}: imported ${selection.kind} ${selection.sourceName} is not exported by ${item.sourcePath}`,
+        );
+      if (
+        selection.kind === "function" &&
+        !sameParameters(selection.parameters, target.parameters)
+      )
+        throw new LangoError(
+          "LNG1230",
+          1,
+          `${inputPath}: import signature for ${selection.sourceName} does not match ${item.sourcePath}`,
         );
     }
   }
@@ -2065,7 +2074,23 @@ function collectImports(source, inputPath, outputPath) {
 }
 function importParameters(raw) {
   if (!raw) return [];
-  return raw.split(", ").map((parameter) => ({
-    defaultValue: parameter.includes(" = ") ? parameter : null,
-  }));
+  return raw.split(", ").map((parameter) => {
+    const match = /^([A-Za-z_]\w*)(?: = .+)?$/.exec(parameter);
+    if (!match) throw new Error("invalid import parameter");
+    return {
+      name: match[1],
+      defaultValue: parameter.includes(" = ") ? parameter : null,
+    };
+  });
+}
+function sameParameters(left, right) {
+  return (
+    left.length === right.length &&
+    left.every(
+      (parameter, index) =>
+        parameter.name === right[index].name &&
+        (parameter.defaultValue === null) ===
+          (right[index].defaultValue === null),
+    )
+  );
 }
