@@ -380,3 +380,8 @@ resolves imported aliases by their local name.
 
 Faz 72 adds aliased Lango function imports, for example
 `alias sum = add(left, right)`.
+
+## Faz 73
+
+Faz 73 verifies during a build that each selected Lango function or class is
+actually exported by its target module.

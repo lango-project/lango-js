@@ -17,6 +17,30 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
   const imports = collectImports(source, inputPath, outputPath);
   for (const item of imports)
     await buildFile(item.sourcePath, item.outputPath, seen, includeTests);
+  for (const item of imports) {
+    const importedProgram = new Parser(
+      await readFile(item.sourcePath, "utf8"),
+      item.sourcePath,
+    ).parse();
+    for (const selection of item.selections) {
+      const exists =
+        selection.kind === "class"
+          ? importedProgram.classes.some(
+              (candidate) =>
+                candidate.name === selection.sourceName && candidate.exported,
+            )
+          : importedProgram.functions.some(
+              (candidate) =>
+                candidate.name === selection.sourceName && candidate.exported,
+            );
+      if (!exists)
+        throw new LangoError(
+          "LNG1227",
+          1,
+          `${inputPath}: imported ${selection.kind} ${selection.sourceName} is not exported by ${item.sourcePath}`,
+        );
+    }
+  }
 
   const output = compile(source, inputPath, imports, includeTests).javascript;
   const directory = path.dirname(outputPath);
@@ -1966,6 +1990,7 @@ function collectImports(source, inputPath, outputPath) {
     const match = /^import "(\.[^"]+)"$/.exec(lines[index]);
     if (!match) continue;
     const names = [];
+    const selections = [];
     while (true) {
       const item = lines[index + 1] ?? "";
       const functionImport = /^    ([A-Za-z_]\w*)\([^)]*\)$/.exec(item);
@@ -1980,6 +2005,15 @@ function collectImports(source, inputPath, outputPath) {
           ? `${(classAlias ?? functionAlias)[2]} as ${(classAlias ?? functionAlias)[1]}`
           : (functionImport ?? classImport)[1],
       );
+      const alias = classAlias ?? functionAlias;
+      const sourceName = alias
+        ? alias[2]
+        : (functionImport ?? classImport)[1];
+      selections.push({
+        sourceName,
+        localName: alias ? alias[1] : sourceName,
+        kind: classImport || classAlias ? "class" : "function",
+      });
       index += 1;
     }
     const sourcePath = path.resolve(
@@ -1992,6 +2026,7 @@ function collectImports(source, inputPath, outputPath) {
     );
     items.push({
       names,
+      selections,
       sourcePath,
       outputPath: outputPathForImport,
       specifier: `./${path.basename(outputPathForImport)}`,
