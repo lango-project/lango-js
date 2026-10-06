@@ -88,6 +88,21 @@ export function assert(value, location) {
     return null;
 }
 
+export function requireArity(actual, requiredPositions, name) {
+    const missing = requiredPositions.find((position) => actual <= position);
+    if (missing !== undefined) {
+        throw new Error(\`ArityError: \${name} is missing required argument \${missing + 1}\`);
+    }
+    return null;
+}
+
+export function withArity(callback, requiredPositions, name) {
+    return function (...arguments_) {
+        requireArity(arguments_.length, requiredPositions, name);
+        return callback(...arguments_);
+    };
+}
+
 export function contextGet(name) {
     const stack = contexts.get(name);
     if (!stack || stack.length === 0) {

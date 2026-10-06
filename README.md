@@ -309,3 +309,8 @@ implementations.
 Faz 58 aligns statically known Lango calls with the default-parameter rule:
 excess arguments are ignored, while every required parameter must receive its
 own positional argument.
+
+## Faz 59
+
+Faz 59 adds runtime arity checks for dynamically called Lango functions,
+methods, and closures; excess arguments remain ignored.

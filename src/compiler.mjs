@@ -1310,6 +1310,8 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.predicates && "isArray as __isArray",
     flags.boolean && "requireBoolean as __requireBoolean",
     flags.assert && "assert as __assert",
+    flags.arity && "requireArity as __requireArity",
+    flags.closureArity && "withArity as __withArity",
   ].filter(Boolean);
   const imports = helpers.length
     ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n`
@@ -1441,11 +1443,22 @@ function emitClass(item, flags) {
         method.name === "constructor" || method.public
           ? method.name
           : `#${method.name}`;
-      const methodBody = method.body
+      const statementDepth = contextNames.size ? 3 : 2;
+      const statements = method.body
         .map((node) =>
-          emitStatement(node, contextNames.size ? 3 : 2, declared, flags),
+          emitStatement(node, statementDepth, declared, flags),
         )
-        .join("");
+      const arityGuard = emitArityGuard(
+        method.parameters,
+        "arguments.length",
+        method.name,
+        statementDepth,
+        flags,
+      );
+      const methodBody =
+        method.name === "constructor" && item.ancestor
+          ? `${statements.shift() ?? ""}${arityGuard}${statements.join("")}`
+          : `${arityGuard}${statements.join("")}`;
       flags.contextNames = priorContextNames;
       flags.globalNames = priorGlobalNames;
       flags.arrayBindings = priorArrayBindings;
@@ -1484,9 +1497,15 @@ function emitFunction(fn, flags) {
         : `${p.name} = ${emitExpr(p.defaultValue, flags)}`,
     )
     .join(", ");
-  const body = fn.body
+  const body = `${emitArityGuard(
+    fn.parameters,
+    "arguments.length",
+    fn.name,
+    contextNames.size ? 2 : 1,
+    flags,
+  )}${fn.body
     .map((item) => emitStatement(item, contextNames.size ? 2 : 1, declared, flags))
-    .join("");
+    .join("")}`;
   flags.contextNames = priorContextNames;
   flags.globalNames = priorGlobalNames;
   flags.arrayBindings = priorArrayBindings;
@@ -1598,7 +1617,13 @@ function emitStatement(node, depth, declared, flags) {
   return `${out}\n`;
 }
 function emitClosure(node, depth, flags) {
-  const parameters = node.parameters.map((item) => item.name).join(", ");
+  const parameters = node.parameters
+    .map((item) =>
+      item.defaultValue === null
+        ? item.name
+        : `${item.name} = ${emitExpr(item.defaultValue, flags)}`,
+    )
+    .join(", ");
   const declared = new Set([
     ...node.parameters.map((parameter) => parameter.name),
     ...node.captures.filter((name) => !name.startsWith("@") && !name.startsWith("_")),
@@ -1619,9 +1644,25 @@ function emitClosure(node, depth, flags) {
   flags.contextNames = priorContextNames;
   flags.globalNames = priorGlobalNames;
   flags.arrayBindings = priorArrayBindings;
-  if (!contextNames.size) return `(${parameters}) => {\n${body}${pad}}`;
+  const requiredPositions = node.parameters
+    .map((parameter, index) => (parameter.defaultValue === null ? index : null))
+    .filter((index) => index !== null);
+  const wrap = (value) => {
+    if (!requiredPositions.length) return value;
+    flags.closureArity = true;
+    return `__withArity(${value}, [${requiredPositions.join(", ")}], "closure")`;
+  };
+  if (!contextNames.size) return wrap(`(${parameters}) => {\n${body}${pad}}`);
   flags.context = true;
-  return `(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${body}${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`;
+  return wrap(`(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${body}${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`);
+}
+function emitArityGuard(parameters, actual, name, depth, flags) {
+  const positions = parameters
+    .map((parameter, index) => (parameter.defaultValue === null ? index : null))
+    .filter((index) => index !== null);
+  if (!positions.length) return "";
+  flags.arity = true;
+  return `${"    ".repeat(depth)}__requireArity(${actual}, [${positions.join(", ")}], ${JSON.stringify(name)});\n`;
 }
 function emitExpr(node, flags) {
   if (node.type === "raw")
