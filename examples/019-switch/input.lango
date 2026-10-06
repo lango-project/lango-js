@@ -1,0 +1,19 @@
+export main(args)
+
+main(args)
+    n = 5
+    switch n
+      case 3
+      case 5
+          println("Hello")
+      case 6
+          println("Six")
+      else
+          println("Other")
+    switch
+      case n > 10
+          println("Big")
+      case n == 5
+          println("Five")
+      else
+          println("Unknown")

@@ -104,3 +104,8 @@ Faz 17 adds class-import aliases with `alias Local = class Exported`. See
 Faz 18 adds class `methods` API declarations. Listed instance methods and
 `::static` methods are public; other implementations compile to JavaScript
 private methods. See `examples/018-public-methods`.
+
+## Faz 19
+
+Faz 19 adds value and condition-only `switch` with grouped non-fallthrough
+cases. See `examples/019-switch`.
