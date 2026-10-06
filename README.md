@@ -364,3 +364,8 @@ Lango closures.
 
 Faz 69 gives `to_json` Lango boundary semantics for nested `undefined`,
 non-finite numbers, plain objects, and cycles.
+
+## Faz 70
+
+Faz 70 adds header-only JavaScript namespace imports such as
+`import js "node:path" as path`.

@@ -57,6 +57,7 @@ class Parser {
     const exports = [];
     const globals = [];
     const tests = [];
+    const jsImports = [];
     let declarationSeen = false;
     let exportedClassSeen = false;
     this.blank();
@@ -64,6 +65,16 @@ class Parser {
       const line = this.line();
       if (/^import "\.[^"]+"$/.test(line.text)) {
         while (this.peek()?.startsWith("    ")) this.i += 1;
+        this.blank();
+        continue;
+      }
+      const jsImport = /^import js "([^"]+)" as ([A-Za-z_]\w*)$/.exec(line.text);
+      if (jsImport) {
+        if (declarationSeen)
+          this.fail(line, "LNG1121", "imports must precede class and function declarations");
+        if (jsImports.some((item) => item.name === jsImport[2]))
+          this.fail(line, "LNG1122", `duplicate JavaScript import name ${jsImport[2]}`);
+        jsImports.push({ specifier: jsImport[1], name: jsImport[2] });
         this.blank();
         continue;
       }
@@ -270,7 +281,7 @@ class Parser {
         1,
         `${this.name}: main(args) may be exported once`,
       );
-    return { functions, classes, globals, tests };
+    return { functions, classes, globals, tests, jsImports };
   }
   block(indent) {
     const body = [];
@@ -1432,6 +1443,12 @@ function emit(program, moduleImports = [], includeTests = false) {
         `import { ${item.names.join(", ")} } from ${JSON.stringify(item.specifier)};\n`,
     )
     .join("");
+  const jsModules = program.jsImports
+    .map(
+      (item) =>
+        `import * as ${item.name} from ${JSON.stringify(item.specifier)};\n`,
+    )
+    .join("");
   const globals = program.globals
     .map((item) => `let ${item.name} = ${emitExpr(item.value, flags)};\n`)
     .join("");
@@ -1447,7 +1464,7 @@ function emit(program, moduleImports = [], includeTests = false) {
         )
         .join("")}}\n`
     : "";
-  return `${modules}${imports}${globals}${classes}${functions}${testReset}${tests}//# sourceMappingURL=main.mjs.map\n`;
+  return `${modules}${jsModules}${imports}${globals}${classes}${functions}${testReset}${tests}//# sourceMappingURL=main.mjs.map\n`;
 }
 function emitTest(test, flags) {
   const priorGlobalNames = flags.globalNames;
