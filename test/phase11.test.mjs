@@ -12,6 +12,9 @@ test("Faz 11 emits class static values and @@ access", () => {
 class Constants
     static
         Answer = 42
+    methods
+        value()
+        increase()
 
 Constants:value()
     return @@Answer

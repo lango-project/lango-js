@@ -177,6 +177,13 @@ export class Manager
 
 Will be used as @length, @quality in the class implementation.
 
+The `methods` list is the callable public API. An implementation written as
+`Manager:helper()` or `Manager::helper()` but omitted from that list is private.
+Inside its class, call it with ordinary source syntax such as
+`this.helper()` or `Manager.helper()`; the JavaScript backend chooses private
+`#` method syntax where needed. Static public methods are listed with `::`, for
+example `::create(name)`.
+
 ### Inheritance
 
 Inheritance can be used as expected.

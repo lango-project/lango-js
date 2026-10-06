@@ -378,6 +378,13 @@ not themselves export the class from its file. An external caller can use that
 API only after the class has been exported and imported. This keeps module
 visibility separate from private/protected member visibility.
 
+The `methods` section lists public instance methods as `name(parameters)` and
+public static methods as `::name(parameters)`. A method implementation omitted
+from this section is private. Lango source never spells JavaScript's `#`: code
+inside the defining class uses ordinary `this.name()` or `Class.name()` calls,
+and the JavaScript backend emits `#name` only for private implementations and
+their resolved calls.
+
 A Lango source import names a quoted relative path without its `.lango`
 extension, such as `import "./invoice"`; it resolves relative to the importing
 source file. Its header selects exported declarations and uses an explicit

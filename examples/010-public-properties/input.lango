@@ -3,6 +3,8 @@ export main(args)
 class Account
     properties
         name
+    methods
+        label()
 
 Account(name)
     @name = name

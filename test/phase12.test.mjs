@@ -12,6 +12,8 @@ class Color
     enum
         White = "white"
         Black = "black"
+    methods
+        default()
 
 Color:default()
     return @@White

@@ -3,6 +3,9 @@ export main(args)
 class Constants
     static
         Answer = 42
+    methods
+        value()
+        increase()
 
 Constants:value()
     return @@Answer

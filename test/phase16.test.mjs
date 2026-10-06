@@ -11,6 +11,8 @@ const source = `export main(args)
 export class Counter
     static
         Start = 10
+    methods
+        ::next()
 
 Counter::next()
     @@Start = @@Start + 1

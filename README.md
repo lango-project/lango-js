@@ -93,3 +93,14 @@ and its descendants but not through Lango external member access. See
 
 Faz 16 adds static methods with `Class::method()` and calls such as
 `Class.method()`. See `examples/016-static-methods`.
+
+## Faz 17
+
+Faz 17 adds class-import aliases with `alias Local = class Exported`. See
+`examples/017-class-import-alias`.
+
+## Faz 18
+
+Faz 18 adds class `methods` API declarations. Listed instance methods and
+`::static` methods are public; other implementations compile to JavaScript
+private methods. See `examples/018-public-methods`.

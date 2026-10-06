@@ -12,6 +12,8 @@ test("Faz 10 emits declared public properties and keeps other properties private
 class Account
     properties
         name
+    methods
+        label()
 
 Account(name)
     @name = name

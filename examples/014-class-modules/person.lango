@@ -1,4 +1,6 @@
 export class Person
+    methods
+        describe()
 
 Person(name)
     @name = name

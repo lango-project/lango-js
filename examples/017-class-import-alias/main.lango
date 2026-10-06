@@ -1,0 +1,8 @@
+import "./person"
+    alias Admin = class Person
+
+export main(args)
+
+main(args)
+    admin = new Admin("Ada")
+    println(admin.describe())

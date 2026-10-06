@@ -1,6 +1,8 @@
 export main(args)
 
 export class Counter
+    methods
+        add(amount)
 
 Counter(start)
     @value = start

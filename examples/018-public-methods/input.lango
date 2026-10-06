@@ -1,0 +1,26 @@
+export main(args)
+
+export class Account
+    methods
+        total()
+        ::zero()
+
+Account(value)
+    @value = value
+
+Account:total()
+    this.validate()
+    return @value
+
+Account:validate()
+    return null
+
+Account::zero()
+    return Account.create_zero()
+
+Account::create_zero()
+    return new Account(0)
+
+main(args)
+    account = Account.zero()
+    println(account.total())

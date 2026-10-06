@@ -9,6 +9,8 @@ import { pathToFileURL } from "node:url";
 const source = `export main(args)
 
 class Person
+    methods
+        describe()
 
 Person(name)
     @name = name
@@ -17,6 +19,8 @@ Person:describe()
     return @name
 
 export class Employee : Person
+    methods
+        describe()
 
 Employee(name, id)
     super(name)

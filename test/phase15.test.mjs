@@ -14,6 +14,8 @@ Person(label)
     _label = label
 
 export class Employee : Person
+    methods
+        describe()
 
 Employee(label)
     super(label)

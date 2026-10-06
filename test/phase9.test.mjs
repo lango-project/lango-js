@@ -10,6 +10,8 @@ test("Faz 9 emits JavaScript private class fields", () => {
     const source = `export main(args)
 
 export class Counter
+    methods
+        add(amount)
 
 Counter(start)
     @value = start
