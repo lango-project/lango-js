@@ -744,12 +744,13 @@ function literal(value, line, parser) {
 function validate(program, imports = []) {
   const names = new Map(program.functions.map((item) => [item.name, item]));
   const globals = new Set(program.globals.map((item) => item.name));
-  const imported = new Set([
+  const importNames = [
     ...imports.flatMap((item) =>
       item.names.map((name) => name.split(" as ").at(-1)),
     ),
     ...program.jsImports.map((item) => item.name),
-  ]);
+  ];
+  const imported = new Set(importNames);
   const standardFunctions = new Map([
     ["from_json", 1],
     ["to_json", 1],
@@ -765,6 +766,20 @@ function validate(program, imports = []) {
     throw new LangoError("LNG1201", 1, "duplicate function name");
   if (globals.size !== program.globals.length)
     throw new LangoError("LNG1216", 1, "duplicate global name");
+  if (imported.size !== importNames.length)
+    throw new LangoError("LNG1228", 1, "duplicate imported local name");
+  const declarationNames = new Set([
+    ...program.functions.map((item) => item.name),
+    ...program.classes.map((item) => item.name),
+    ...program.globals.map((item) => item.name),
+  ]);
+  for (const name of imported)
+    if (declarationNames.has(name))
+      throw new LangoError(
+        "LNG1229",
+        1,
+        `imported local name ${name} conflicts with a Lango declaration`,
+      );
   const classes = new Map(program.classes.map((item) => [item.name, item]));
   if (classes.size !== program.classes.length)
     throw new LangoError("LNG1205", 1, "duplicate class name");

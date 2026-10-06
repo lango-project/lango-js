@@ -385,3 +385,8 @@ Faz 72 adds aliased Lango function imports, for example
 
 Faz 73 verifies during a build that each selected Lango function or class is
 actually exported by its target module.
+
+## Faz 74
+
+Faz 74 rejects duplicate imported local names and import/declaration name
+collisions.
