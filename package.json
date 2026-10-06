@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node src/cli.mjs build",
+    "run": "node src/cli.mjs run",
     "test": "node --test test/**/*.test.mjs"
   },
   "engines": {

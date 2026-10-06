@@ -34,6 +34,12 @@ Faz 1 deliberately rejects all syntax outside this vertical slice. It is the
 base for progressively implementing the accepted language decisions rather than
 a claim of full-language support.
 
+Run a program directly with its Lango arguments after `--`:
+
+```sh
+npm run run -- examples/002-main-branch/input.lango Ada
+```
+
 ## Faz 2
 
 Faz 2 adds same-module functions, `return`, calls with arity validation,
@@ -257,3 +263,8 @@ Faz 48 adds `loop until` and unqualified `loop` forms. See
 
 Faz 49 lets `array.add(value)` be used as an expression and preserves its new
 length result. See `examples/049-array-add-return`.
+
+## Faz 50
+
+Faz 50 adds `run <input.lango> [args...]` to the CLI for programs that export
+`main(args)`.
