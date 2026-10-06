@@ -119,3 +119,8 @@ equality. See `examples/020-strict-equality`.
 
 Faz 21 adds `not`, `and`, and `or` logical aliases. See
 `examples/021-logical-operators`.
+
+## Faz 22
+
+Faz 22 adds decimal, scientific, and hexadecimal number literals. See
+`examples/022-number-literals`.

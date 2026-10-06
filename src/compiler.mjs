@@ -213,7 +213,7 @@ function expr(source, line, parser) {
     const call = /^([A-Za-z_]\w*)\((.*)\)$/.exec(text);
     if (call) return { type: "call", name: call[1], arguments: call[2] ? call[2].split(", ").map((item) => expr(item, line, parser)) : [], line: line.number };
     if (/^['"].*['"]$/.test(text)) return { type: "string", literal: literal(text, line, parser) };
-    if (/^\d+$/.test(text)) return { type: "raw", value: text };
+    if (/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text) || /^0[xX][0-9a-fA-F]+$/.test(text)) return { type: "raw", value: text };
     if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
     if (/^[A-Za-z_]\w*\._[A-Za-z_]\w*$/.test(text)) parser.fail(line, "LNG1115", "protected properties are not accessible outside a class");
     if (/^[A-Za-z_]\w*\.[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
