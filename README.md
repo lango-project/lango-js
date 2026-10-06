@@ -223,3 +223,12 @@ declarations. See `examples/041-globals`.
 
 Faz 42 requires closures to declare globals explicitly before using them. See
 `examples/042-closure-global`.
+
+## Faz 43
+
+Faz 43 adds standard `from_json()` and `to_json()` helpers. See
+`examples/043-json`.
+
+## Faz 44
+
+Faz 44 checks JSON-helper arity and reports malformed input as `JsonParseError`.

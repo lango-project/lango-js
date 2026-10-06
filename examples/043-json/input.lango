@@ -1,0 +1,6 @@
+export main(args)
+
+main(args)
+    customer = from_json('{"name":"Ada","active":true}')
+    println(customer.name)
+    println(to_json(customer))

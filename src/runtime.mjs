@@ -22,6 +22,24 @@ export function println(value) {
     return null;
 }
 
+export function fromJson(text) {
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        throw new Error(\`JsonParseError: \${error.message}\`);
+    }
+}
+
+export function toJson(value) {
+    try {
+        const result = JSON.stringify(value);
+        if (result === undefined) throw new Error("unsupported value");
+        return result;
+    } catch (error) {
+        throw new Error(\`JsonUnsupported: \${error.message}\`);
+    }
+}
+
 export function contextGet(name) {
     const stack = contexts.get(name);
     if (!stack || stack.length === 0) {
