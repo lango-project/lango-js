@@ -268,3 +268,8 @@ length result. See `examples/049-array-add-return`.
 
 Faz 50 adds `run <input.lango> [args...]` to the CLI for programs that export
 `main(args)`.
+
+## Faz 51
+
+Faz 51 adds validated `break N` and `continue N` for nested loops. See
+`examples/051-loop-levels`.

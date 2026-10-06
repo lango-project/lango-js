@@ -1,0 +1,13 @@
+export main(args)
+
+main(args)
+    outer = 0
+    loop while outer < 3
+        inner = 0
+        loop
+            inner++
+            if inner == 2
+                outer++
+                continue 2
+        println("never")
+    println(outer)

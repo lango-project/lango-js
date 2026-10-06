@@ -6,7 +6,7 @@ import {
 function sum_to(limit) {
     let number = 0;
     let total = 0;
-    while (__requireBoolean(number < limit)) {
+    __loop1: while (__requireBoolean(number < limit)) {
         total = total + number;
         number += 1;
     }

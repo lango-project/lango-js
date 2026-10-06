@@ -398,8 +398,10 @@ class Parser {
             ? argumentsText.split(", ").map((item) => expr(item, line, this))
             : [],
         });
-      } else if (text === "break" || text === "continue")
-        body.push({ type: text });
+      } else if (/^(break|continue)(?: ([1-9]\d*))?$/.test(text)) {
+        const [, type, rawLevel] = /^(break|continue)(?: ([1-9]\d*))?$/.exec(text);
+        body.push({ type, level: Number(rawLevel ?? 1), line: line.number });
+      }
       else if (/^[A-Za-z_]\w*\+\+$/.test(text))
         body.push({ type: "increment", name: text.slice(0, -2) });
       else if (/^([A-Za-z_]\w*)\.add\((.+)\)$/.test(text)) {
@@ -994,6 +996,22 @@ function validate(program, imports = []) {
     validateContextAssignments(fn.body, contextDeclarations(fn.body)),
   );
   program.functions.forEach((fn) => validateGlobalAccess(fn.body));
+  const validateLoopLevels = (body, depth = 0) => {
+    for (const node of body) {
+      if (
+        (node.type === "break" || node.type === "continue") &&
+        node.level > depth
+      )
+        throw new LangoError(
+          "LNG1220",
+          node.line,
+          `${node.type} ${node.level} exceeds enclosing loop depth ${depth}`,
+        );
+      const childDepth = node.type === "loop" ? depth + 1 : depth;
+      nestedBodies(node).forEach((child) => validateLoopLevels(child, childDepth));
+    }
+  };
+  program.functions.forEach((fn) => validateLoopLevels(fn.body));
   const classes = new Map(program.classes.map((item) => [item.name, item]));
   if (classes.size !== program.classes.length)
     throw new LangoError("LNG1205", 1, "duplicate class name");
@@ -1079,6 +1097,7 @@ function validate(program, imports = []) {
         contextDeclarations(method.body),
       );
       validateGlobalAccess(method.body);
+      validateLoopLevels(method.body);
       superCalls.length = 0;
       validateMethod(method.body);
       if (
@@ -1111,7 +1130,7 @@ function validate(program, imports = []) {
 }
 
 function emit(program, moduleImports = []) {
-  const flags = { print: false, translate: false, context: false };
+  const flags = { print: false, translate: false, context: false, loopCounter: 0, loopStack: [] };
   const classes = program.classes
     .map((item) => emitClass(item, flags))
     .join("\n");
@@ -1342,8 +1361,10 @@ function emitStatement(node, depth, declared, flags) {
     flags.print = true;
     return `${pad}__println(${emitExpr(node.value, flags)});\n`;
   }
-  if (node.type === "break" || node.type === "continue")
-    return `${pad}${node.type};\n`;
+  if (node.type === "break" || node.type === "continue") {
+    const label = flags.loopStack.at(-node.level);
+    return `${pad}${node.type}${node.level === 1 ? "" : ` ${label}`};\n`;
+  }
   if (node.type === "try") {
     let out = `${pad}try {\n${node.tryBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
     if (node.catchBody)
@@ -1352,8 +1373,15 @@ function emitStatement(node, depth, declared, flags) {
       out += ` finally {\n${node.finallyBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
     return `${out}\n`;
   }
-  if (node.type === "loop")
-    return `${pad}while (${node.condition === null ? "true" : `${node.until ? "!" : ""}${emitBoolean(node.condition, flags)}`}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+  if (node.type === "loop") {
+    const label = `__loop${++flags.loopCounter}`;
+    flags.loopStack.push(label);
+    const body = node.body
+      .map((item) => emitStatement(item, depth + 1, declared, flags))
+      .join("");
+    flags.loopStack.pop();
+    return `${pad}${label}: while (${node.condition === null ? "true" : `${node.until ? "!" : ""}${emitBoolean(node.condition, flags)}`}) {\n${body}${pad}}\n`;
+  }
   if (node.type === "for")
     return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
   if (node.type === "forObject")
