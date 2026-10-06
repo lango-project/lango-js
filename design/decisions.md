@@ -119,7 +119,7 @@ anonymous function value. A named function value can be assigned with
 
 * `Name(parameters)` is the constructor.
 * `Name:method(parameters)` is an instance method.
-* `fn Name::method(parameters)` is a static method.
+* `Name::method(parameters)` is a static method.
 
 The transpiler emits JavaScript `class` syntax. Constructor declarations retain
 the `Name(parameters)` form inside their class implementation, but every class

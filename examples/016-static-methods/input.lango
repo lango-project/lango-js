@@ -1,0 +1,13 @@
+export main(args)
+
+export class Counter
+    static
+        Start = 10
+
+Counter::next()
+    @@Start = @@Start + 1
+    return @@Start
+
+main(args)
+    println(Counter.next())
+    println(Counter.next())

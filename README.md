@@ -88,3 +88,8 @@ import header. See `examples/014-class-modules`.
 Faz 15 adds protected instance properties with `_name`, accessible from a class
 and its descendants but not through Lango external member access. See
 `examples/015-protected-properties`.
+
+## Faz 16
+
+Faz 16 adds static methods with `Class::method()` and calls such as
+`Class.method()`. See `examples/016-static-methods`.

@@ -121,7 +121,7 @@ Manager() # Constructor
 Manager:add(a, b) # Method
     return a + b + @surprise
 
-fn Manager::CreateInstance() # Static method
+Manager::CreateInstance() # Static method
     return new Manager()
 ```
 Instance methods are called through their receiver. To use one as a callback,
