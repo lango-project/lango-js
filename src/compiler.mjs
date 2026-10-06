@@ -1345,6 +1345,27 @@ function validate(program, imports = []) {
   const validateClosures = (body, outerBindings, classScope = null) => {
     const available = new Set(outerBindings);
     for (const node of body) {
+      if (node.type === "if") {
+        const left = validateClosures(node.thenBody, new Set(available), classScope);
+        const right = node.elseBody
+          ? validateClosures(node.elseBody, new Set(available), classScope)
+          : available;
+        for (const name of left) if (right.has(name)) available.add(name);
+        continue;
+      }
+      if (node.type === "try") {
+        const exits = [validateClosures(node.tryBody, new Set(available), classScope)];
+        if (node.catchBody)
+          exits.push(validateClosures(node.catchBody, new Set(available), classScope));
+        const certain = new Set(exits[0]);
+        for (const name of certain)
+          if (!exits.every((exit) => exit.has(name))) certain.delete(name);
+        const afterFinally = node.finallyBody
+          ? validateClosures(node.finallyBody, certain, classScope)
+          : certain;
+        afterFinally.forEach((name) => available.add(name));
+        continue;
+      }
       const closure =
         node.type === "closureAssign"
           ? node
@@ -1421,7 +1442,7 @@ function validate(program, imports = []) {
           new Set([...available, ...localBindings]),
           classScope,
         );
-        if (node.type === "closureAssign") available.add(node.name);
+      if (node.type === "closureAssign") available.add(node.name);
         continue;
       }
       if (node.type === "assign" && !node.name.startsWith("@"))
@@ -1432,7 +1453,61 @@ function validate(program, imports = []) {
         available.add(node.value);
       }
     }
+    return available;
   };
+  const validateDefiniteAssignments = (body, initial = new Set()) => {
+    const candidates = directBindings(body);
+    const visit = (nodes, assigned) => {
+      const current = new Set(assigned);
+      for (const node of nodes) {
+        const references = new Set();
+        [node.value, node.condition, node.arguments, node.tests].forEach((value) => {
+          if (Array.isArray(value)) value.forEach((item) => expressionReferences(item, references));
+          else expressionReferences(value, references);
+        });
+        for (const name of references)
+          if (candidates.has(name) && !current.has(name))
+            throw new LangoError("LNG1246", node.line ?? 1, `${name} is not assigned on every path`);
+        if (node.type === "if") {
+          const left = visit(node.thenBody, current);
+          const right = node.elseBody ? visit(node.elseBody, current) : current;
+          for (const name of left) if (right.has(name)) current.add(name);
+          continue;
+        }
+        if (node.type === "try") {
+          const normalExits = [visit(node.tryBody, current)];
+          if (node.catchBody) normalExits.push(visit(node.catchBody, current));
+          const certain = new Set(normalExits[0]);
+          for (const name of certain)
+            if (!normalExits.every((exit) => exit.has(name))) certain.delete(name);
+          if (node.finallyBody) {
+            const afterFinally = visit(node.finallyBody, certain);
+            afterFinally.forEach((name) => current.add(name));
+          } else certain.forEach((name) => current.add(name));
+          continue;
+        }
+        if (node.type === "loop" || node.type === "for" || node.type === "forObject") {
+          const loopBindings = new Set(current);
+          if (node.type === "for") loopBindings.add(node.item);
+          if (node.type === "forObject") {
+            loopBindings.add(node.key);
+            loopBindings.add(node.value);
+          }
+          visit(node.body, loopBindings);
+          continue;
+        }
+        if (node.type === "assign" || node.type === "closureAssign") current.add(node.name);
+      }
+      return current;
+    };
+    visit(body, initial);
+  };
+  program.functions.forEach((fn) =>
+    validateDefiniteAssignments(
+      fn.body,
+      new Set([...fn.parameters.map((item) => item.name), ...globals]),
+    ),
+  );
 
   program.functions.forEach((fn) =>
     validateClosures(
@@ -2052,7 +2127,15 @@ function emitClass(item, flags) {
   return `${item.exported ? "export " : ""}class ${item.name}${item.ancestor ? ` extends ${item.ancestor}` : ""} {\n${item.publicProperties.map((field) => `    ${field};\n`).join("")}${statics}${fields.map((field) => `    #${field};\n`).join("")}${implicitConstructor}${body}}\n`;
 }
 function emitFunction(fn, flags) {
-  const declared = new Set(fn.parameters.map((p) => p.name));
+  const topLevelAssigned = new Set(
+    fn.body
+      .filter((node) => node.type === "assign" || node.type === "closureAssign")
+      .map((node) => node.name),
+  );
+  const hoisted = new Set(
+    [...collectEmitLocals(fn.body)].filter((name) => !topLevelAssigned.has(name)),
+  );
+  const declared = new Set([...fn.parameters.map((p) => p.name), ...hoisted]);
   const priorArrayBindings = flags.arrayBindings;
   flags.arrayBindings = new Set();
   const priorContextNames = flags.contextNames;
@@ -2073,7 +2156,7 @@ function emitFunction(fn, flags) {
     fn.name,
     contextNames.size ? 2 : 1,
     flags,
-  )}${emitBoundaryChecks(fn.parameters, contextNames.size ? 2 : 1, flags)}${fn.body
+  )}${emitBoundaryChecks(fn.parameters, contextNames.size ? 2 : 1, flags)}${[...hoisted].map((name) => `${"    ".repeat(contextNames.size ? 2 : 1)}let ${name};\n`).join("")}${fn.body
     .map((item) => emitStatement(item, contextNames.size ? 2 : 1, declared, flags))
     .join("")}`;
   flags.contextNames = priorContextNames;
@@ -2083,6 +2166,17 @@ function emitFunction(fn, flags) {
     return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n${body}    return null;\n}\n`;
   flags.context = true;
   return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n    const __contextScope = [];\n    try {\n${body}        return null;\n    } finally {\n        __contextRestore(__contextScope);\n    }\n}\n`;
+}
+function collectEmitLocals(body, names = new Set(), nested = false) {
+  for (const node of body) {
+    if (nested && node.type === "assign" && !node.name.startsWith("@") && !node.name.startsWith("_"))
+      names.add(node.name);
+    if (nested && node.type === "closureAssign") names.add(node.name);
+    [node.thenBody, node.elseBody, node.tryBody, node.catchBody, node.finallyBody]
+      .filter(Boolean)
+      .forEach((child) => collectEmitLocals(child, names, true));
+  }
+  return names;
 }
 function emitStatement(node, depth, declared, flags) {
   const pad = "    ".repeat(depth);
