@@ -13,6 +13,10 @@ export function isDecimal(value) {
     return value instanceof Decimal;
 }
 
+export function toJsNumber(value) {
+    return new Decimal(value).toNumber();
+}
+
 let catalog = {};
 let output = null;
 const contexts = new Map();
@@ -40,10 +44,19 @@ export function println(value) {
 
 export function fromJson(text) {
     try {
-        return JSON.parse(text);
+        return decimalJson(JSON.parse(text));
     } catch (error) {
         throw new Error(\`JsonParseError: \${error.message}\`);
     }
+}
+
+function decimalJson(value) {
+    if (Array.isArray(value)) return value.map(decimalJson);
+    if (value === null || typeof value !== "object") return value;
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+        key,
+        key.startsWith("$") && typeof item === "number" ? decimal(item) : decimalJson(item),
+    ]));
 }
 
 export function toJson(value) {
@@ -62,6 +75,7 @@ function jsonValue(value, ancestors = new Set()) {
     if (value === null || typeof value === "string" || typeof value === "boolean") {
         return value;
     }
+    if (isDecimal(value)) return JSON.rawJSON(value.toFixed());
     if (typeof value === "number") {
         if (!Number.isFinite(value)) throw new Error("NonFiniteNumber");
         return value;

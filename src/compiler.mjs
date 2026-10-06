@@ -140,7 +140,7 @@ class Parser {
         this.blank();
         continue;
       }
-      const globalDeclaration = /^global ([A-Za-z_]\w*) = (.+)$/.exec(
+      const globalDeclaration = /^global (\$?[A-Za-z_]\w*) = (.+)$/.exec(
         line.text,
       );
       if (globalDeclaration) {
@@ -193,7 +193,7 @@ class Parser {
         ) {
           const section = this.line().text.trim();
           if (section === "properties") {
-            while (/^        [A-Za-z_]\w*$/.test(this.peek() ?? ""))
+            while (/^        \$?[A-Za-z_]\w*$/.test(this.peek() ?? ""))
               classNode.publicProperties.push(this.lines[this.i++].trim());
           } else if (section === "methods") {
             while (true) {
@@ -214,7 +214,7 @@ class Parser {
           } else if (section === "static") {
             while (true) {
               const valueLine = this.peek() ?? "";
-              const value = /^        ([A-Za-z_]\w*) = (.+)$/.exec(valueLine);
+              const value = /^        (\$?[A-Za-z_]\w*) = (.+)$/.exec(valueLine);
               const method = /^        ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(valueLine);
               if (!value && !method) break;
               if (value) {
@@ -233,9 +233,9 @@ class Parser {
               }
             }
           } else {
-            while (/^        [A-Za-z_]\w* = .+$/.test(this.peek() ?? "")) {
+            while(/^        \$?[A-Za-z_]\w* = .+$/.test(this.peek() ?? "")) {
               const valueLine = this.line();
-              const [, name, value] = /^        ([A-Za-z_]\w*) = (.+)$/.exec(
+              const [, name, value] = /^        (\$?[A-Za-z_]\w*) = (.+)$/.exec(
                 valueLine.text,
               );
               classNode[
@@ -378,8 +378,8 @@ class Parser {
           line: line.number,
           source: text.slice(7),
         });
-      } else if (/^global ([A-Za-z_]\w*)$/.test(text)) {
-        const [, name] = /^global ([A-Za-z_]\w*)$/.exec(text);
+      } else if (/^global (\$?[A-Za-z_]\w*)$/.test(text)) {
+        const [, name] = /^global (\$?[A-Za-z_]\w*)$/.exec(text);
         body.push({ type: "globalDeclare", name, line: line.number });
       } else if (/^context ([A-Za-z_]\w*) = (.+)$/.test(text)) {
         const [, name, value] = /^context ([A-Za-z_]\w*) = (.+)$/.exec(text);
@@ -553,7 +553,7 @@ class Parser {
         const [, name] = /^([A-Za-z_]\w*) = \{$/.exec(text);
         body.push({ type: "assign", name, value: this.object(indent) });
       } else {
-        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}[A-Za-z_]\w*) = (.+)$/.exec(text);
+        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*) = (.+)$/.exec(text);
         if (!assignment)
           this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
         body.push({
@@ -574,7 +574,7 @@ class Parser {
   parameters(raw, line) {
     if (raw === "") return [];
     return raw.split(", ").map((item) => {
-      const match = /^([A-Za-z_]\w*)(?: = (.+))?$/.exec(item);
+      const match = /^(\$?[A-Za-z_]\w*)(?: = (.+))?$/.exec(item);
       if (!match) this.fail(line, "LNG1102", "invalid parameter list");
       return {
         name: match[1],
@@ -614,7 +614,7 @@ class Parser {
           "expected an object field or closing brace",
         );
       const line = this.line();
-      const match = /^([A-Za-z_]\w*): (.+)$/.exec(line.text.slice(indent + 4));
+      const match = /^(\$?[A-Za-z_]\w*): (.+)$/.exec(line.text.slice(indent + 4));
       if (!match) this.fail(line, "LNG1111", "expected `key: value`");
       fields.push({
         key: match[1],
@@ -771,11 +771,11 @@ function expr(source, line, parser) {
       "LNG1115",
       "protected properties are not accessible outside a class",
     );
-  if (/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$/.test(text))
+  if (/^[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)+$/.test(text))
     return { type: "raw", value: text };
   if (/^[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(text))
     return { type: "raw", value: text };
-  if (/^(?:\$[A-Za-z_]\w*|@{0,2}[A-Za-z_]\w*)$/.test(text)) return { type: "raw", value: text };
+  if (/^(?:\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*)$/.test(text)) return { type: "raw", value: text };
   parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
 }
 
@@ -860,7 +860,73 @@ function validate(program, imports = []) {
     ["is_bool", 1],
     ["is_object", 1],
     ["is_array", 1],
+    ["to_js_number", 1],
   ]);
+  const isDecimalValue = (value) =>
+    value &&
+    ((value.type === "raw" && (value.value.startsWith("$") || value.value.includes(".$"))) ||
+      (value.type === "binary" && [value.left, value.right].some(
+        (item) => item.type === "raw" && (item.value.startsWith("$") || item.value.includes(".$")),
+      )));
+  const returns = (body, result = []) => {
+    for (const node of body) {
+      if (node.type === "return") result.push(node.value);
+      [node.thenBody, node.elseBody, node.tryBody, node.catchBody, node.finallyBody]
+        .filter(Boolean)
+        .forEach((child) => returns(child, result));
+    }
+    return result;
+  };
+  const decimalFunctions = new Set(
+    program.functions
+      .filter((fn) => returns(fn.body).some(isDecimalValue))
+      .map((fn) => fn.name),
+  );
+  let decimalFunctionChanged = true;
+  while (decimalFunctionChanged) {
+    decimalFunctionChanged = false;
+    for (const fn of program.functions)
+      if (
+        !decimalFunctions.has(fn.name) &&
+        returns(fn.body).some(
+          (value) => value?.type === "call" && decimalFunctions.has(value.name),
+        )
+      ) {
+        decimalFunctions.add(fn.name);
+        decimalFunctionChanged = true;
+      }
+  }
+  for (const fn of program.functions) {
+    const values = returns(fn.body);
+    const decimalReturn = (value) =>
+      isDecimalValue(value) ||
+      (value?.type === "call" && decimalFunctions.has(value.name));
+    if (values.some(decimalReturn) && values.some((value) => !decimalReturn(value)))
+      throw new LangoError(
+        "LNG1243",
+        fn.line,
+        `${fn.name}: Decimal-returning function has a non-Decimal return path`,
+      );
+  }
+  const validateDecimalAssignments = (body) => {
+    for (const node of body) {
+      if (
+        node.type === "assign" &&
+        !node.name.startsWith("$") &&
+        node.value.type === "call" &&
+        decimalFunctions.has(node.value.name)
+      )
+        throw new LangoError(
+          "LNG1244",
+          1,
+          `${node.value.name} returns Decimal; assign it to a $ binding or call to_js_number(...)`,
+        );
+      [node.thenBody, node.elseBody, node.tryBody, node.catchBody, node.finallyBody, node.body]
+        .filter(Boolean)
+        .forEach(validateDecimalAssignments);
+    }
+  };
+  program.functions.forEach((fn) => validateDecimalAssignments(fn.body));
   if (names.size !== program.functions.length)
     throw new LangoError("LNG1201", 1, "duplicate function name");
   if (globals.size !== program.globals.length)
@@ -996,6 +1062,19 @@ function validate(program, imports = []) {
         );
       if (target) {
         validateRequiredArguments(target, value, value.name);
+        value.arguments.forEach((argument, index) => {
+          const parameter = target.parameters[index];
+          if (
+            parameter &&
+            !parameter.name.startsWith("$") &&
+            isDecimalValue(argument)
+          )
+            throw new LangoError(
+              "LNG1245",
+              value.line,
+              `${value.name}: Decimal argument ${index + 1} requires a $ parameter`,
+            );
+        });
       }
       if (
         standardFunctions.has(value.name) &&
@@ -1740,6 +1819,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     print: false,
     translate: false,
     context: false,
+    decimal: program.globals.some((item) => item.name.startsWith("$")),
     loopCounter: 0,
     loopStack: [],
     functionNames: new Set(program.functions.map((item) => item.name)),
@@ -1776,6 +1856,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.predicates && "isBool as __isBool",
     flags.predicates && "isObject as __isObject",
     flags.predicates && "isArray as __isArray",
+    flags.toJsNumber && "toJsNumber as __toJsNumber",
     flags.boolean && "requireBoolean as __requireBoolean",
     flags.assert && "assert as __assert",
     flags.normalize && "normalize as __normalize",
@@ -1801,7 +1882,12 @@ function emit(program, moduleImports = [], includeTests = false) {
     )
     .join("");
   const globals = program.globals
-    .map((item) => `let ${item.name} = ${emitExpr(item.value, flags)};\n`)
+    .map((item) => {
+      const value = emitExpr(item.value, flags);
+      if (!item.name.startsWith("$")) return `let ${item.name} = ${value};\n`;
+      flags.decimal = true;
+      return `let ${item.name} = __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value});\n`;
+    })
     .join("");
   const testReset = includeTests
     ? `export function __langoResetTests() {\n${program.globals
@@ -1887,7 +1973,7 @@ function emitClass(item, flags) {
       item.methods
         .flatMap(
           (method) =>
-            JSON.stringify(method.body).match(/@@?[A-Za-z_]\w*/g) ?? [],
+            JSON.stringify(method.body).match(/@@?\$?[A-Za-z_]\w*/g) ?? [],
         )
         .filter((name) => !name.startsWith("@@"))
         .map((name) => name.slice(1)),
@@ -1950,8 +2036,13 @@ function emitClass(item, flags) {
     .join("");
   const statics = [...item.staticValues, ...item.enumValues]
     .map(
-      (value) =>
-        `    static ${value.name} = ${emitExpr(value.value, flags)};\n`,
+      (value) => {
+        const emitted = emitExpr(value.value, flags);
+        if (!value.name.startsWith("$"))
+          return `    static ${value.name} = ${emitted};\n`;
+        flags.decimal = true;
+        return `    static ${value.name} = __decimal(${value.value.type === "raw" ? JSON.stringify(value.value.value) : emitted});\n`;
+      },
     )
     .join("");
   flags.publicProperties = prior.publicProperties;
@@ -2006,7 +2097,7 @@ function emitStatement(node, depth, declared, flags) {
     return `${pad}__assert(${emitBoolean(node.value, flags)}, ${JSON.stringify(`line ${node.line}: ${node.source}`)});\n`;
   }
   if (node.type === "assign") {
-    const decimalBinding = node.name.startsWith("$");
+    const decimalBinding = node.name.startsWith("$") || /^@{1,2}\$/.test(node.name);
     const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
     const target = node.name.startsWith("@@")
       ? `${flags.className}.${property}`
@@ -2027,7 +2118,16 @@ function emitStatement(node, depth, declared, flags) {
     if (node.value.type === "array") flags.arrayBindings?.add(node.name);
     const value = emitExpr(node.value, flags);
     if (decimalBinding) flags.decimal = true;
-    return `${pad}${prefix}${target} = ${decimalBinding ? `__decimal(${node.value.type === "raw" ? JSON.stringify(node.value.value) : value})` : value};\n`;
+    const decimalExpression =
+      node.value.type === "binary" &&
+      [node.value.left, node.value.right].some(
+        (item) => item.type === "raw" && item.value.startsWith("$"),
+      );
+    const decimalInput =
+      node.value.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.value.value)
+        ? JSON.stringify(node.value.value)
+        : value;
+    return `${pad}${prefix}${target} = ${decimalBinding && !decimalExpression ? `__decimal(${decimalInput})` : value};\n`;
   }
   if (node.type === "expression")
     return `${pad}${emitExpr(node.value, flags)};\n`;
@@ -2157,10 +2257,19 @@ function emitBoundaryChecks(parameters, depth, flags) {
   flags.boundary = true;
   const pad = "    ".repeat(depth);
   return parameters
-    .map((parameter) => `${pad}${parameter.name} = __boundary(${parameter.name});\n`)
+    .map((parameter) => {
+      if (parameter.name.startsWith("$")) {
+        flags.decimal = true;
+        return `${pad}${parameter.name} = __decimal(${parameter.name});\n`;
+      }
+      return `${pad}${parameter.name} = __boundary(${parameter.name});\n`;
+    })
     .join("");
 }
 function emitExpr(node, flags) {
+  const decimalRaw = (value) =>
+    value?.type === "raw" &&
+    (value.value.startsWith("$") || value.value.includes(".$"));
   const normalize = (value) => {
     flags.normalize = true;
     return `__normalize(${value})`;
@@ -2220,15 +2329,52 @@ function emitExpr(node, flags) {
   if (node.type === "array")
     return `[${node.values.map((item) => emitExpr(item, flags)).join(", ")}]`;
   if (node.type === "object")
-    return `{ ${node.fields.map((item) => `${item.key}: ${emitExpr(item.value, flags)}`).join(", ")} }`;
+    return `{ ${node.fields.map((item) => {
+      const value = emitExpr(item.value, flags);
+      if (!item.key.startsWith("$")) return `${item.key}: ${value}`;
+      flags.decimal = true;
+      return `${JSON.stringify(item.key)}: __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value})`;
+    }).join(", ")} }`;
   if (node.type === "binary") {
     const operators = { "==": "===", and: "&&", or: "||" };
     if (node.operator === "and" || node.operator === "or")
       return `${emitBoolean(node.left, flags)} ${operators[node.operator]} ${emitBoolean(node.right, flags)}`;
     if (
+      node.operator === "==" &&
+      decimalRaw(node.right)
+    ) {
+      flags.decimal = true;
+      const left =
+        node.left.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.left.value)
+          ? `__decimal(${JSON.stringify(node.left.value)})`
+          : emitExpr(node.left, flags);
+      return `${left}.eq(${emitExpr(node.right, flags)})`;
+    }
+    if (
+      node.operator === "==" &&
+      decimalRaw(node.left)
+    ) {
+      flags.decimal = true;
+      const right =
+        node.right.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.right.value)
+          ? `__decimal(${JSON.stringify(node.right.value)})`
+          : emitExpr(node.right, flags);
+      return `${emitExpr(node.left, flags)}.eq(${right})`;
+    }
+    if (
       ["+", "-", "*", "/"].includes(node.operator) &&
-      node.left.type === "raw" &&
-      node.left.value.startsWith("$")
+      decimalRaw(node.right)
+    ) {
+      flags.decimal = true;
+      const left = node.left.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.left.value)
+        ? `__decimal(${JSON.stringify(node.left.value)})`
+        : emitExpr(node.left, flags);
+      const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div" };
+      return `${left}.${methods[node.operator]}(${emitExpr(node.right, flags)})`;
+    }
+    if (
+      ["+", "-", "*", "/"].includes(node.operator) &&
+      decimalRaw(node.left)
     ) {
       flags.decimal = true;
       const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div" };
@@ -2245,6 +2391,11 @@ function emitExpr(node, flags) {
     }
     return value;
   }
+  if (node.type === "call")
+    if (node.name === "to_js_number") {
+      flags.toJsNumber = true;
+      return `__toJsNumber(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    }
   if (node.type === "call")
     if (node.name === "from_json" || node.name === "to_json") {
       flags.json = true;
