@@ -1122,12 +1122,63 @@ function validate(program, imports = []) {
       }
     };
     classNode.methods.forEach((method) => collectInstanceMembers(method.body));
+    const collectInheritedProtectedMembers = (body, members) => {
+      for (const node of body) {
+        if (node.type === "assign" && /^_[A-Za-z_]\w*$/.test(node.name))
+          members.add(node.name);
+        nestedBodies(node).forEach((child) =>
+          collectInheritedProtectedMembers(child, members),
+        );
+      }
+    };
+    const inheritedInstanceMembers = new Set();
+    const inheritedStaticMembers = new Set();
+    let ancestor = classNode.ancestor ? classes.get(classNode.ancestor) : null;
+    while (ancestor) {
+      ancestor.publicProperties.forEach((name) => inheritedInstanceMembers.add(name));
+      ancestor.methods.forEach((method) =>
+        collectInheritedProtectedMembers(method.body, inheritedInstanceMembers),
+      );
+      ancestor.staticValues.forEach((value) => inheritedStaticMembers.add(value.name));
+      ancestor.enumValues.forEach((value) => inheritedStaticMembers.add(value.name));
+      ancestor = ancestor.ancestor ? classes.get(ancestor.ancestor) : null;
+    }
     const classScope = {
-      instanceMembers,
+      instanceMembers: new Set([...instanceMembers, ...inheritedInstanceMembers]),
       staticMembers: new Set([
         ...classNode.staticValues.map((item) => item.name),
         ...classNode.enumValues.map((item) => item.name),
+        ...inheritedStaticMembers,
       ]),
+    };
+    const validateProperties = (value) => {
+      if (!value || typeof value !== "object") return;
+      const name =
+        value.type === "assign"
+          ? value.name
+          : value.type === "raw"
+            ? value.value
+            : null;
+      if (name && /^@@[A-Za-z_]\w*$/.test(name)) {
+        if (!classScope.staticMembers.has(name.slice(2)))
+          throw new LangoError(
+            "LNG1221",
+            classNode.line,
+            `${classNode.name}: unknown static property ${name}`,
+          );
+      }
+      if (name && /^@[A-Za-z_]\w*$/.test(name)) {
+        if (!classScope.instanceMembers.has(name.slice(1)))
+          throw new LangoError(
+            "LNG1222",
+            classNode.line,
+            `${classNode.name}: unknown instance property ${name}`,
+          );
+      }
+      Object.values(value).forEach((item) => {
+        if (Array.isArray(item)) item.forEach(validateProperties);
+        else validateProperties(item);
+      });
     };
     classNode.methods.forEach((method) => {
       validateClosures(
@@ -1141,6 +1192,7 @@ function validate(program, imports = []) {
       );
       validateGlobalAccess(method.body);
       validateLoopLevels(method.body);
+      validateProperties(method.body);
       superCalls.length = 0;
       validateMethod(method.body);
       if (

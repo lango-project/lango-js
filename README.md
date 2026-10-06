@@ -283,3 +283,7 @@ builds omit them; `npm run test:lango -- <input.lango>` runs them synchronously.
 
 Faz 53 resets dynamic context, file globals, and class static values before
 each CLI-run Lango test.
+
+## Faz 54
+
+Faz 54 rejects unknown instance and static property references in class code.
