@@ -1,0 +1,7 @@
+export main(args)
+
+main(args)
+    values = [1, 2]
+    length = values.add(3)
+    println(length)
+    println(values.length)

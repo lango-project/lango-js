@@ -1221,6 +1221,8 @@ function emitClass(item, flags) {
     .map((method) => {
       flags.staticMethod = method.static;
       const declared = new Set(method.parameters.map((p) => p.name));
+      const priorArrayBindings = flags.arrayBindings;
+      flags.arrayBindings = new Set();
       const priorGlobalNames = flags.globalNames;
       flags.globalNames = collectGlobalNames(method.body);
       const priorContextNames = flags.contextNames;
@@ -1245,6 +1247,7 @@ function emitClass(item, flags) {
         .join("");
       flags.contextNames = priorContextNames;
       flags.globalNames = priorGlobalNames;
+      flags.arrayBindings = priorArrayBindings;
       if (!contextNames.size)
         return `    ${method.static ? "static " : ""}${name}(${parameters}) {\n${methodBody}${suffix}    }\n`;
       flags.context = true;
@@ -1266,6 +1269,8 @@ function emitClass(item, flags) {
 }
 function emitFunction(fn, flags) {
   const declared = new Set(fn.parameters.map((p) => p.name));
+  const priorArrayBindings = flags.arrayBindings;
+  flags.arrayBindings = new Set();
   const priorContextNames = flags.contextNames;
   const priorGlobalNames = flags.globalNames;
   const contextNames = collectContextNames(fn.body);
@@ -1283,6 +1288,7 @@ function emitFunction(fn, flags) {
     .join("");
   flags.contextNames = priorContextNames;
   flags.globalNames = priorGlobalNames;
+  flags.arrayBindings = priorArrayBindings;
   if (!contextNames.size)
     return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n${body}    return null;\n}\n`;
   flags.context = true;
@@ -1314,6 +1320,7 @@ function emitStatement(node, depth, declared, flags) {
         ? ""
         : "let ";
     declared.add(node.name);
+    if (node.value.type === "array") flags.arrayBindings?.add(node.name);
     return `${pad}${prefix}${target} = ${emitExpr(node.value, flags)};\n`;
   }
   if (node.type === "expression")
@@ -1385,9 +1392,11 @@ function emitClosure(node, depth, flags) {
   const pad = "    ".repeat(depth);
   const priorContextNames = flags.contextNames;
   const priorGlobalNames = flags.globalNames;
+  const priorArrayBindings = flags.arrayBindings;
   const contextNames = collectContextNames(node.body);
   flags.contextNames = contextNames;
   flags.globalNames = collectGlobalNames(node.body);
+  flags.arrayBindings = new Set();
   const body = node.body
     .map((item) =>
       emitStatement(item, depth + (contextNames.size ? 2 : 1), declared, flags),
@@ -1395,6 +1404,7 @@ function emitClosure(node, depth, flags) {
     .join("");
   flags.contextNames = priorContextNames;
   flags.globalNames = priorGlobalNames;
+  flags.arrayBindings = priorArrayBindings;
   if (!contextNames.size) return `(${parameters}) => {\n${body}${pad}}`;
   flags.context = true;
   return `(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${body}${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`;
@@ -1431,7 +1441,11 @@ function emitExpr(node, flags) {
       node.receiver === "this" && flags.staticMethod && visibility === false
         ? flags.className
         : node.receiver;
-    return `${receiver}${visibility === false ? ".#" : "."}${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    const method =
+      node.name === "add" && flags.arrayBindings?.has(node.receiver)
+        ? "push"
+        : node.name;
+    return `${receiver}${visibility === false ? ".#" : "."}${method}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   }
   if (node.type === "array")
     return `[${node.values.map((item) => emitExpr(item, flags)).join(", ")}]`;

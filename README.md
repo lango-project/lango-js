@@ -252,3 +252,8 @@ using JavaScript truthiness. See `examples/047-boolean-conditions`.
 
 Faz 48 adds `loop until` and unqualified `loop` forms. See
 `examples/048-loop-until`.
+
+## Faz 49
+
+Faz 49 lets `array.add(value)` be used as an expression and preserves its new
+length result. See `examples/049-array-add-return`.
