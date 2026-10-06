@@ -751,6 +751,16 @@ function validate(program, imports = []) {
     ...program.jsImports.map((item) => item.name),
   ];
   const imported = new Set(importNames);
+  const importedFunctions = new Map(
+    imports.flatMap((item) =>
+      (item.selections ?? [])
+        .filter((selection) => selection.kind === "function")
+        .map((selection) => [
+          selection.localName,
+          { parameters: selection.parameters },
+        ]),
+    ),
+  );
   const standardFunctions = new Map([
     ["from_json", 1],
     ["to_json", 1],
@@ -856,7 +866,7 @@ function validate(program, imports = []) {
   const walk = (value, localCallables, classNode = null, staticMethod = false) => {
     if (!value || typeof value !== "object") return;
     if (value.type === "call") {
-      const target = names.get(value.name);
+      const target = names.get(value.name) ?? importedFunctions.get(value.name);
       if (
         !target &&
         !imported.has(value.name) &&
@@ -2008,9 +2018,9 @@ function collectImports(source, inputPath, outputPath) {
     const selections = [];
     while (true) {
       const item = lines[index + 1] ?? "";
-      const functionImport = /^    ([A-Za-z_]\w*)\([^)]*\)$/.exec(item);
+      const functionImport = /^    ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(item);
       const functionAlias =
-        /^    alias ([A-Za-z_]\w*) = ([A-Za-z_]\w*)\([^)]*\)$/.exec(item);
+        /^    alias ([A-Za-z_]\w*) = ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(item);
       const classImport = /^    class ([A-Za-z_]\w*)$/.exec(item);
       const classAlias =
         /^    alias ([A-Za-z_]\w*) = class ([A-Za-z_]\w*)$/.exec(item);
@@ -2028,6 +2038,10 @@ function collectImports(source, inputPath, outputPath) {
         sourceName,
         localName: alias ? alias[1] : sourceName,
         kind: classImport || classAlias ? "class" : "function",
+        parameters:
+          classImport || classAlias
+            ? []
+            : importParameters(alias ? alias[3] : functionImport[2]),
       });
       index += 1;
     }
@@ -2048,4 +2062,10 @@ function collectImports(source, inputPath, outputPath) {
     });
   }
   return items;
+}
+function importParameters(raw) {
+  if (!raw) return [];
+  return raw.split(", ").map((parameter) => ({
+    defaultValue: parameter.includes(" = ") ? parameter : null,
+  }));
 }

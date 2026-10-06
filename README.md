@@ -390,3 +390,8 @@ actually exported by its target module.
 
 Faz 74 rejects duplicate imported local names and import/declaration name
 collisions.
+
+## Faz 75
+
+Faz 75 validates direct calls to imported Lango functions against the signature
+declared in the import header.
