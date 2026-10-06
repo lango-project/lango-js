@@ -1,0 +1,9 @@
+export main(args)
+
+main(args)
+    order = {
+        customer: {
+            name: "Ada"
+        }
+    }
+    println(order.customer.name)

@@ -134,3 +134,8 @@ Faz 23 adds variable-index and string-key bracket access. See
 
 Faz 25 adds nested dot access such as `order.customer.name`. See
 `examples/025-nested-access`.
+
+## Faz 26
+
+Faz 26 adds nested multiline object literals. See
+`examples/026-nested-objects`.

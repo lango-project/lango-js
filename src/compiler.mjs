@@ -185,7 +185,7 @@ class Parser {
             const line = this.line();
             const match = /^([A-Za-z_]\w*): (.+)$/.exec(line.text.slice(indent + 4));
             if (!match) this.fail(line, "LNG1111", "expected `key: value`");
-            fields.push({ key: match[1], value: expr(match[2], line, this) });
+            fields.push({ key: match[1], value: match[2] === "{" ? this.object(indent + 4) : expr(match[2], line, this) });
         }
         return { type: "object", fields };
     }
