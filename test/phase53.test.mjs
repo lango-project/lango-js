@@ -18,3 +18,21 @@ test
     assert.match(output, /export function __langoResetTests/);
     assert.match(output, /count = 0;/);
 });
+
+test("Faz 53 also resets static class values", () => {
+    const output = compile(`class Counter
+    static
+        count = 0
+
+test
+    assert true
+`, "sample.lango", [], true).javascript;
+    assert.match(output, /Counter\.count = 0;/);
+});
+
+test("Faz 53 keeps the asserted source expression in failure output", () => {
+    const output = compile(`test
+    assert false
+`, "sample.lango", [], true).javascript;
+    assert.match(output, /line 2: false/);
+});

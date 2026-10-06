@@ -274,6 +274,7 @@ class Parser {
           type: "assert",
           value: expr(text.slice(7), line, this),
           line: line.number,
+          source: text.slice(7),
         });
       } else if (/^global ([A-Za-z_]\w*)$/.test(text)) {
         const [, name] = /^global ([A-Za-z_]\w*)$/.exec(text);
@@ -1200,6 +1201,13 @@ function emit(program, moduleImports = [], includeTests = false) {
   const testReset = includeTests
     ? `export function __langoResetTests() {\n${program.globals
         .map((item) => `    ${item.name} = ${emitExpr(item.value, flags)};\n`)
+        .join("")}${program.classes
+        .flatMap((item) =>
+          [...item.staticValues, ...item.enumValues].map(
+            (value) =>
+              `    ${item.name}.${value.name} = ${emitExpr(value.value, flags)};\n`,
+          ),
+        )
         .join("")}}\n`
     : "";
   return `${modules}${imports}${globals}${classes}${functions}${testReset}${tests}//# sourceMappingURL=main.mjs.map\n`;
@@ -1372,7 +1380,7 @@ function emitStatement(node, depth, declared, flags) {
   }
   if (node.type === "assert") {
     flags.assert = true;
-    return `${pad}__assert(${emitBoolean(node.value, flags)}, ${JSON.stringify(`line ${node.line}`)});\n`;
+    return `${pad}__assert(${emitBoolean(node.value, flags)}, ${JSON.stringify(`line ${node.line}: ${node.source}`)});\n`;
   }
   if (node.type === "assign") {
     const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
