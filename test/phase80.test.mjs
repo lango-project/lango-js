@@ -19,4 +19,10 @@ main(args)
 `),
         (error) => error instanceof LangoError && error.code === "LNG1232",
     );
+    assert.throws(
+        () => compile(`main(args)
+    return new events/EventEmitter()
+`),
+        (error) => error instanceof LangoError && error.code === "LNG1233",
+    );
 });

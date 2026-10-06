@@ -923,6 +923,15 @@ function validate(program, imports = []) {
     }
     if (value.type === "new") {
       if (
+        value.name.includes("/") &&
+        !jsImportNames.has(value.name.split("/")[0])
+      )
+        throw new LangoError(
+          "LNG1233",
+          value.line,
+          `${value.name.split("/")[0]} is not an imported JavaScript namespace`,
+        );
+      if (
         value.name.includes(".") &&
         jsImportNames.has(value.name.split(".")[0])
       )
