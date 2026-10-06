@@ -5,6 +5,7 @@ const contexts = new Map();
 export function configure(options = {}) {
     catalog = options.catalog ?? {};
     output = options.output ?? null;
+    contexts.clear();
 }
 
 export function translate(template, values) {

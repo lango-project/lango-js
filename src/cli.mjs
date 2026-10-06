@@ -40,6 +40,8 @@ if (command === "build" && inputPath && rest.length === 2 && rest[0] === "--out"
         let failures = 0;
         for (const test of program.__langoTests ?? []) {
             try {
+                program.__langoResetTests?.();
+                runtime.configure({ output: (value) => console.log(value) });
                 test.run();
                 console.log(`PASS ${test.name}`);
             } catch (error) {

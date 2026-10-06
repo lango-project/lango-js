@@ -1197,7 +1197,12 @@ function emit(program, moduleImports = [], includeTests = false) {
   const globals = program.globals
     .map((item) => `let ${item.name} = ${emitExpr(item.value, flags)};\n`)
     .join("");
-  return `${modules}${imports}${globals}${classes}${functions}${tests}//# sourceMappingURL=main.mjs.map\n`;
+  const testReset = includeTests
+    ? `export function __langoResetTests() {\n${program.globals
+        .map((item) => `    ${item.name} = ${emitExpr(item.value, flags)};\n`)
+        .join("")}}\n`
+    : "";
+  return `${modules}${imports}${globals}${classes}${functions}${testReset}${tests}//# sourceMappingURL=main.mjs.map\n`;
 }
 function emitTest(test, flags) {
   const priorGlobalNames = flags.globalNames;

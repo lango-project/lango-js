@@ -278,3 +278,7 @@ Faz 51 adds validated `break N` and `continue N` for nested loops. See
 
 Faz 52 adds discoverable `test` blocks and `assert` statements. Production
 builds omit them; `npm run test:lango -- <input.lango>` runs them synchronously.
+
+## Faz 53
+
+Faz 53 resets dynamic context and file globals before each CLI-run Lango test.
