@@ -1,0 +1,7 @@
+export class Person
+
+Person(name)
+    @name = name
+
+Person:describe()
+    return @name

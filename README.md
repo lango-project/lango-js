@@ -77,3 +77,8 @@ static values, but an assignment through `@@Name` is a compiler error. See
 
 Faz 13 adds single inheritance with `class Child : Parent`, `super(...)`, and
 `super.method(...)`. See `examples/013-inheritance`.
+
+## Faz 14
+
+Faz 14 adds direct imports of exported Lango classes with `class Name` in an
+import header. See `examples/014-class-modules`.

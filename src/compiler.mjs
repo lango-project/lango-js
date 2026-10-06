@@ -251,7 +251,14 @@ function collectImports(source, inputPath, outputPath) {
         const match = /^import "(\.[^"]+)"$/.exec(lines[index]);
         if (!match) continue;
         const names = [];
-        while (/^    ([A-Za-z_]\w*)\([^)]*\)$/.test(lines[index + 1] ?? "")) names.push(/^    ([A-Za-z_]\w*)/.exec(lines[++index])[1]);
+        while (true) {
+            const item = lines[index + 1] ?? "";
+            const functionImport = /^    ([A-Za-z_]\w*)\([^)]*\)$/.exec(item);
+            const classImport = /^    class ([A-Za-z_]\w*)$/.exec(item);
+            if (!functionImport && !classImport) break;
+            names.push((functionImport ?? classImport)[1]);
+            index += 1;
+        }
         const sourcePath = path.resolve(path.dirname(inputPath), `${match[1]}.lango`);
         const outputPathForImport = path.resolve(path.dirname(outputPath), `${match[1]}.mjs`);
         items.push({ names, sourcePath, outputPath: outputPathForImport, specifier: `./${path.basename(outputPathForImport)}` });

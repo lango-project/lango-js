@@ -1,0 +1,8 @@
+import "./person"
+    class Person
+
+export main(args)
+
+main(args)
+    person = new Person("Ada")
+    println(person.describe())

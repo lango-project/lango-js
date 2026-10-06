@@ -938,6 +938,7 @@ Imports are also specified with full headers:
 import "./another_file"
     add(a, b)
     MYMACRO(a)
+    class Manager
     alias surp = global surprise
     alias Admin = class Manager
         properties
