@@ -775,7 +775,7 @@ function expr(source, line, parser) {
     return { type: "raw", value: text };
   if (/^[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(text))
     return { type: "raw", value: text };
-  if (/^@{0,2}[A-Za-z_]\w*$/.test(text)) return { type: "raw", value: text };
+  if (/^(?:\$[A-Za-z_]\w*|@{0,2}[A-Za-z_]\w*)$/.test(text)) return { type: "raw", value: text };
   parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
 }
 
@@ -2225,6 +2225,19 @@ function emitExpr(node, flags) {
     const operators = { "==": "===", and: "&&", or: "||" };
     if (node.operator === "and" || node.operator === "or")
       return `${emitBoolean(node.left, flags)} ${operators[node.operator]} ${emitBoolean(node.right, flags)}`;
+    if (
+      ["+", "-", "*", "/"].includes(node.operator) &&
+      node.left.type === "raw" &&
+      node.left.value.startsWith("$")
+    ) {
+      flags.decimal = true;
+      const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div" };
+      const right =
+        node.right.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.right.value)
+          ? `__decimal(${JSON.stringify(node.right.value)})`
+          : emitExpr(node.right, flags);
+      return `${emitExpr(node.left, flags)}.${methods[node.operator]}(${right})`;
+    }
     const value = `${emitExpr(node.left, flags)} ${operators[node.operator] ?? node.operator} ${emitExpr(node.right, flags)}`;
     if (["+", "-", "*", "/"].includes(node.operator)) {
       flags.finite = true;
