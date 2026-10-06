@@ -243,7 +243,13 @@ class Parser {
         );
       const line = this.line();
       const text = line.text.slice(indent);
-      if (text.startsWith("if ")) {
+      if (/^context ([A-Za-z_]\w*) = (.+)$/.test(text)) {
+        const [, name, value] = /^context ([A-Za-z_]\w*) = (.+)$/.exec(text);
+        body.push({ type: "contextSet", name, value: expr(value, line, this) });
+      } else if (/^context ([A-Za-z_]\w*)$/.test(text)) {
+        const [, name] = /^context ([A-Za-z_]\w*)$/.exec(text);
+        body.push({ type: "contextDeclare", name, line: line.number });
+      } else if (text.startsWith("if ")) {
         const thenBody = this.block(indent + 4);
         this.blank();
         let elseBody = null;
@@ -730,6 +736,15 @@ function validate(program, imports = []) {
     ...(node.cases?.map((item) => item.body) ?? []),
   ].filter(Boolean);
 
+  const contextDeclarations = (body, names = new Set()) => {
+    for (const node of body) {
+      if (node.type === "contextDeclare") names.add(node.name);
+      if (node.type !== "closureAssign")
+        nestedBodies(node).forEach((child) => contextDeclarations(child, names));
+    }
+    return names;
+  };
+
   const directBindings = (body, bindings = new Set()) => {
     for (const node of body) {
       if (node.type === "closureAssign") {
@@ -786,8 +801,9 @@ function validate(program, imports = []) {
         closure.captures
           .filter((name) => !name.startsWith("@") && !name.startsWith("_"))
           .forEach((name) => localBindings.delete(name));
+        const contextNames = contextDeclarations(closure.body);
         const needed = [...directReferences(closure.body)].filter(
-          (name) => !localBindings.has(name),
+          (name) => !localBindings.has(name) && !contextNames.has(name),
         );
         const captures = new Set(closure.captures);
         for (const name of needed)
@@ -857,6 +873,23 @@ function validate(program, imports = []) {
       fn.body,
       new Set(fn.parameters.map((parameter) => parameter.name)),
     ),
+  );
+  const validateContextAssignments = (body, contextNames) => {
+    for (const node of body) {
+      if (node.type === "assign" && contextNames.has(node.name))
+        throw new LangoError(
+          "LNG1215",
+          1,
+          `${node.name} is a context binding; use context ${node.name} = ...`,
+        );
+      if (node.type !== "closureAssign")
+        nestedBodies(node).forEach((child) =>
+          validateContextAssignments(child, contextNames),
+        );
+    }
+  };
+  program.functions.forEach((fn) =>
+    validateContextAssignments(fn.body, contextDeclarations(fn.body)),
   );
   const classes = new Map(program.classes.map((item) => [item.name, item]));
   if (classes.size !== program.classes.length)
@@ -938,6 +971,10 @@ function validate(program, imports = []) {
         new Set(method.parameters.map((parameter) => parameter.name)),
         classScope,
       );
+      validateContextAssignments(
+        method.body,
+        contextDeclarations(method.body),
+      );
       superCalls.length = 0;
       validateMethod(method.body);
       if (
@@ -970,7 +1007,7 @@ function validate(program, imports = []) {
 }
 
 function emit(program, moduleImports = []) {
-  const flags = { print: false, translate: false };
+  const flags = { print: false, translate: false, context: false };
   const classes = program.classes
     .map((item) => emitClass(item, flags))
     .join("\n");
@@ -980,6 +1017,9 @@ function emit(program, moduleImports = []) {
   const helpers = [
     flags.print && "println as __println",
     flags.translate && "translate as __translate",
+    flags.context && "contextGet as __contextGet",
+    flags.context && "contextSet as __contextSet",
+    flags.context && "contextRestore as __contextRestore",
   ].filter(Boolean);
   const imports = helpers.length
     ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n`
@@ -991,6 +1031,25 @@ function emit(program, moduleImports = []) {
     )
     .join("");
   return `${modules}${imports}${classes}${functions}//# sourceMappingURL=main.mjs.map\n`;
+}
+function collectContextNames(body, names = new Set()) {
+  for (const node of body) {
+    if (node.type === "contextDeclare" || node.type === "contextSet")
+      names.add(node.name);
+    if (node.type === "closureAssign") continue;
+    [
+      node.thenBody,
+      node.elseBody,
+      node.tryBody,
+      node.catchBody,
+      node.finallyBody,
+      node.body,
+      ...(node.cases?.map((item) => item.body) ?? []),
+    ]
+      .filter(Boolean)
+      .forEach((child) => collectContextNames(child, names));
+  }
+  return names;
 }
 function emitClass(item, flags) {
   const prior = {
@@ -1056,6 +1115,9 @@ function emitClass(item, flags) {
 }
 function emitFunction(fn, flags) {
   const declared = new Set(fn.parameters.map((p) => p.name));
+  const priorContextNames = flags.contextNames;
+  const contextNames = collectContextNames(fn.body);
+  flags.contextNames = contextNames;
   const parameters = fn.parameters
     .map((p) =>
       p.defaultValue === null
@@ -1063,10 +1125,22 @@ function emitFunction(fn, flags) {
         : `${p.name} = ${emitExpr(p.defaultValue, flags)}`,
     )
     .join(", ");
-  return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n${fn.body.map((item) => emitStatement(item, 1, declared, flags)).join("")}    return null;\n}\n`;
+  const body = fn.body
+    .map((item) => emitStatement(item, contextNames.size ? 2 : 1, declared, flags))
+    .join("");
+  flags.contextNames = priorContextNames;
+  if (!contextNames.size)
+    return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n${body}    return null;\n}\n`;
+  flags.context = true;
+  return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n    const __contextScope = [];\n    try {\n${body}        return null;\n    } finally {\n        __contextRestore(__contextScope);\n    }\n}\n`;
 }
 function emitStatement(node, depth, declared, flags) {
   const pad = "    ".repeat(depth);
+  if (node.type === "contextDeclare") return "";
+  if (node.type === "contextSet") {
+    flags.context = true;
+    return `${pad}__contextScope.push(__contextSet(${JSON.stringify(node.name)}, ${emitExpr(node.value, flags)}));\n`;
+  }
   if (node.type === "assign") {
     const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
     const target = node.name.startsWith("@@")
@@ -1157,6 +1231,11 @@ function emitClosure(node, depth, flags) {
   return `(${parameters}) => {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
 }
 function emitExpr(node, flags) {
+  if (node.type === "raw")
+    if (flags.contextNames?.has(node.value)) {
+      flags.context = true;
+      return `__contextGet(${JSON.stringify(node.value)})`;
+    }
   if (node.type === "raw")
     return node.value.startsWith("@@")
       ? `${flags.className}.${node.value.slice(2)}`

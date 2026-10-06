@@ -1,0 +1,9 @@
+export main(args)
+
+read_tenant()
+    context tenant
+    return tenant
+
+main(args)
+    context tenant = "Ada"
+    println(read_tenant())

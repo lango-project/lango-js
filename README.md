@@ -193,3 +193,13 @@ Faz 35 extends explicit closure capture to protected properties. See
 
 Faz 36 preserves a captured local as one shared, mutable binding rather than a
 new closure-local variable. See `examples/036-shared-capture`.
+
+## Faz 37
+
+Faz 37 adds synchronous, dynamically scoped `context` bindings. See
+`examples/037-context`.
+
+## Faz 38
+
+Faz 38 verifies nested context shadowing and restoration on function return.
+See `examples/038-context-restoration`.

@@ -1,0 +1,14 @@
+export main(args)
+
+show_tenant()
+    context tenant
+    println(tenant)
+
+override_tenant()
+    context tenant = "Bora"
+    show_tenant()
+
+main(args)
+    context tenant = "Ada"
+    override_tenant()
+    show_tenant()

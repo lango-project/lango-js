@@ -1,5 +1,6 @@
 export const RUNTIME_SOURCE = `let catalog = {};
 let output = null;
+const contexts = new Map();
 
 export function configure(options = {}) {
     catalog = options.catalog ?? {};
@@ -19,5 +20,29 @@ export function println(value) {
 
     output(String(value));
     return null;
+}
+
+export function contextGet(name) {
+    const stack = contexts.get(name);
+    if (!stack || stack.length === 0) {
+        throw new Error(\`Lango context is unavailable: \${name}\`);
+    }
+
+    return stack.at(-1);
+}
+
+export function contextSet(name, value) {
+    const stack = contexts.get(name) ?? [];
+    contexts.set(name, stack);
+    stack.push(value);
+    return name;
+}
+
+export function contextRestore(names) {
+    for (const name of names.reverse()) {
+        const stack = contexts.get(name);
+        stack.pop();
+        if (stack.length === 0) contexts.delete(name);
+    }
 }
 `;
