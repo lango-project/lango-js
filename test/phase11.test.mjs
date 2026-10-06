@@ -7,7 +7,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 test("Faz 11 emits class static values and @@ access", () => {
-    const source = `class Constants
+    const source = `export main(args)
+
+class Constants
     static
         Answer = 42
 
@@ -17,8 +19,6 @@ Constants:value()
 Constants:increase()
     @@Answer = @@Answer + 1
     return @@Answer
-
-export main(args)
 
 main(args)
     constants = new Constants()

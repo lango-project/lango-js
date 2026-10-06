@@ -6,15 +6,15 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const source = `class Color
+const source = `export main(args)
+
+class Color
     enum
         White = "white"
         Black = "black"
 
 Color:default()
     return @@White
-
-export main(args)
 
 main(args)
     color = new Color()
@@ -32,6 +32,13 @@ test("Faz 12 emits enum values as readonly Lango static values", () => {
 test("Faz 12 rejects assignment to an enum value", () => {
     const invalid = source.replace("return @@White", "@@White = \"changed\"");
     assert.throws(() => compile(invalid), (error) => error instanceof LangoError && error.code === "LNG1204");
+});
+
+test("exports must appear before a class declaration", () => {
+    const invalid = source
+        .replace("export main(args)\n\n", "")
+        .replace("\nmain(args)", "\nexport main(args)\n\nmain(args)");
+    assert.throws(() => compile(invalid), (error) => error instanceof LangoError && error.code === "LNG1113");
 });
 
 test("Faz 12 enum values fixture runs", async () => {

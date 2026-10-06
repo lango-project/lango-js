@@ -1,3 +1,5 @@
+export main(args)
+
 class Color
     enum
         White = "white"
@@ -5,8 +7,6 @@ class Color
 
 Color:default()
     return @@White
-
-export main(args)
 
 main(args)
     color = new Color()

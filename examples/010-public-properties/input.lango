@@ -1,3 +1,5 @@
+export main(args)
+
 class Account
     properties
         name
@@ -8,8 +10,6 @@ Account(name)
 
 Account:label()
     return @name
-
-export main(args)
 
 main(args)
     account = new Account("Lango")

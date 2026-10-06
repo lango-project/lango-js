@@ -1,4 +1,6 @@
-class Counter
+export main(args)
+
+export class Counter
 
 Counter(start)
     @value = start
@@ -6,8 +8,6 @@ Counter(start)
 Counter:add(amount)
     @value = @value + amount
     return @value
-
-export main(args)
 
 main(args)
     counter = new Counter(10)

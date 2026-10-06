@@ -7,7 +7,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 test("Faz 10 emits declared public properties and keeps other properties private", () => {
-    const source = `class Account
+    const source = `export main(args)
+
+class Account
     properties
         name
 
@@ -17,8 +19,6 @@ Account(name)
 
 Account:label()
     return @name
-
-export main(args)
 
 main(args)
     account = new Account("Lango")

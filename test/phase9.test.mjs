@@ -7,7 +7,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 test("Faz 9 emits JavaScript private class fields", () => {
-    const source = `class Counter
+    const source = `export main(args)
+
+export class Counter
 
 Counter(start)
     @value = start
@@ -16,17 +18,22 @@ Counter:add(amount)
     @value = @value + amount
     return @value
 
-export main(args)
-
 main(args)
     counter = new Counter(10)
     println(counter.add(5))
 `;
     const output = compile(source).javascript;
-    assert.match(output, /class Counter/);
+    assert.match(output, /export class Counter/);
     assert.match(output, /#value;/);
     assert.match(output, /this\.\#value = this\.\#value \+ amount/);
     assert.match(output, /new Counter\(10\)/);
+});
+
+test("Faz 9 allows one inline exported class per source file", () => {
+    assert.throws(() => compile(`export class First
+
+export class Second
+`), (error) => error.code === "LNG1114");
 });
 
 test("Faz 9 class fixture runs", async () => {

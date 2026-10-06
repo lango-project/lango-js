@@ -366,6 +366,13 @@ work.
 by another source file. Declarations that are not exported remain usable by all
 code in the same source file.
 
+Imports and standalone function exports form the file header. Every such export
+must appear before the file's first class or function declaration; a later
+export is a compile-time error. A class instead declares its own module
+visibility inline as `export class Name`; at most one class may be exported from
+a source file. This keeps the file's public surface visible before its
+implementation without separating a class from its own declaration.
+
 A class's `properties` and `methods` sections declare its member API; they do
 not themselves export the class from its file. An external caller can use that
 API only after the class has been exported and imported. This keeps module

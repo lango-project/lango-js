@@ -2,7 +2,9 @@
 
 ## Code Structure
 
-  * A file has imports and exports at the start, followed by declarations.
+  * A file has imports and then standalone exports at the start, followed by
+    declarations. A function export precedes every class and function
+    declaration; a class is exported inline as `export class Name`.
   * An entry file exports `main(args)`. The host starts the program by calling
     it with its argument array.
   * `args` is an array of strings supplied by the host; it does
