@@ -232,3 +232,8 @@ Faz 43 adds standard `from_json()` and `to_json()` helpers. See
 ## Faz 44
 
 Faz 44 checks JSON-helper arity and reports malformed input as `JsonParseError`.
+
+## Faz 45
+
+Faz 45 adds `get_class()` and `is_kindof()` reflection helpers. See
+`examples/045-reflection`.

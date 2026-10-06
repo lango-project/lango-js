@@ -646,7 +646,12 @@ function validate(program, imports = []) {
   const names = new Map(program.functions.map((item) => [item.name, item]));
   const globals = new Set(program.globals.map((item) => item.name));
   const imported = new Set(imports.flatMap((item) => item.names));
-  const standardFunctions = new Set(["from_json", "to_json"]);
+  const standardFunctions = new Map([
+    ["from_json", 1],
+    ["to_json", 1],
+    ["get_class", 1],
+    ["is_kindof", 2],
+  ]);
   if (names.size !== program.functions.length)
     throw new LangoError("LNG1201", 1, "duplicate function name");
   if (globals.size !== program.globals.length)
@@ -701,11 +706,14 @@ function validate(program, imports = []) {
             `${value.name} expects ${required}-${target.parameters.length} arguments, got ${value.arguments.length}`,
           );
       }
-      if (standardFunctions.has(value.name) && value.arguments.length !== 1)
+      if (
+        standardFunctions.has(value.name) &&
+        value.arguments.length !== standardFunctions.get(value.name)
+      )
         throw new LangoError(
           "LNG1219",
           value.line,
-          `${value.name} expects 1 argument, got ${value.arguments.length}`,
+          `${value.name} expects ${standardFunctions.get(value.name)} arguments, got ${value.arguments.length}`,
         );
     }
     Object.values(value).forEach((item) =>
@@ -1104,6 +1112,8 @@ function emit(program, moduleImports = []) {
     flags.context && "contextRestore as __contextRestore",
     flags.json && "fromJson as __fromJson",
     flags.json && "toJson as __toJson",
+    flags.reflection && "getClass as __getClass",
+    flags.reflection && "isKindof as __isKindof",
   ].filter(Boolean);
   const imports = helpers.length
     ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n`
@@ -1415,6 +1425,12 @@ function emitExpr(node, flags) {
     if (node.name === "from_json" || node.name === "to_json") {
       flags.json = true;
       const helper = node.name === "from_json" ? "__fromJson" : "__toJson";
+      return `${helper}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    }
+  if (node.type === "call")
+    if (node.name === "get_class" || node.name === "is_kindof") {
+      flags.reflection = true;
+      const helper = node.name === "get_class" ? "__getClass" : "__isKindof";
       return `${helper}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
     }
   if (node.type === "call")

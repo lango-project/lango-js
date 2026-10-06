@@ -40,6 +40,20 @@ export function toJson(value) {
     }
 }
 
+export function getClass(value) {
+    if (value === null) return null;
+    if (typeof value === "number") return Number;
+    if (typeof value === "string") return String;
+    if (typeof value === "boolean") return Boolean;
+    return Object.getPrototypeOf(value)?.constructor ?? Object;
+}
+
+export function isKindof(value, Class) {
+    if (value === null) return false;
+    if (typeof value === "object" || typeof value === "function") return value instanceof Class;
+    return getClass(value) === Class;
+}
+
 export function contextGet(name) {
     const stack = contexts.get(name);
     if (!stack || stack.length === 0) {

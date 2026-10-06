@@ -1,0 +1,9 @@
+export main(args)
+
+export class Person
+
+main(args)
+    person = new Person()
+    println(get_class(person) == Person)
+    println(is_kindof(person, Person))
+    println(is_kindof(null, Person))
