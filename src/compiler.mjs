@@ -78,6 +78,11 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
     }) + "\n",
   );
   await writeFile(path.join(directory, ".lango/runtime.mjs"), RUNTIME_SOURCE);
+  await writeFile(
+    path.join(directory, ".lango/bignumber.mjs"),
+    await readFile(new URL("./vendor/bignumber.mjs", import.meta.url), "utf8"),
+    "utf8",
+  );
 }
 
 export function compile(source, sourceName = "<source>", imports = [], includeTests = false) {

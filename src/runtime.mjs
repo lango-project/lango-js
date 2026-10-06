@@ -1,4 +1,19 @@
-export const RUNTIME_SOURCE = `let catalog = {};
+export const RUNTIME_SOURCE = `import BigNumber from "./bignumber.mjs";
+
+const Decimal = BigNumber.clone({
+    DECIMAL_PLACES: 6,
+    ROUNDING_MODE: BigNumber.ROUND_HALF_EVEN,
+});
+
+export function decimal(value) {
+    return new Decimal(value);
+}
+
+export function isDecimal(value) {
+    return value instanceof Decimal;
+}
+
+let catalog = {};
 let output = null;
 const contexts = new Map();
 
