@@ -553,7 +553,7 @@ class Parser {
         const [, name] = /^([A-Za-z_]\w*) = \{$/.exec(text);
         body.push({ type: "assign", name, value: this.object(indent) });
       } else {
-        const assignment = /^(@{0,2}[A-Za-z_]\w*) = (.+)$/.exec(text);
+        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}[A-Za-z_]\w*) = (.+)$/.exec(text);
         if (!assignment)
           this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
         body.push({
@@ -1761,6 +1761,7 @@ function emit(program, moduleImports = [], includeTests = false) {
         .join(",\n")}\n];\n`
     : "";
   const helpers = [
+    flags.decimal && "decimal as __decimal",
     flags.print && "println as __println",
     flags.translate && "translate as __translate",
     flags.context && "contextGet as __contextGet",
@@ -2005,6 +2006,7 @@ function emitStatement(node, depth, declared, flags) {
     return `${pad}__assert(${emitBoolean(node.value, flags)}, ${JSON.stringify(`line ${node.line}: ${node.source}`)});\n`;
   }
   if (node.type === "assign") {
+    const decimalBinding = node.name.startsWith("$");
     const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
     const target = node.name.startsWith("@@")
       ? `${flags.className}.${property}`
@@ -2023,7 +2025,9 @@ function emitStatement(node, depth, declared, flags) {
         : "let ";
     declared.add(node.name);
     if (node.value.type === "array") flags.arrayBindings?.add(node.name);
-    return `${pad}${prefix}${target} = ${emitExpr(node.value, flags)};\n`;
+    const value = emitExpr(node.value, flags);
+    if (decimalBinding) flags.decimal = true;
+    return `${pad}${prefix}${target} = ${decimalBinding ? `__decimal(${node.value.type === "raw" ? JSON.stringify(node.value.value) : value})` : value};\n`;
   }
   if (node.type === "expression")
     return `${pad}${emitExpr(node.value, flags)};\n`;
