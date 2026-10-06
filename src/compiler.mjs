@@ -341,7 +341,23 @@ class Parser {
           body: this.block(indent + 4),
         });
       } else if (text === "return") body.push({ type: "return", value: null });
-      else if (text.startsWith("return "))
+      else if (/^return \(([^)]*)\)$/.test(text)) {
+        const [, rawParameters] = /^return \(([^)]*)\)$/.exec(text);
+        const captures = [];
+        if ((this.peek() ?? "").trimStart().startsWith("capture ")) {
+          captures.push(...this.line().text.trim().slice(8).split(", "));
+        }
+        body.push({
+          type: "return",
+          value: {
+            type: "closure",
+            parameters: this.parameters(rawParameters, line),
+            captures,
+            line: line.number,
+            body: this.block(indent + 4),
+          },
+        });
+      } else if (text.startsWith("return "))
         body.push({ type: "return", value: expr(text.slice(7), line, this) });
       else if (text.startsWith("throw "))
         body.push({ type: "throw", value: expr(text.slice(6), line, this) });
@@ -370,14 +386,22 @@ class Parser {
       else if (/^[A-Za-z_]\w*\(.*\)$/.test(text))
         body.push({ type: "expression", value: expr(text, line, this) });
       else if (/^([A-Za-z_]\w*) = \(([^)]*)\)$/.test(text)) {
-        const [, name, rawParameters] = /^([A-Za-z_]\w*) = \(([^)]*)\)$/.exec(text);
+        const [, name, rawParameters] = /^([A-Za-z_]\w*) = \(([^)]*)\)$/.exec(
+          text,
+        );
         const captures = [];
         if ((this.peek() ?? "").trimStart().startsWith("capture ")) {
           captures.push(...this.line().text.trim().slice(8).split(", "));
         }
-        body.push({ type: "closureAssign", name, parameters: this.parameters(rawParameters, line), captures, body: this.block(indent + 4) });
-      }
-      else if (/^([A-Za-z_]\w*) = \{$/.test(text)) {
+        body.push({
+          type: "closureAssign",
+          name,
+          parameters: this.parameters(rawParameters, line),
+          captures,
+          line: line.number,
+          body: this.block(indent + 4),
+        });
+      } else if (/^([A-Za-z_]\w*) = \{$/.test(text)) {
         const [, name] = /^([A-Za-z_]\w*) = \{$/.exec(text);
         body.push({ type: "assign", name, value: this.object(indent) });
       } else {
@@ -591,11 +615,36 @@ function validate(program, imports = []) {
   const imported = new Set(imports.flatMap((item) => item.names));
   if (names.size !== program.functions.length)
     throw new LangoError("LNG1201", 1, "duplicate function name");
-  const walk = (value) => {
+  const closureNames = (body, result = new Set()) => {
+    for (const node of body) {
+      if (node.type === "closureAssign") result.add(node.name);
+      if (
+        node.type === "assign" &&
+        (node.value.type === "call" || node.value.type === "methodCall")
+      )
+        result.add(node.name);
+      [
+        node.body,
+        node.thenBody,
+        node.elseBody,
+        node.tryBody,
+        node.catchBody,
+        node.finallyBody,
+      ]
+        .filter(Boolean)
+        .forEach((child) => closureNames(child, result));
+    }
+    return result;
+  };
+  const walk = (value, localCallables) => {
     if (!value || typeof value !== "object") return;
     if (value.type === "call") {
       const target = names.get(value.name);
-      if (!target && !imported.has(value.name))
+      if (
+        !target &&
+        !imported.has(value.name) &&
+        !localCallables.has(value.name)
+      )
         throw new LangoError(
           "LNG1202",
           value.line,
@@ -617,10 +666,179 @@ function validate(program, imports = []) {
       }
     }
     Object.values(value).forEach((item) =>
-      Array.isArray(item) ? item.forEach(walk) : walk(item),
+      Array.isArray(item)
+        ? item.forEach((child) => walk(child, localCallables))
+        : walk(item, localCallables),
     );
   };
-  program.functions.forEach(walk);
+  program.functions.forEach((fn) => walk(fn, closureNames(fn.body)));
+
+  const expressionReferences = (node, references) => {
+    if (!node || typeof node !== "object") return;
+    if (node.type === "raw") {
+      const match = /^(@{0,2}[A-Za-z_]\w*)/.exec(node.value);
+      if (match) references.add(match[1]);
+      return;
+    }
+    if (node.type === "closure") return;
+    if (node.type === "call") {
+      if (!names.has(node.name) && !imported.has(node.name))
+        references.add(node.name);
+      node.arguments.forEach((argument) =>
+        expressionReferences(argument, references),
+      );
+      return;
+    }
+    if (node.type === "methodCall") {
+      if (node.receiver !== "this") references.add(node.receiver);
+      node.arguments.forEach((argument) =>
+        expressionReferences(argument, references),
+      );
+      return;
+    }
+    if (node.type === "string" || node.type === "translate") {
+      node.literal
+        .filter((part) => part.value)
+        .forEach((part) => {
+          const match = /^(@{0,2}[A-Za-z_]\w*)/.exec(part.value);
+          if (match) references.add(match[1]);
+        });
+      return;
+    }
+    Object.values(node).forEach((value) => {
+      if (Array.isArray(value))
+        value.forEach((item) => expressionReferences(item, references));
+      else expressionReferences(value, references);
+    });
+  };
+
+  const nestedBodies = (node) => [
+    node.thenBody,
+    node.elseBody,
+    node.tryBody,
+    node.catchBody,
+    node.finallyBody,
+    node.body,
+    ...(node.cases?.map((item) => item.body) ?? []),
+  ].filter(Boolean);
+
+  const directBindings = (body, bindings = new Set()) => {
+    for (const node of body) {
+      if (node.type === "closureAssign") {
+        bindings.add(node.name);
+        continue;
+      }
+      if (node.type === "assign" && !node.name.startsWith("@"))
+        bindings.add(node.name);
+      if (node.type === "for") bindings.add(node.item);
+      if (node.type === "forObject") {
+        bindings.add(node.key);
+        bindings.add(node.value);
+      }
+      nestedBodies(node).forEach((child) => directBindings(child, bindings));
+    }
+    return bindings;
+  };
+
+  const directReferences = (body, references = new Set()) => {
+    for (const node of body) {
+      if (node.type === "closureAssign" || node.type === "closure") continue;
+      if (node.type === "increment" || node.type === "add")
+        references.add(node.name ?? node.target);
+      if (node.type === "for" || node.type === "forObject")
+        references.add(node.collection);
+      [node.value, node.condition, node.arguments, node.tests].forEach((value) => {
+        if (Array.isArray(value))
+          value.forEach((item) => expressionReferences(item, references));
+        else expressionReferences(value, references);
+      });
+      nestedBodies(node).forEach((child) => directReferences(child, references));
+    }
+    return references;
+  };
+
+  const validateClosures = (body, outerBindings, classScope = null) => {
+    const available = new Set(outerBindings);
+    for (const node of body) {
+      const closure =
+        node.type === "closureAssign"
+          ? node
+          : node.type === "return" && node.value?.type === "closure"
+            ? node.value
+            : null;
+      if (closure) {
+        const localBindings = new Set([
+          ...closure.parameters.map((parameter) => parameter.name),
+          ...directBindings(closure.body),
+        ]);
+        const needed = [...directReferences(closure.body)].filter(
+          (name) => !localBindings.has(name),
+        );
+        const captures = new Set(closure.captures);
+        for (const name of needed)
+          if (!captures.has(name))
+            throw new LangoError(
+              "LNG1210",
+              closure.line,
+              `MissingCapture: ${name}; add capture ${name}`,
+            );
+        for (const name of captures) {
+          if (!needed.includes(name))
+            throw new LangoError(
+              "LNG1211",
+              closure.line,
+              `unused capture ${name}`,
+            );
+          if (!name.startsWith("@") && !available.has(name))
+            throw new LangoError(
+              "LNG1212",
+              closure.line,
+              `capture ${name} is not assigned before this closure`,
+            );
+          if (name.startsWith("@")) {
+            const staticMember = name.startsWith("@@");
+            const property = name.slice(staticMember ? 2 : 1);
+            const members = staticMember
+              ? classScope?.staticMembers
+              : classScope?.instanceMembers;
+            if (!members)
+              throw new LangoError(
+                "LNG1213",
+                closure.line,
+                `${name} is only valid in a class method`,
+              );
+            if (!members.has(property))
+              throw new LangoError(
+                "LNG1214",
+                closure.line,
+                `unknown captured property ${name}`,
+              );
+          }
+        }
+        validateClosures(
+          closure.body,
+          new Set([...available, ...localBindings]),
+          classScope,
+        );
+        if (node.type === "closureAssign") available.add(node.name);
+        continue;
+      }
+      if (node.type === "assign" && !node.name.startsWith("@"))
+        available.add(node.name);
+      if (node.type === "for") available.add(node.item);
+      if (node.type === "forObject") {
+        available.add(node.key);
+        available.add(node.value);
+      }
+    }
+  };
+
+  program.functions.forEach((fn) =>
+    validateClosures(
+      fn.body,
+      new Set(fn.parameters.map((parameter) => parameter.name)),
+    ),
+  );
   const classes = new Map(program.classes.map((item) => [item.name, item]));
   if (classes.size !== program.classes.length)
     throw new LangoError("LNG1205", 1, "duplicate class name");
@@ -677,7 +895,28 @@ function validate(program, imports = []) {
           .filter(Boolean)
           .forEach(validateMethod);
       });
+    const instanceMembers = new Set(classNode.publicProperties);
+    const collectInstanceMembers = (body) => {
+      for (const node of body) {
+        if (node.type === "assign" && /^@[A-Za-z_]\w*$/.test(node.name))
+          instanceMembers.add(node.name.slice(1));
+        nestedBodies(node).forEach(collectInstanceMembers);
+      }
+    };
+    classNode.methods.forEach((method) => collectInstanceMembers(method.body));
+    const classScope = {
+      instanceMembers,
+      staticMembers: new Set([
+        ...classNode.staticValues.map((item) => item.name),
+        ...classNode.enumValues.map((item) => item.name),
+      ]),
+    };
     classNode.methods.forEach((method) => {
+      validateClosures(
+        method.body,
+        new Set(method.parameters.map((parameter) => parameter.name)),
+        classScope,
+      );
       superCalls.length = 0;
       validateMethod(method.body);
       if (
@@ -830,9 +1069,8 @@ function emitStatement(node, depth, declared, flags) {
   if (node.type === "expression")
     return `${pad}${emitExpr(node.value, flags)};\n`;
   if (node.type === "closureAssign") {
-    const parameters = node.parameters.map((item) => item.name).join(", ");
     declared.add(node.name);
-    return `${pad}let ${node.name} = (${parameters}) => {\n${node.body.map((item) => emitStatement(item, depth + 1, new Set(node.parameters.map((parameter) => parameter.name)), flags)).join("")}${pad}};\n`;
+    return `${pad}let ${node.name} = ${emitClosure(node, depth, flags)};\n`;
   }
   if (node.type === "superConstructor")
     return `${pad}super(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")});\n`;
@@ -840,7 +1078,7 @@ function emitStatement(node, depth, declared, flags) {
   if (node.type === "add")
     return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`;
   if (node.type === "return")
-    return `${pad}return${node.value === null ? "" : ` ${emitExpr(node.value, flags)}`};\n`;
+    return `${pad}return${node.value === null ? "" : node.value.type === "closure" ? ` ${emitClosure(node.value, depth, flags)}` : ` ${emitExpr(node.value, flags)}`};\n`;
   if (node.type === "throw")
     return `${pad}throw ${emitExpr(node.value, flags)};\n`;
   if (node.type === "println") {
@@ -887,6 +1125,12 @@ function emitStatement(node, depth, declared, flags) {
   if (node.elseBody)
     out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
   return `${out}\n`;
+}
+function emitClosure(node, depth, flags) {
+  const parameters = node.parameters.map((item) => item.name).join(", ");
+  const declared = new Set(node.parameters.map((parameter) => parameter.name));
+  const pad = "    ".repeat(depth);
+  return `(${parameters}) => {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
 }
 function emitExpr(node, flags) {
   if (node.type === "raw")

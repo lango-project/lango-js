@@ -1,0 +1,11 @@
+export main(args)
+
+make_adder()
+    count = 7
+    return (value)
+        capture count
+        return value + count
+
+main(args)
+    add = make_adder()
+    println(add(5))

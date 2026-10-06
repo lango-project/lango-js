@@ -1,0 +1,8 @@
+export main(args)
+
+main(args)
+    count = 7
+    callback = ()
+        capture count
+        println(count)
+    callback()

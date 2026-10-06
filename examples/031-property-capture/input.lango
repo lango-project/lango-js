@@ -1,0 +1,23 @@
+export main(args)
+
+export class Counter
+    properties
+        count
+    methods
+        callback()
+
+Counter(start)
+    @count = start
+
+Counter:callback()
+    callback = ()
+        capture @count
+        @count = @count + 1
+        return @count
+    return callback
+
+main(args)
+    counter = new Counter(7)
+    callback = counter.callback()
+    println(callback())
+    println(counter.count)

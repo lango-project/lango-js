@@ -147,3 +147,34 @@ Faz 26 adds nested multiline object literals. See
 ## Faz 27
 
 Faz 27 adds standalone function-call statements such as `finish()`.
+
+## Faz 28
+
+Faz 28 adds local closures with an explicit `capture` header. See
+`examples/028-closures`.
+
+## Faz 29
+
+Faz 29 makes closure capture declarations meaningful: an outer binding must be
+captured, a capture must be used, and local captures must be assigned before
+the closure is created.
+
+## Faz 30
+
+Faz 30 permits a function to return a closure directly. See
+`examples/030-returned-closures`.
+
+## Faz 31
+
+Faz 31 makes an explicit `capture @property` retain the original class
+instance in a returned closure. See `examples/031-property-capture`.
+
+## Faz 32
+
+Faz 32 verifies nested closures: each closure declares its own direct capture,
+while the captured binding remains shared. See `examples/032-nested-closures`.
+
+## Faz 33
+
+Faz 33 validates captured instance and static properties against the enclosing
+class, and rejects property captures outside class methods.

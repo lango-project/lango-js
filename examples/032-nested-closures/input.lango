@@ -1,0 +1,13 @@
+export main(args)
+
+make_outer()
+    count = 7
+    return ()
+        return ()
+            capture count
+            return count
+
+main(args)
+    outer = make_outer()
+    inner = outer()
+    println(inner())
