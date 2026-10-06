@@ -337,10 +337,19 @@ class Parser {
         if (!catchBody && !finallyBody)
           this.fail(line, "LNG1112", "try requires catch or finally");
         body.push({ type: "try", tryBody, catchName, catchBody, finallyBody });
+      } else if (text === "loop") {
+        body.push({ type: "loop", condition: null, body: this.block(indent + 4) });
       } else if (text.startsWith("loop while ")) {
         body.push({
           type: "loop",
           condition: expr(text.slice(11), line, this),
+          body: this.block(indent + 4),
+        });
+      } else if (text.startsWith("loop until ")) {
+        body.push({
+          type: "loop",
+          condition: expr(text.slice(11), line, this),
+          until: true,
           body: this.block(indent + 4),
         });
       } else if (
@@ -1337,7 +1346,7 @@ function emitStatement(node, depth, declared, flags) {
     return `${out}\n`;
   }
   if (node.type === "loop")
-    return `${pad}while (${emitBoolean(node.condition, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+    return `${pad}while (${node.condition === null ? "true" : `${node.until ? "!" : ""}${emitBoolean(node.condition, flags)}`}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
   if (node.type === "for")
     return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
   if (node.type === "forObject")

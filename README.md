@@ -247,3 +247,8 @@ object, and array values. See `examples/046-predicates`.
 
 Faz 47 requires Boolean values for conditions and logical operators instead of
 using JavaScript truthiness. See `examples/047-boolean-conditions`.
+
+## Faz 48
+
+Faz 48 adds `loop until` and unqualified `loop` forms. See
+`examples/048-loop-until`.
