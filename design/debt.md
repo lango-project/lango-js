@@ -5,11 +5,6 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Macro expansion
-
-Implement macro declarations, imports/exports, the module-graph-before-expansion
-order, bounded expansion rounds, and source-located expansion diagnostics.
-
 ### Decimal runtime and lowering
 
 Implement dollar-marked bindings, properties, parameters, object/JSON fields,
@@ -31,8 +26,8 @@ representation.
 
 ### Complete module interfaces
 
-Validate selected imported globals and macros against their exported module
-interfaces. Imported class properties, methods, static values, and static
+Validate selected imported globals against their exported module interfaces.
+Imported class properties, methods, static values, and static
 methods are already checked, including inherited public members. Class
 inheritance cycles are rejected. Add cyclic-module initializer-read analysis.
 

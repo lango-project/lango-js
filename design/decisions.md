@@ -228,7 +228,7 @@ comparison rule.
 `_(literal)` is the explicit localization operation. `_` is reserved for this
 standard function and cannot be shadowed by a declaration or import. Its one
 argument must be a source string literal, including an interpolated or triple
-quoted literal. After macro expansion, the compiler extracts that literal into
+quoted literal. During compilation, the compiler extracts that literal into
 a JSON translation catalog. Its template is both default message key and
 fallback value; interpolations become `{0}`, `{1}`, and so on, so a translation
 may reorder or repeat them. Literal braces in a catalog template are `{{` and
@@ -403,12 +403,11 @@ on ESM versus CommonJS named-export shape; Lango source writes namespace paths
 with `/`, such as `fs/promises/readFile(...)`; ordinary object member access
 remains dotted. The selected Node or browser host resolves that specifier.
 
-The compiler resolves the complete Lango module graph before macro expansion.
+The compiler resolves the complete Lango module graph before ordinary compilation.
 Cyclic Lango imports are permitted and emit ESM live bindings, but a global or
 static initializer in the cycle may not read a value whose defining module has
 not initialized it; this is a compile-time module-initialization error.
-Function and class declaration cycles are allowed. Module cycles never consume
-or interact with macro-expansion rounds.
+Function and class declaration cycles are allowed.
 
 ## D-018: Property sigils encode class-member visibility
 
@@ -497,38 +496,6 @@ instance identity equality and serialize as ordinary values. There is no
 closed-member rule, exhaustive `switch` analysis, generated `values()` API, or
 enum-specific constructor restriction.
 
-## D-020: Macro names and expansion form a separate compile-time phase
-
-**Status:** Accepted
-
-All-uppercase identifiers are reserved for macros and macro bindings; ordinary
-variables, parameters, functions, classes, and imports may not use an entirely
-uppercase identifier. Imported JavaScript values with such a name must be given
-a non-all-uppercase alias.
-
-The compiler parses all source files, resolves ordinary `import`/`export`
-headers and the module graph, registers imported macros, and then expands macro
-calls. Macros therefore may themselves be exported and imported as ordinary
-module members; no uppercase `IMPORT` or `EXPORT` directive exists. Localization
-extraction runs after macro expansion, so it sees `_()` literals in the generated
-program rather than macro template literals.
-
-Macro evaluation can read only its parameters, uppercase macro bindings, and
-literal values. It cannot read a runtime local, global, context binding, import,
-function, method, or JavaScript API. `IF` uses that same compile-time subset.
-`PASTE(value)` accepts only a string or a source fragment and inserts the
-resulting source into the expansion.
-The compiler reparses and validates pasted source as ordinary Lango.
-
-Bindings introduced directly by a macro body are hygienic: the compiler gives
-them unique generated names. A binding intentionally introduced through pasted
-source is not hygienic, making that possible capture explicit at the `PASTE`
-site. A pasted source fragment may contain another macro call; expansion stops
-with an error after 16 rounds. Macros may not generate `import` or `export`
-declarations, keeping the already-resolved module graph stable. Macro
-diagnostics retain both the macro call site and generated-source location where
-possible.
-
 ## D-060: Diagnostics are located and formatting is deterministic
 
 **Status:** Accepted
@@ -563,7 +530,7 @@ normal property access.
 
 `test` introduces a test block anywhere ordinary source is allowed. A quoted
 text after `test` is its display name; unnamed tests receive a stable name based
-on their source location. After macro expansion, the test runner discovers
+on their source location. The test runner discovers
 tests from the resolved Lango module graph in deterministic module-path then
 source order. Test blocks are excluded from a production build.
 
@@ -793,9 +760,9 @@ point. The host starts the program by calling that exported function with its
 argument array. A library source file need not declare `main`.
 
 At source-root indentation, only declarations are valid: imports, exports,
-classes, functions, macros, globals, contexts, and tests. A free executable
+classes, functions, globals, contexts, and tests. A free executable
 statement at root indentation is a compile-time error. Executable code belongs
-inside a function, method, test, or macro body. A declaration may contain an
+inside a function, method, or test body. A declaration may contain an
 initializer where its own syntax permits one, such as `global name = value`.
 
 The precise host contract for environment configuration, returned Promises, and

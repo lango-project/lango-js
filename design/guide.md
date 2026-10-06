@@ -16,8 +16,8 @@
   * A Promise that `main` does not return is detached work. It does not delay
     the program outcome.
   * Root level has no free executable statements. Executable code belongs in a
-    function, method, test, or macro body.
-  * A file can have class, function, macro, global, context, and test
+    function, method, or test body.
+  * A file can have class, function, global, context, and test
     declarations.
   * The compiler or host selects Node, browser, test, and database environments.
     Host services are accessed through explicit libraries, `args`, or `context`.
@@ -421,8 +421,8 @@ name = 'Savaş'
 message = 'Hello, ${name}'
 ```
 
-Localization is explicit. `_()` accepts a string literal, extracts it after
-macro expansion, and returns the translated primitive string at runtime. Its
+Localization is explicit. `_()` accepts a string literal, extracts it during
+compilation, and returns the translated primitive string at runtime. Its
 source template is the default catalog key and fallback; `${expression}` values
 become catalog placeholders.
 
@@ -852,7 +852,7 @@ test "addition test 1"
     assert add(3, 5) == 8
 ```
 `assert` failures are `AssertionFailed` and report the original asserted
-expression and source location. Tests are discovered after macro expansion,
+expression and source location. Tests are discovered during compilation,
 excluded from production output, and run in deterministic module-path then
 source order. Each receives a fresh Lango module state and dynamic context, so
 Lango globals and static values do not leak between tests. External JavaScript
@@ -864,60 +864,9 @@ or teardown hooks: use normal helpers and `try`/`finally`. Test filtering by
 name or path is a test-runner option, and coverage is tooling rather than a
 language feature.
 
-## Macros
-
-Macros generate source during compilation. Macro names and macro bindings are
-entirely uppercase; ordinary bindings, functions, classes, and imports cannot
-use an entirely uppercase name. They are intentionally a narrow compile-time
-tool, not runtime functions.
-
-```lango
-WARN()
-    PASTE("println(\"WARNING!\")")
-
-main(args)
-    WARN()
-```
-
-Macro conditions use only macro parameters, uppercase macro bindings, and
-literal values. They cannot read a runtime local, global, `context`, import,
-function, method, or JavaScript API. `PASTE(...)` accepts a string or a source
-fragment and inserts it as source. The inserted result is parsed and checked as
-ordinary Lango source.
-
-```lango
-VALUE = 5
-
-FIVE_OR_OTHER(value)
-    IF value == 5
-        PASTE("5")
-      else
-          PASTE("0")
-
-main(args)
-    println(FIVE_OR_OTHER(VALUE))
-```
-
-Macro-local bindings are hygienic: the compiler makes generated binding names
-unique. A name deliberately created by pasted source is explicit and therefore
-not hygienic. A pasted source fragment may contain another macro call, but
-expansion fails after 16 rounds. Macros cannot generate `import` or `export`
-declarations.
-
-Macros themselves use ordinary module headers and may be exported and imported:
-```lango
-# logging.lango
-export
-    WARN()
-
-# app.lango
-import "./logging"
-    WARN()
-```
-
 ## Import/Export
 
-Functions, classes and macros can be exported and imported within source codes.
+Functions and classes can be exported and imported within source codes.
 
 Class export syntax is mentioned above. Let's repeat it here:
 ```lango
@@ -929,14 +878,13 @@ export class Manager
         add(a, b)
         kill()
 ```
-Functions, macros and global, context variables are exported with full headers:
+Functions and global, context variables are exported with full headers:
 ```lango
 export add(a, b)
 
 export # export multiple
     add(a, b)
     subtract(a, b)
-    MYMACRO(a)
     global surprise
     global
         another_surprise
@@ -946,7 +894,6 @@ Imports are also specified with full headers:
 ```lango
 import "./another_file"
     add(a, b)
-    MYMACRO(a)
     class Manager
     alias surp = global surprise
     alias Admin = class Manager
@@ -969,7 +916,7 @@ Use a JavaScript namespace path with `/`, for example
 use `.`, such as `file.name` or `file.close()`. Lango module cycles are allowed
 for functions and classes. A cycle cannot read an uninitialized global or static
 value from another module; that is a compile-time error. Module cycles are
-resolved before macro expansion and are unrelated to its 16-round limit.
+resolved before the rest of compilation.
 
 ## Throw and Try/Catch/Finally
 
