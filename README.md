@@ -287,3 +287,8 @@ each CLI-run Lango test.
 ## Faz 54
 
 Faz 54 rejects unknown instance and static property references in class code.
+
+## Faz 55
+
+Faz 55 validates that declared public instance and static method signatures
+match their implementations.

@@ -1065,17 +1065,25 @@ function validate(program, imports = []) {
         classNode.line,
         `${classNode.name}: unknown ancestor ${classNode.ancestor}`,
       );
-    for (const method of classNode.publicMethods)
-      if (
-        !classNode.methods.some(
-          (item) => item.name === method.name && item.static === method.static,
-        )
-      )
+    for (const method of classNode.publicMethods) {
+      const implementation = classNode.methods.find(
+        (item) => item.name === method.name && item.static === method.static,
+      );
+      if (!implementation)
         throw new LangoError(
           "LNG1209",
           classNode.line,
           `${classNode.name}: public method ${method.static ? "::" : ""}${method.name} has no implementation`,
         );
+      const declaredParameters = JSON.stringify(method.parameters);
+      const implementedParameters = JSON.stringify(implementation.parameters);
+      if (declaredParameters !== implementedParameters)
+        throw new LangoError(
+          "LNG1223",
+          implementation.line,
+          `${classNode.name}: public method ${method.name} signature does not match its declaration`,
+        );
+    }
     const readonly = new Set(classNode.enumValues.map((item) => item.name));
     const superCalls = [];
     const hasSuperMethodCall = (value) =>
