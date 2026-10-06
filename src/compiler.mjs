@@ -48,6 +48,14 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
           1,
           `${inputPath}: import signature for ${selection.sourceName} does not match ${item.sourcePath}`,
         );
+      if (selection.kind === "class")
+        validateImportedClassInterface(
+          selection,
+          target,
+          importedProgram,
+          inputPath,
+          item.sourcePath,
+        );
     }
   }
 
@@ -2128,7 +2136,7 @@ function collectImports(source, inputPath, outputPath) {
       const sourceName = alias
         ? alias[2]
         : (functionImport ?? classImport)[1];
-      selections.push({
+      const selection = {
         sourceName,
         localName: alias ? alias[1] : sourceName,
         kind: classImport || classAlias ? "class" : "function",
@@ -2136,8 +2144,13 @@ function collectImports(source, inputPath, outputPath) {
           classImport || classAlias
             ? []
             : importParameters(alias ? alias[3] : functionImport[2]),
-      });
+      };
       index += 1;
+      if (selection.kind === "class")
+        selection.interface = collectClassImportInterface(lines, () => index, (value) => {
+          index = value;
+        });
+      selections.push(selection);
     }
     const sourcePath = path.resolve(
       path.dirname(inputPath),
@@ -2156,6 +2169,94 @@ function collectImports(source, inputPath, outputPath) {
     });
   }
   return items;
+}
+function collectClassImportInterface(lines, getIndex, setIndex) {
+  const api = {
+    properties: [],
+    methods: [],
+    staticValues: [],
+    staticMethods: [],
+  };
+  let index = getIndex();
+  while (true) {
+    const section = lines[index + 1] ?? "";
+    const target =
+      section === "        properties"
+        ? api.properties
+        : section === "        methods"
+          ? api.methods
+          : section === "        static"
+            ? null
+            : undefined;
+    if (target === undefined) break;
+    index += 1;
+    while (true) {
+      const line = lines[index + 1] ?? "";
+      const method = /^            ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line);
+      const name = /^            ([A-Za-z_]\w*)$/.exec(line);
+      if (!method && !name) break;
+      if (section === "        properties" && name) target.push(name[1]);
+      else if (section === "        methods" && method)
+        target.push({ name: method[1], parameters: importParameters(method[2]) });
+      else if (section === "        static" && name) api.staticValues.push(name[1]);
+      else if (section === "        static" && method)
+        api.staticMethods.push({
+          name: method[1],
+          parameters: importParameters(method[2]),
+        });
+      else break;
+      index += 1;
+    }
+  }
+  setIndex(index);
+  return api;
+}
+function validateImportedClassInterface(
+  selection,
+  target,
+  program,
+  inputPath,
+  sourcePath,
+) {
+  const api = selection.interface;
+  if (!api) return;
+  const classes = new Map(program.classes.map((item) => [item.name, item]));
+  const hierarchy = [];
+  for (let current = target; current; current = classes.get(current.ancestor))
+    hierarchy.push(current);
+  const missing = (kind, name) => {
+    throw new LangoError(
+      "LNG1234",
+      1,
+      `${inputPath}: imported class ${selection.sourceName} does not export ${kind} ${name} from ${sourcePath}`,
+    );
+  };
+  for (const name of api.properties)
+    if (!hierarchy.some((item) => item.publicProperties.includes(name)))
+      missing("property", name);
+  for (const name of api.staticValues)
+    if (!hierarchy.some((item) => item.staticValues.some((value) => value.name === name)))
+      missing("static value", name);
+  for (const [kind, methods] of [
+    ["method", api.methods],
+    ["static method", api.staticMethods],
+  ])
+    for (const method of methods) {
+      const targetMethod = hierarchy
+        .flatMap((item) => item.publicMethods)
+        .find(
+          (candidate) =>
+            candidate.name === method.name &&
+            candidate.static === (kind === "static method"),
+        );
+      if (!targetMethod) missing(kind, method.name);
+      if (!sameParameters(method.parameters, targetMethod.parameters))
+        throw new LangoError(
+          "LNG1235",
+          1,
+          `${inputPath}: import signature for ${selection.sourceName}.${method.name} does not match ${sourcePath}`,
+        );
+    }
 }
 function importParameters(raw) {
   if (!raw) return [];
