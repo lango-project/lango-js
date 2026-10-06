@@ -1006,6 +1006,7 @@ function validate(program, imports = []) {
         importedClasses
           .get(value.receiver)
           ?.staticMethods.find((item) => item.name === value.name);
+      const importedClass = !targetClass && importedClasses.get(value.receiver);
       if (importedStaticMethod) {
         validateRequiredArguments(
           importedStaticMethod,
@@ -1013,6 +1014,12 @@ function validate(program, imports = []) {
           `${value.receiver}.${value.name}`,
         );
       }
+      if (importedClass?.staticListed && !importedStaticMethod)
+        throw new LangoError(
+          "LNG1241",
+          value.line,
+          `${value.receiver}: unknown static method ${value.name}`,
+        );
       const target =
         targetClass &&
         findMethodWithOwner(
@@ -2297,6 +2304,7 @@ function collectClassImportInterface(lines, getIndex, setIndex) {
     methods: [],
     staticValues: [],
     staticMethods: [],
+    staticListed: false,
   };
   let index = getIndex();
   while (true) {
@@ -2311,6 +2319,7 @@ function collectClassImportInterface(lines, getIndex, setIndex) {
             : undefined;
     if (target === undefined) break;
     index += 1;
+    if (section === "        static") api.staticListed = true;
     while (true) {
       const line = lines[index + 1] ?? "";
       const method = /^            ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line);
