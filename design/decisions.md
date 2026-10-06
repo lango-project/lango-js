@@ -399,8 +399,9 @@ or duplicate exports from one module, are compile-time errors.
 
 JavaScript packages and host modules use `import js "specifier" as name` and
 are available only through that namespace. This deliberately avoids depending
-on ESM versus CommonJS named-export shape; Lango source uses members such as
-`name.readFile(...)`. The selected Node or browser host resolves that specifier.
+on ESM versus CommonJS named-export shape; Lango source writes namespace paths
+with `/`, such as `fs/promises/readFile(...)`; ordinary object member access
+remains dotted. The selected Node or browser host resolves that specifier.
 
 The compiler resolves the complete Lango module graph before macro expansion.
 Cyclic Lango imports are permitted and emit ESM live bindings, but a global or

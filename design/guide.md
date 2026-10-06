@@ -953,6 +953,8 @@ import "./another_file"
             length
         methods
             add(a, b)
+        static
+            create(length)
 ```
 *alias* keyword is used to avoid name clashes. Properties and methods cannot be aliased.
 
@@ -961,11 +963,12 @@ JavaScript packages and host modules use a namespace import:
 ```lango
 import js "node:fs" as fs
 ```
-Use the package through that name, for example `fs.readFile(...)`. Lango module
-cycles are allowed for functions and classes. A cycle cannot read an uninitialized
-global or static value from another module; that is a compile-time error. Module
-cycles are resolved before macro expansion and are unrelated to its 16-round
-limit.
+Use a JavaScript namespace path with `/`, for example
+`fs/promises/readFile(...)`. Ordinary object properties and methods continue to
+use `.`, such as `file.name` or `file.close()`. Lango module cycles are allowed
+for functions and classes. A cycle cannot read an uninitialized global or static
+value from another module; that is a compile-time error. Module cycles are
+resolved before macro expansion and are unrelated to its 16-round limit.
 
 ## Throw and Try/Catch/Finally
 
