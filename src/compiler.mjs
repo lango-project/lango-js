@@ -204,6 +204,7 @@ function expr(source, line, parser) {
         if (index > -1) return { type: "binary", operator, left: expr(text.slice(0, index), line, parser), right: expr(text.slice(index + operator.length + 2), line, parser) };
     }
     if (text.startsWith("not ")) return { type: "unary", operator: "not", value: expr(text.slice(4), line, parser) };
+    if (text.startsWith("!")) return { type: "unary", operator: "not", value: expr(text.slice(1), line, parser) };
     const localize = /^_\((.*)\)$/.exec(text);
     if (localize) return { type: "translate", literal: literal(localize[1], line, parser) };
     const construct = /^new ([A-Za-z_]\w*)\((.*)\)$/.exec(text);

@@ -18,6 +18,18 @@ main(args)
     assert.match(output, /!false && true \|\| false/);
 });
 
+test("Faz 21 accepts symbolic logical operators too", () => {
+    const output = compile(`export main(args)
+
+main(args)
+    if !false && true || false
+        println("yes")
+      else
+          println("no")
+`).javascript;
+    assert.match(output, /!false && true \|\| false/);
+});
+
 test("Faz 21 logical-operators fixture runs", async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase21-"));
     const outputPath = path.join(directory, "main.mjs");
