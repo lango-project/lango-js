@@ -1183,6 +1183,14 @@ function validate(program, imports = []) {
             `${classNode.name}: unknown instance property ${name}`,
           );
       }
+      if (name && /^_[A-Za-z_]\w*$/.test(name)) {
+        if (!classScope.instanceMembers.has(name))
+          throw new LangoError(
+            "LNG1222",
+            classNode.line,
+            `${classNode.name}: unknown protected property ${name}`,
+          );
+      }
       Object.values(value).forEach((item) => {
         if (Array.isArray(item)) item.forEach(validateProperties);
         else validateProperties(item);

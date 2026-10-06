@@ -286,7 +286,8 @@ each CLI-run Lango test.
 
 ## Faz 54
 
-Faz 54 rejects unknown instance and static property references in class code.
+Faz 54 rejects unknown instance, protected, and static property references in
+class code.
 
 ## Faz 55
 

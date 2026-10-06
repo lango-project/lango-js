@@ -19,6 +19,14 @@ Counter()
 `),
         /LNG1221.*unknown static property @@count/,
     );
+    assert.throws(
+        () => compile(`class Counter
+
+Counter()
+    println(_count)
+`),
+        /LNG1222.*unknown protected property _count/,
+    );
 });
 
 test("Faz 54 recognizes inherited public, protected, and static members", () => {
