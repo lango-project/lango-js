@@ -237,3 +237,8 @@ Faz 44 checks JSON-helper arity and reports malformed input as `JsonParseError`.
 
 Faz 45 adds `get_class()` and `is_kindof()` reflection helpers. See
 `examples/045-reflection`.
+
+## Faz 46
+
+Faz 46 adds explicit standard-library predicates for number, string, Boolean,
+object, and array values. See `examples/046-predicates`.

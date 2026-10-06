@@ -1,0 +1,12 @@
+export main(args)
+
+main(args)
+    customer = {
+        name: "Ada"
+    }
+    values = [1, 2]
+    println(is_number(1))
+    println(is_string("Ada"))
+    println(is_bool(true))
+    println(is_object(customer))
+    println(is_array(values))

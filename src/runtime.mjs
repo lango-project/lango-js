@@ -54,6 +54,26 @@ export function isKindof(value, Class) {
     return getClass(value) === Class;
 }
 
+export function isNumber(value) {
+    return typeof value === "number" && Number.isFinite(value);
+}
+
+export function isString(value) {
+    return typeof value === "string";
+}
+
+export function isBool(value) {
+    return typeof value === "boolean";
+}
+
+export function isObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+export function isArray(value) {
+    return Array.isArray(value);
+}
+
 export function contextGet(name) {
     const stack = contexts.get(name);
     if (!stack || stack.length === 0) {

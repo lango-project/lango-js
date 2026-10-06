@@ -651,6 +651,11 @@ function validate(program, imports = []) {
     ["to_json", 1],
     ["get_class", 1],
     ["is_kindof", 2],
+    ["is_number", 1],
+    ["is_string", 1],
+    ["is_bool", 1],
+    ["is_object", 1],
+    ["is_array", 1],
   ]);
   if (names.size !== program.functions.length)
     throw new LangoError("LNG1201", 1, "duplicate function name");
@@ -1114,6 +1119,11 @@ function emit(program, moduleImports = []) {
     flags.json && "toJson as __toJson",
     flags.reflection && "getClass as __getClass",
     flags.reflection && "isKindof as __isKindof",
+    flags.predicates && "isNumber as __isNumber",
+    flags.predicates && "isString as __isString",
+    flags.predicates && "isBool as __isBool",
+    flags.predicates && "isObject as __isObject",
+    flags.predicates && "isArray as __isArray",
   ].filter(Boolean);
   const imports = helpers.length
     ? `import {\n${helpers.map((item) => `    ${item},`).join("\n")}\n} from \"./.lango/runtime.mjs\";\n\n`
@@ -1431,6 +1441,18 @@ function emitExpr(node, flags) {
     if (node.name === "get_class" || node.name === "is_kindof") {
       flags.reflection = true;
       const helper = node.name === "get_class" ? "__getClass" : "__isKindof";
+      return `${helper}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    }
+  if (node.type === "call")
+    if (["is_number", "is_string", "is_bool", "is_object", "is_array"].includes(node.name)) {
+      flags.predicates = true;
+      const helper = {
+        is_number: "__isNumber",
+        is_string: "__isString",
+        is_bool: "__isBool",
+        is_object: "__isObject",
+        is_array: "__isArray",
+      }[node.name];
       return `${helper}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
     }
   if (node.type === "call")
