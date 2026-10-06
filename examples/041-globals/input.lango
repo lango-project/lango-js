@@ -1,0 +1,12 @@
+export main(args)
+
+global surprise = 10
+
+add(value)
+    global surprise
+    surprise = surprise + value
+    return surprise
+
+main(args)
+    println(add(5))
+    println(add(2))

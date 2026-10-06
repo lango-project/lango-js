@@ -55,6 +55,7 @@ class Parser {
     const functions = [];
     const classes = [];
     const exports = [];
+    const globals = [];
     let declarationSeen = false;
     let exportedClassSeen = false;
     this.blank();
@@ -62,6 +63,20 @@ class Parser {
       const line = this.line();
       if (/^import "\.[^"]+"$/.test(line.text)) {
         while (this.peek()?.startsWith("    ")) this.i += 1;
+        this.blank();
+        continue;
+      }
+      const globalDeclaration = /^global ([A-Za-z_]\w*) = (.+)$/.exec(
+        line.text,
+      );
+      if (globalDeclaration) {
+        if (declarationSeen)
+          this.fail(line, "LNG1119", "globals must precede class and function declarations");
+        globals.push({
+          name: globalDeclaration[1],
+          value: expr(globalDeclaration[2], line, this),
+          line: line.number,
+        });
         this.blank();
         continue;
       }
@@ -227,7 +242,7 @@ class Parser {
         1,
         `${this.name}: main(args) may be exported once`,
       );
-    return { functions, classes };
+    return { functions, classes, globals };
   }
   block(indent) {
     const body = [];
@@ -243,7 +258,10 @@ class Parser {
         );
       const line = this.line();
       const text = line.text.slice(indent);
-      if (/^context ([A-Za-z_]\w*) = (.+)$/.test(text)) {
+      if (/^global ([A-Za-z_]\w*)$/.test(text)) {
+        const [, name] = /^global ([A-Za-z_]\w*)$/.exec(text);
+        body.push({ type: "globalDeclare", name, line: line.number });
+      } else if (/^context ([A-Za-z_]\w*) = (.+)$/.test(text)) {
         const [, name, value] = /^context ([A-Za-z_]\w*) = (.+)$/.exec(text);
         body.push({ type: "contextSet", name, value: expr(value, line, this) });
       } else if (/^context ([A-Za-z_]\w*)$/.test(text)) {
@@ -626,9 +644,12 @@ function literal(value, line, parser) {
 
 function validate(program, imports = []) {
   const names = new Map(program.functions.map((item) => [item.name, item]));
+  const globals = new Set(program.globals.map((item) => item.name));
   const imported = new Set(imports.flatMap((item) => item.names));
   if (names.size !== program.functions.length)
     throw new LangoError("LNG1201", 1, "duplicate function name");
+  if (globals.size !== program.globals.length)
+    throw new LangoError("LNG1216", 1, "duplicate global name");
   const closureNames = (body, result = new Set()) => {
     for (const node of body) {
       if (node.type === "closureAssign") result.add(node.name);
@@ -745,6 +766,15 @@ function validate(program, imports = []) {
     return names;
   };
 
+  const globalDeclarations = (body, names = new Set()) => {
+    for (const node of body) {
+      if (node.type === "globalDeclare") names.add(node.name);
+      if (node.type !== "closureAssign")
+        nestedBodies(node).forEach((child) => globalDeclarations(child, names));
+    }
+    return names;
+  };
+
   const directBindings = (body, bindings = new Set()) => {
     for (const node of body) {
       if (node.type === "closureAssign") {
@@ -802,8 +832,12 @@ function validate(program, imports = []) {
           .filter((name) => !name.startsWith("@") && !name.startsWith("_"))
           .forEach((name) => localBindings.delete(name));
         const contextNames = contextDeclarations(closure.body);
+        const globalNames = globalDeclarations(closure.body);
         const needed = [...directReferences(closure.body)].filter(
-          (name) => !localBindings.has(name) && !contextNames.has(name),
+          (name) =>
+            !localBindings.has(name) &&
+            !contextNames.has(name) &&
+            !globalNames.has(name),
         );
         const captures = new Set(closure.captures);
         for (const name of needed)
@@ -888,9 +922,48 @@ function validate(program, imports = []) {
         );
     }
   };
+  const validateGlobalAccess = (body, declarations = new Set()) => {
+    for (const node of body) {
+      if (node.type === "globalDeclare") {
+        if (!globals.has(node.name))
+          throw new LangoError(
+            "LNG1217",
+            node.line,
+            `unknown global ${node.name}`,
+          );
+        declarations.add(node.name);
+      }
+      if (node.type === "assign" && globals.has(node.name) && !declarations.has(node.name))
+        throw new LangoError(
+          "LNG1218",
+          1,
+          `${node.name} is a global; declare global ${node.name} first`,
+        );
+      if (node.type === "closureAssign") {
+        validateGlobalAccess(node.body);
+        continue;
+      }
+      if (node.type === "return" && node.value?.type === "closure") {
+        validateGlobalAccess(node.value.body);
+        continue;
+      }
+      if (node.type !== "closureAssign")
+        nestedBodies(node).forEach((child) =>
+          validateGlobalAccess(child, declarations),
+        );
+    }
+    for (const name of directReferences(body))
+      if (globals.has(name) && !declarations.has(name))
+        throw new LangoError(
+          "LNG1218",
+          1,
+          `${name} is a global; declare global ${name} first`,
+        );
+  };
   program.functions.forEach((fn) =>
     validateContextAssignments(fn.body, contextDeclarations(fn.body)),
   );
+  program.functions.forEach((fn) => validateGlobalAccess(fn.body));
   const classes = new Map(program.classes.map((item) => [item.name, item]));
   if (classes.size !== program.classes.length)
     throw new LangoError("LNG1205", 1, "duplicate class name");
@@ -975,6 +1048,7 @@ function validate(program, imports = []) {
         method.body,
         contextDeclarations(method.body),
       );
+      validateGlobalAccess(method.body);
       superCalls.length = 0;
       validateMethod(method.body);
       if (
@@ -1030,7 +1104,28 @@ function emit(program, moduleImports = []) {
         `import { ${item.names.join(", ")} } from ${JSON.stringify(item.specifier)};\n`,
     )
     .join("");
-  return `${modules}${imports}${classes}${functions}//# sourceMappingURL=main.mjs.map\n`;
+  const globals = program.globals
+    .map((item) => `let ${item.name} = ${emitExpr(item.value, flags)};\n`)
+    .join("");
+  return `${modules}${imports}${globals}${classes}${functions}//# sourceMappingURL=main.mjs.map\n`;
+}
+function collectGlobalNames(body, names = new Set()) {
+  for (const node of body) {
+    if (node.type === "globalDeclare") names.add(node.name);
+    if (node.type === "closureAssign") continue;
+    [
+      node.thenBody,
+      node.elseBody,
+      node.tryBody,
+      node.catchBody,
+      node.finallyBody,
+      node.body,
+      ...(node.cases?.map((item) => item.body) ?? []),
+    ]
+      .filter(Boolean)
+      .forEach((child) => collectGlobalNames(child, names));
+  }
+  return names;
 }
 function collectContextNames(body, names = new Set()) {
   for (const node of body) {
@@ -1086,6 +1181,8 @@ function emitClass(item, flags) {
     .map((method) => {
       flags.staticMethod = method.static;
       const declared = new Set(method.parameters.map((p) => p.name));
+      const priorGlobalNames = flags.globalNames;
+      flags.globalNames = collectGlobalNames(method.body);
       const priorContextNames = flags.contextNames;
       const contextNames = collectContextNames(method.body);
       flags.contextNames = contextNames;
@@ -1107,6 +1204,7 @@ function emitClass(item, flags) {
         )
         .join("");
       flags.contextNames = priorContextNames;
+      flags.globalNames = priorGlobalNames;
       if (!contextNames.size)
         return `    ${method.static ? "static " : ""}${name}(${parameters}) {\n${methodBody}${suffix}    }\n`;
       flags.context = true;
@@ -1129,8 +1227,10 @@ function emitClass(item, flags) {
 function emitFunction(fn, flags) {
   const declared = new Set(fn.parameters.map((p) => p.name));
   const priorContextNames = flags.contextNames;
+  const priorGlobalNames = flags.globalNames;
   const contextNames = collectContextNames(fn.body);
   flags.contextNames = contextNames;
+  flags.globalNames = collectGlobalNames(fn.body);
   const parameters = fn.parameters
     .map((p) =>
       p.defaultValue === null
@@ -1142,6 +1242,7 @@ function emitFunction(fn, flags) {
     .map((item) => emitStatement(item, contextNames.size ? 2 : 1, declared, flags))
     .join("");
   flags.contextNames = priorContextNames;
+  flags.globalNames = priorGlobalNames;
   if (!contextNames.size)
     return `${fn.exported ? "export " : ""}function ${fn.name}(${parameters}) {\n${body}    return null;\n}\n`;
   flags.context = true;
@@ -1149,6 +1250,7 @@ function emitFunction(fn, flags) {
 }
 function emitStatement(node, depth, declared, flags) {
   const pad = "    ".repeat(depth);
+  if (node.type === "globalDeclare") return "";
   if (node.type === "contextDeclare") return "";
   if (node.type === "contextSet") {
     flags.context = true;
@@ -1168,7 +1270,7 @@ function emitStatement(node, depth, declared, flags) {
     const prefix =
       node.name.startsWith("@") ||
       (flags.className && node.name.startsWith("_")) ||
-      declared.has(node.name)
+      declared.has(node.name) || flags.globalNames?.has(node.name)
         ? ""
         : "let ";
     declared.add(node.name);
@@ -1242,14 +1344,17 @@ function emitClosure(node, depth, flags) {
   ]);
   const pad = "    ".repeat(depth);
   const priorContextNames = flags.contextNames;
+  const priorGlobalNames = flags.globalNames;
   const contextNames = collectContextNames(node.body);
   flags.contextNames = contextNames;
+  flags.globalNames = collectGlobalNames(node.body);
   const body = node.body
     .map((item) =>
       emitStatement(item, depth + (contextNames.size ? 2 : 1), declared, flags),
     )
     .join("");
   flags.contextNames = priorContextNames;
+  flags.globalNames = priorGlobalNames;
   if (!contextNames.size) return `(${parameters}) => {\n${body}${pad}}`;
   flags.context = true;
   return `(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${body}${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`;

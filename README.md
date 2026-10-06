@@ -213,3 +213,13 @@ Faz 39 makes declared context bindings available in class methods. See
 
 Faz 40 gives closures their own explicit context declarations. See
 `examples/040-closure-context`.
+
+## Faz 41
+
+Faz 41 adds mutable file globals with explicit per-function access
+declarations. See `examples/041-globals`.
+
+## Faz 42
+
+Faz 42 requires closures to declare globals explicitly before using them. See
+`examples/042-closure-global`.
