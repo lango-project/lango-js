@@ -496,6 +496,7 @@ class Parser {
           arguments: argumentsText
             ? argumentsText.split(", ").map((item) => expr(item, line, this))
             : [],
+          line: line.number,
         });
       } else if (/^(break|continue)(?: ([1-9]\d*))?$/.test(text)) {
         const [, type, rawLevel] = /^(break|continue)(?: ([1-9]\d*))?$/.exec(text);
@@ -1610,6 +1611,12 @@ function validate(program, imports = []) {
           method.line,
           `${classNode.name}: constructor must call super(...) once as its first statement`,
         );
+      if (method.name === "constructor" && classNode.ancestor) {
+        const ancestor = classes.get(classNode.ancestor);
+        const constructor = findConstructor(ancestor);
+        if (constructor)
+          validateRequiredArguments(constructor, method.body[0], `super for ${classNode.name}`);
+      }
       if (
         (method.name !== "constructor" || !classNode.ancestor) &&
         superCalls.length
