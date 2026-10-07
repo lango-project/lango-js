@@ -1221,6 +1221,15 @@ function validate(program, imports = []) {
         `${label} is missing required argument ${missing + 1}`,
       );
   };
+  const validateJavaScriptArguments = (value, label) => {
+    const decimalIndex = value.arguments.findIndex(isDecimalValue);
+    if (decimalIndex !== -1)
+      throw new LangoError(
+        "LNG1252",
+        value.line,
+        `${label}: Decimal argument ${decimalIndex + 1} requires to_js_number(...) at a JavaScript boundary`,
+      );
+  };
   const findMethod = (classNode, name, staticMethod) => {
     let current = classNode;
     while (current) {
@@ -1305,6 +1314,7 @@ function validate(program, imports = []) {
           value.line,
           `use / between JavaScript namespace segments in new ${value.name}(...)`,
         );
+      if (value.name.includes("/")) validateJavaScriptArguments(value, value.name);
       const target = classes.get(value.name);
       const constructor = target && findConstructor(target);
       if (constructor) validateRequiredArguments(constructor, value, value.name);
@@ -1380,6 +1390,7 @@ function validate(program, imports = []) {
           value.line,
           `${root} is not an imported JavaScript namespace`,
         );
+      validateJavaScriptArguments(value, `${value.receiver}/${value.name}`);
     }
     if (value.type === "superMethodCall" && classNode?.ancestor) {
       if (staticMethod)
