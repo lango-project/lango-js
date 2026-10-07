@@ -21,7 +21,7 @@ without regressing explicit interpolation or JavaScript interop boundaries.
 
 ### Remaining host-boundary coverage
 
-Decimal arguments are rejected at JavaScript namespace-call and constructor
+Decimal arguments are rejected at JavaScript namespace-call, `fetch`, and constructor
 boundaries unless explicitly converted with `to_js_number`. Continue auditing
 less-direct host callbacks and value paths where an ordinary JavaScript value
 can still cross without a Lango-specific error.

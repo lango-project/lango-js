@@ -780,6 +780,8 @@ k()
 ## Promises
 
 Promises use ordinary method calls and closures.
+`fetch` is the selected browser/Node host's standard callable and needs no
+JavaScript namespace import.
 ```lango
 fetch(input).then((output)
     if not output.ok

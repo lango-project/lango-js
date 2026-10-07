@@ -536,8 +536,39 @@ class Parser {
             body: this.block(indent + 4),
           },
         });
-      } else if (text.startsWith("return "))
-        body.push({ type: "return", value: this.expression(text.slice(7), line) });
+      } else if (text.startsWith("return ")) {
+        const value = text.slice(7);
+        const chain = /^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.exec(value);
+        if (!chain) body.push({ type: "return", value: this.expression(value, line) });
+        else {
+          const steps = [];
+          steps.push({
+            name: chain[2],
+            parameters: this.parameters(chain[3], line),
+            captures: this.captures(),
+            line: line.number,
+            body: this.block(indent + 4),
+          });
+          this.blank();
+          while (spaces(this.peek() ?? "") === indent) {
+            const continuation = /^\)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.exec((this.peek() ?? "").slice(indent));
+            if (!continuation) break;
+            const continuationLine = this.line();
+            steps.push({
+              name: continuation[1],
+              parameters: this.parameters(continuation[2], continuationLine),
+              captures: this.captures(),
+              line: continuationLine.number,
+              body: this.block(indent + 4),
+            });
+            this.blank();
+          }
+          if (this.peek() !== `${" ".repeat(indent)})`)
+            this.fail(line, "LNG1253", "Promise chain requires a closing parenthesis");
+          this.i += 1;
+          body.push({ type: "return", value: { type: "chain", base: expr(chain[1], line, this), steps } });
+        }
+      }
       else if (text.startsWith("throw "))
         body.push({ type: "throw", value: expr(text.slice(6), line, this) });
       else if (/^super\((.*)\)$/.test(text)) {
@@ -555,6 +586,33 @@ class Parser {
       }
       else if (/^[A-Za-z_]\w*\+\+$/.test(text))
         body.push({ type: "increment", name: text.slice(0, -2) });
+      else if (/^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.test(text)) {
+        const [, first, name, parameters] = /^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.exec(text);
+        const steps = [];
+        let step = { name, parameters: this.parameters(parameters, line), captures: this.captures(), line: line.number, body: this.block(indent + 4) };
+        steps.push(step);
+        this.blank();
+        while (spaces(this.peek() ?? "") === indent) {
+          const continuation = /^\)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.exec(
+            (this.peek() ?? "").slice(indent),
+          );
+          if (!continuation) break;
+          const continuationLine = this.line();
+          step = {
+            name: continuation[1],
+            parameters: this.parameters(continuation[2], continuationLine),
+            captures: this.captures(),
+            line: continuationLine.number,
+            body: this.block(indent + 4),
+          };
+          steps.push(step);
+          this.blank();
+        }
+        if (this.peek() !== `${" ".repeat(indent)})`)
+          this.fail(line, "LNG1253", "Promise chain requires a closing parenthesis");
+        this.i += 1;
+        body.push({ type: "chain", base: expr(first, line, this), steps });
+      }
       else if (/^([A-Za-z_]\w*)\.add\((.+)\)$/.test(text)) {
         const [, target, value] = /^([A-Za-z_]\w*)\.add\((.+)\)$/.exec(text);
         body.push({ type: "add", target, value: expr(value, line, this) });
@@ -1064,6 +1122,7 @@ function validate(program, imports = []) {
     ["is_array", 1],
     ["to_js_number", 1],
   ]);
+  const hostFunctions = new Set(["fetch"]);
   const isDecimalValue = (value) =>
     value &&
     ((value.type === "raw" && (value.value.startsWith("$") || value.value.includes(".$"))) ||
@@ -1264,6 +1323,7 @@ function validate(program, imports = []) {
         !target &&
         !imported.has(value.name) &&
         !standardFunctions.has(value.name) &&
+        !hostFunctions.has(value.name) &&
         !localCallables.has(value.name)
       )
         throw new LangoError(
@@ -1296,6 +1356,7 @@ function validate(program, imports = []) {
           value.line,
           `${value.name} expects ${standardFunctions.get(value.name)} arguments, got ${value.arguments.length}`,
         );
+      if (hostFunctions.has(value.name)) validateJavaScriptArguments(value, value.name);
     }
     if (value.type === "new") {
       if (
@@ -1577,6 +1638,20 @@ function validate(program, imports = []) {
           ? validateClosures(node.finallyBody, certain, classScope)
           : certain;
         afterFinally.forEach((name) => available.add(name));
+        continue;
+      }
+      const chain = node.type === "chain"
+        ? node
+        : node.type === "return" && node.value?.type === "chain"
+          ? node.value
+          : null;
+      if (chain) {
+        for (const step of chain.steps)
+          validateClosures(
+            [{ type: "return", value: { type: "closure", ...step } }],
+            new Set(available),
+            classScope,
+          );
         continue;
       }
       const closure =
@@ -2446,6 +2521,8 @@ function emitStatement(node, depth, declared, flags) {
   }
   if (node.type === "expression")
     return `${pad}${emitExpr(node.value, flags)};\n`;
+  if (node.type === "chain")
+    return `${pad}${emitChain(node, depth, flags)};\n`;
   if (node.type === "closureAssign") {
     declared.add(node.name);
     return `${pad}let ${node.name} = ${emitClosure(node, depth, flags)};\n`;
@@ -2456,7 +2533,7 @@ function emitStatement(node, depth, declared, flags) {
   if (node.type === "add")
     return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`;
   if (node.type === "return")
-    return `${pad}return${node.value === null ? " null" : node.value.type === "closure" ? ` ${emitClosure(node.value, depth, flags)}` : ` ${emitExpr(node.value, flags)}`};\n`;
+    return `${pad}return${node.value === null ? " null" : node.value.type === "closure" ? ` ${emitClosure(node.value, depth, flags)}` : node.value.type === "chain" ? ` ${emitChain(node.value, depth, flags)}` : ` ${emitExpr(node.value, flags)}`};\n`;
   if (node.type === "throw")
     return `${pad}throw ${emitExpr(node.value, flags)};\n`;
   if (node.type === "println") {
@@ -2512,6 +2589,11 @@ function emitStatement(node, depth, declared, flags) {
   if (node.elseBody)
     out += ` else {\n${node.elseBody.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}`;
   return `${out}\n`;
+}
+function emitChain(node, depth, flags) {
+  return `${emitExpr(node.base, flags)}${node.steps
+    .map((step) => `.${step.name}(${emitClosure(step, depth, flags)})`)
+    .join("")}`;
 }
 function emitClosure(node, depth, flags) {
   const parameters = node.parameters
