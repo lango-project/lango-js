@@ -19,14 +19,6 @@ without regressing explicit interpolation or JavaScript interop boundaries.
 
 ## JavaScript interoperability
 
-### Cyclic module initializer reads
-
-Imported functions, classes, and explicitly exported globals are validated
-against their module interfaces. Imported class properties, methods, static
-values, and static methods are checked, including inherited public members.
-Class inheritance cycles are rejected. Add cyclic-module initializer-read
-analysis.
-
 ### Remaining host-boundary coverage
 
 Extend JavaScript interop diagnostics and value-boundary coverage where an

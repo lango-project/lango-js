@@ -10,6 +10,8 @@ export class LangoError extends Error {
 }
 
 export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false) {
+  if (seen.size === 0)
+    await validateModuleInitializerCycles(inputPath, outputPath);
   if (seen.has(inputPath)) return;
   seen.add(inputPath);
 
@@ -225,6 +227,7 @@ class Parser {
                 classNode.staticValues.push({
                   name: value[1],
                   value: expr(value[2], line, this),
+                  line: line.number,
                 });
               } else {
                 classNode.publicMethods.push({
@@ -243,7 +246,7 @@ class Parser {
               );
               classNode[
                 section === "enum" ? "enumValues" : "staticValues"
-              ].push({ name, value: expr(value, valueLine, this) });
+              ].push({ name, value: expr(value, valueLine, this), line: valueLine.number });
             }
           }
         }
@@ -2823,6 +2826,65 @@ function collectImports(source, inputPath, outputPath) {
     });
   }
   return items;
+}
+
+async function validateModuleInitializerCycles(entryPath, entryOutputPath) {
+  const modules = new Map();
+  const visit = async (modulePath, outputPath) => {
+    if (modules.has(modulePath)) return;
+    const source = await readFile(modulePath, "utf8");
+    const imports = collectImports(source, modulePath, outputPath);
+    const program = new Parser(source, modulePath).parse();
+    modules.set(modulePath, { program, imports });
+    for (const item of imports) await visit(item.sourcePath, item.outputPath);
+  };
+  await visit(entryPath, entryOutputPath);
+
+  const reaches = (from, target, visited = new Set()) => {
+    if (from === target) return true;
+    if (visited.has(from)) return false;
+    visited.add(from);
+    return (modules.get(from)?.imports ?? []).some((item) =>
+      reaches(item.sourcePath, target, visited),
+    );
+  };
+  const reads = (node, name, staticValue) => {
+    if (!node || typeof node !== "object") return false;
+    if (node.type === "raw")
+      return staticValue
+        ? node.value.startsWith(`${name}.`)
+        : node.value === name || node.value.startsWith(`${name}.`) || node.value.startsWith(`${name}[`);
+    return Object.values(node).some((value) =>
+      Array.isArray(value)
+        ? value.some((child) => reads(child, name, staticValue))
+        : reads(value, name, staticValue),
+    );
+  };
+  const initializers = (program) => [
+    ...program.globals.map((item) => ({ value: item.value, line: item.line })),
+    ...program.classes.flatMap((classNode) =>
+      [...classNode.staticValues, ...classNode.enumValues].map((item) => ({
+        value: item.value,
+        line: item.line ?? classNode.line,
+      })),
+    ),
+  ];
+
+  for (const [modulePath, module] of modules)
+    for (const item of module.imports) {
+      if (!reaches(item.sourcePath, modulePath)) continue;
+      for (const selection of item.selections)
+        for (const initializer of initializers(module.program))
+          if (
+            (selection.kind === "global" && reads(initializer.value, selection.localName, false)) ||
+            (selection.kind === "class" && reads(initializer.value, selection.localName, true))
+          )
+            throw new LangoError(
+              "LNG1251",
+              initializer.line,
+              `${modulePath}: cyclic module initializer reads imported ${selection.kind} ${selection.localName}`,
+            );
+    }
 }
 function collectClassImportInterface(lines, getIndex, setIndex) {
   const api = {
