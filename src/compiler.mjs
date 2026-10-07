@@ -29,20 +29,22 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
               (candidate) =>
                 candidate.name === selection.sourceName && candidate.exported,
             )
-          : importedProgram.functions.find(
+          : selection.kind === "function"
+            ? importedProgram.functions.find(
               (candidate) =>
                 candidate.name === selection.sourceName && candidate.exported,
-            );
+              )
+            : importedProgram.globals.find(
+                (candidate) =>
+                  candidate.name === selection.sourceName && candidate.exported,
+              );
       if (!target)
         throw new LangoError(
           "LNG1227",
           1,
           `${inputPath}: imported ${selection.kind} ${selection.sourceName} is not exported by ${item.sourcePath}`,
         );
-      if (
-        selection.kind === "function" &&
-        !sameParameters(selection.parameters, target.parameters)
-      )
+      if (selection.kind === "function" && !sameParameters(selection.parameters, target.parameters))
         throw new LangoError(
           "LNG1230",
           1,
@@ -149,6 +151,7 @@ class Parser {
         globals.push({
           name: globalDeclaration[1],
           value: this.expression(globalDeclaration[2], line),
+          exported: false,
           line: line.number,
         });
         this.blank();
@@ -248,6 +251,18 @@ class Parser {
         continue;
       }
       const exportHeader = /^export ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
+      const exportGlobal = /^export global (\$?[A-Za-z_]\w*)$/.exec(line.text);
+      if (exportGlobal) {
+        if (declarationSeen)
+          this.fail(
+            line,
+            "LNG1113",
+            "exports must precede class and function declarations",
+          );
+        exports.push({ kind: "global", name: exportGlobal[1], line: line.number });
+        this.blank();
+        continue;
+      }
       if (exportHeader) {
         if (declarationSeen)
           this.fail(
@@ -256,6 +271,7 @@ class Parser {
             "exports must precede class and function declarations",
           );
         exports.push({
+          kind: "function",
           name: exportHeader[1],
           parameters: this.parameters(exportHeader[2], line),
           line: line.number,
@@ -316,6 +332,17 @@ class Parser {
       this.blank();
     }
     for (const exported of exports) {
+      if (exported.kind === "global") {
+        const target = globals.find((item) => item.name === exported.name);
+        if (!target)
+          throw new LangoError(
+            "LNG1104",
+            exported.line,
+            `${this.name}: export does not match a global declaration`,
+          );
+        target.exported = true;
+        continue;
+      }
       const target = functions.find(
         (item) =>
           item.name === exported.name &&
@@ -995,6 +1022,13 @@ function validate(program, imports = []) {
     ...program.jsImports.map((item) => item.name),
   ];
   const imported = new Set(importNames);
+  const importedGlobals = new Set(
+    imports.flatMap((item) =>
+      (item.selections ?? [])
+        .filter((selection) => selection.kind === "global")
+        .map((selection) => selection.localName),
+    ),
+  );
   const jsImportNames = new Set(program.jsImports.map((item) => item.name));
   const importedFunctions = new Map(
     imports.flatMap((item) =>
@@ -1700,6 +1734,12 @@ function validate(program, imports = []) {
   };
   const validateGlobalAccess = (body, declarations = new Set()) => {
     for (const node of body) {
+      if (node.type === "assign" && importedGlobals.has(node.name))
+        throw new LangoError(
+          "LNG1250",
+          node.line ?? 1,
+          `${node.name} is an imported global and cannot be assigned here`,
+        );
       if (node.type === "globalDeclare") {
         if (!globals.has(node.name))
           throw new LangoError(
@@ -2123,9 +2163,10 @@ function emit(program, moduleImports = [], includeTests = false) {
   const globals = program.globals
     .map((item) => {
       const value = emitExpr(item.value, flags);
-      if (!item.name.startsWith("$")) return `let ${item.name} = ${value};\n`;
+      const prefix = item.exported ? "export let" : "let";
+      if (!item.name.startsWith("$")) return `${prefix} ${item.name} = ${value};\n`;
       flags.decimal = true;
-      return `let ${item.name} = __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value});\n`;
+      return `${prefix} ${item.name} = __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value});\n`;
     })
     .join("");
   const testReset = includeTests
@@ -2736,22 +2777,25 @@ function collectImports(source, inputPath, outputPath) {
       const classImport = /^    class ([A-Za-z_]\w*)$/.exec(item);
       const classAlias =
         /^    alias ([A-Za-z_]\w*) = class ([A-Za-z_]\w*)$/.exec(item);
-      if (!functionImport && !functionAlias && !classImport && !classAlias) break;
+      const globalImport = /^    global (\$?[A-Za-z_]\w*)$/.exec(item);
+      const globalAlias =
+        /^    alias (\$?[A-Za-z_]\w*) = global (\$?[A-Za-z_]\w*)$/.exec(item);
+      if (!functionImport && !functionAlias && !classImport && !classAlias && !globalImport && !globalAlias) break;
       names.push(
-        classAlias || functionAlias
-          ? `${(classAlias ?? functionAlias)[2]} as ${(classAlias ?? functionAlias)[1]}`
-          : (functionImport ?? classImport)[1],
+        classAlias || functionAlias || globalAlias
+          ? `${(classAlias ?? functionAlias ?? globalAlias)[2]} as ${(classAlias ?? functionAlias ?? globalAlias)[1]}`
+          : (functionImport ?? classImport ?? globalImport)[1],
       );
-      const alias = classAlias ?? functionAlias;
+      const alias = classAlias ?? functionAlias ?? globalAlias;
       const sourceName = alias
         ? alias[2]
-        : (functionImport ?? classImport)[1];
+        : (functionImport ?? classImport ?? globalImport)[1];
       const selection = {
         sourceName,
         localName: alias ? alias[1] : sourceName,
-        kind: classImport || classAlias ? "class" : "function",
+        kind: classImport || classAlias ? "class" : globalImport || globalAlias ? "global" : "function",
         parameters:
-          classImport || classAlias
+          classImport || classAlias || globalImport || globalAlias
             ? []
             : importParameters(alias ? alias[3] : functionImport[2]),
       };
