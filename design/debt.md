@@ -34,12 +34,6 @@ contextual default connection and join-only nested transactions (D-054).
 
 ## Tooling
 
-### Formatter and format command
-
-Implement the deterministic formatter: four-space indentation, import/export
-ordering, blank-line normalization, trailing-whitespace removal, TAB rejection,
-and a CLI entrypoint.
-
 ### Expand executable conformance examples
 
 Faz 1 establishes the first formatting and compiler/runtime fixtures. Every

@@ -102,13 +102,20 @@ export function formatSource(source, sourceName = "<source>") {
   if (source.includes("\t"))
     throw new LangoError("LNG1001", 1, "TAB characters are not allowed");
   new Parser(source, sourceName).parse();
-  const lines = source.split(/\r?\n/).map((line) => line.trimEnd());
+  const lines = source.split(/\r?\n/).map((line) => formatLine(line));
   while (lines[0] === "") lines.shift();
   while (lines.at(-1) === "") lines.pop();
   const formatted = [];
   for (const line of lines)
     if (line !== "" || formatted.at(-1) !== "") formatted.push(line);
   return formatted.length ? `${formatted.join("\n")}\n` : "";
+}
+
+function formatLine(line) {
+  const trimmed = line.trimEnd();
+  const code = stripComment(trimmed);
+  if (code.length === trimmed.length || code.trim() === "") return trimmed;
+  return `${code.trimEnd()} ${trimmed.slice(code.length).trim()}`;
 }
 
 class Parser {

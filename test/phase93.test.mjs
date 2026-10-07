@@ -12,7 +12,7 @@ const execFileAsync = promisify(execFile);
 test("Faz 93 formats parseable source without discarding comments", () => {
     assert.equal(
         formatSource(`\n# heading   \n\n\nexport main(args)   # entry   \n\nmain(args)   \n    return "ok"   \n\n`),
-        `# heading\n\nexport main(args)   # entry\n\nmain(args)\n    return "ok"\n`,
+        `# heading\n\nexport main(args) # entry\n\nmain(args)\n    return "ok"\n`,
     );
 });
 
@@ -27,4 +27,12 @@ test("Faz 93 format command rewrites its input file", async () => {
         await readFile(input, "utf8"),
         `export main(args)\n\nmain(args)\n    return null\n`,
     );
+});
+
+test("Faz 93 formatting is idempotent for inline comments", () => {
+    const once = formatSource(["main(args)   # entry   ", "    return \"# literal\"   # result   ", ""].join("\n"));
+    assert.equal(once, `main(args) # entry
+    return "# literal" # result
+`);
+    assert.equal(formatSource(once), once);
 });
