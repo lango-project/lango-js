@@ -565,6 +565,8 @@ class Parser {
         });
       else if (/^[A-Za-z_]\w*\.[A-Za-z_]\w*\(.*\)$/.test(text))
         body.push({ type: "expression", value: expr(text, line, this) });
+      else if (/^[A-Za-z_]\w*(?:\/[A-Za-z_]\w*)+\(.*\)$/.test(text))
+        body.push({ type: "expression", value: expr(text, line, this) });
       else if (/^[A-Za-z_]\w*\(.*\)$/.test(text))
         body.push({ type: "expression", value: expr(text, line, this) });
       else if (/^([A-Za-z_]\w*) = \(([^)]*)\)$/.test(text)) {

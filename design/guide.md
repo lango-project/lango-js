@@ -913,7 +913,9 @@ import js "node:fs" as fs
 ```
 Use a JavaScript namespace path with `/`, for example
 `fs/promises/readFile(...)`. Ordinary object properties and methods continue to
-use `.`, such as `file.name` or `file.close()`. Lango module cycles are allowed
+use `.`, such as `file.name` or `file.close()`. A namespace call may be used as
+an ordinary expression statement when its result is intentionally discarded.
+Lango module cycles are allowed
 for functions and classes. A cycle cannot read an uninitialized global or static
 value from another module; that is a compile-time error. Module cycles are
 resolved before the rest of compilation.
