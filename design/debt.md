@@ -17,11 +17,6 @@ Complete path-sensitive local definite-assignment analysis across branches,
 loops, and try/catch/finally. Enforce the accepted non-coercive operation model
 without regressing explicit interpolation or JavaScript interop boundaries.
 
-### XML literals
-
-Implement validated XML literals, escaped interpolation, and their runtime
-representation.
-
 ## JavaScript interoperability
 
 ### Complete module interfaces

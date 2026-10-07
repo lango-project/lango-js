@@ -33,6 +33,15 @@ export function translate(template, values) {
     return translated.replace(/\\{(\\d+)\\}/g, (_, index) => String(values[index]));
 }
 
+export function xmlEscape(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&apos;");
+}
+
 export function println(value) {
     if (output === null) {
         throw new Error("Lango runtime output is not configured");

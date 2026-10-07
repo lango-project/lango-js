@@ -148,7 +148,7 @@ class Parser {
           this.fail(line, "LNG1119", "globals must precede class and function declarations");
         globals.push({
           name: globalDeclaration[1],
-          value: expr(globalDeclaration[2], line, this),
+          value: this.expression(globalDeclaration[2], line),
           line: line.number,
         });
         this.blank();
@@ -507,7 +507,7 @@ class Parser {
           },
         });
       } else if (text.startsWith("return "))
-        body.push({ type: "return", value: expr(text.slice(7), line, this) });
+        body.push({ type: "return", value: this.expression(text.slice(7), line) });
       else if (text.startsWith("throw "))
         body.push({ type: "throw", value: expr(text.slice(6), line, this) });
       else if (/^super\((.*)\)$/.test(text)) {
@@ -559,7 +559,7 @@ class Parser {
         body.push({
           type: "assign",
           name: assignment[1],
-          value: expr(assignment[2], line, this),
+          value: this.expression(assignment[2], line),
         });
       }
     }
@@ -582,6 +582,18 @@ class Parser {
           match[2] === undefined ? null : expr(match[2], line, this),
       };
     });
+  }
+  expression(source, line) {
+    if (!source.trimStart().startsWith("<")) return expr(source, line, this);
+
+    let xml = source;
+    while (true) {
+      const parsed = xmlLiteral(xml, line, this);
+      if (parsed !== null) return parsed;
+      if (this.i >= this.lines.length)
+        this.fail(line, "LNG1247", "unterminated XML literal");
+      xml += `\n${this.lines[this.i++]}`;
+    }
   }
   captures() {
     if (!(this.peek() ?? "").trimStart().startsWith("capture ")) return [];
@@ -645,6 +657,11 @@ class Parser {
 
 function expr(source, line, parser) {
   const text = source.trim();
+  if (text.startsWith("<")) {
+    const parsed = xmlLiteral(text, line, parser);
+    if (parsed !== null) return parsed;
+    parser.fail(line, "LNG1247", "unterminated XML literal");
+  }
   if (text.startsWith("[") && text.endsWith("]"))
     return {
       type: "array",
@@ -777,6 +794,152 @@ function expr(source, line, parser) {
     return { type: "raw", value: text };
   if (/^(?:\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*)$/.test(text)) return { type: "raw", value: text };
   parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
+}
+
+function xmlLiteral(source, line, parser) {
+  const parts = [];
+  const appendText = (text) => {
+    if (text === "") return;
+    const previous = parts.at(-1);
+    if (previous?.type === "text") previous.value += text;
+    else parts.push({ type: "text", value: text });
+  };
+  const appendInterpolations = (text, allowed) => {
+    let at = 0;
+    while (at < text.length) {
+      const start = text.indexOf("${", at);
+      if (start === -1) {
+        appendText(text.slice(at));
+        return true;
+      }
+      if (!allowed) parser.fail(line, "LNG1248", "XML interpolation is only valid in text or quoted attributes");
+      const end = text.indexOf("}", start + 2);
+      if (end === -1) return false;
+      appendText(text.slice(at, start));
+      const expression = text.slice(start + 2, end).trim();
+      if (!expression)
+        parser.fail(line, "LNG1248", "XML interpolation requires an expression");
+      parts.push({ type: "expression", value: expr(expression, line, parser) });
+      at = end + 1;
+    }
+    return true;
+  };
+  const validateEntities = (text) => {
+    if (/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[\da-fA-F]+;)/.test(text))
+      parser.fail(line, "LNG1249", "XML text and attributes must escape ampersands");
+  };
+  const appendOpenTag = (tag) => {
+    if (tag.startsWith("<${"))
+      parser.fail(line, "LNG1248", "XML interpolation is only valid in text or quoted attributes");
+    const match = /^<([A-Za-z_][\w:.-]*)([\s\S]*)>$/.exec(tag);
+    if (!match) parser.fail(line, "LNG1249", "invalid XML opening tag");
+    let attributes = match[2];
+    const selfClosing = /\/$/.test(attributes.trimEnd());
+    if (selfClosing) attributes = attributes.trimEnd().slice(0, -1);
+    let at = 0;
+    const names = new Set();
+    while (at < attributes.length) {
+      const whitespace = /^[ \t\r\n]+/.exec(attributes.slice(at));
+      if (!whitespace)
+        parser.fail(line, "LNG1249", "XML attributes must be separated by whitespace");
+      at += whitespace[0].length;
+      if (at === attributes.length) break;
+      const name = /^[A-Za-z_][\w:.-]*/.exec(attributes.slice(at));
+      if (!name) parser.fail(line, "LNG1249", "invalid XML attribute name");
+      if (names.has(name[0]))
+        parser.fail(line, "LNG1249", `duplicate XML attribute ${name[0]}`);
+      names.add(name[0]);
+      at += name[0].length;
+      if (attributes[at] !== "=")
+        parser.fail(line, "LNG1249", "XML attributes require quoted values");
+      at += 1;
+      const quote = attributes[at];
+      if (quote !== '"' && quote !== "'")
+        parser.fail(line, "LNG1249", "XML attributes require quoted values");
+      const end = attributes.indexOf(quote, at + 1);
+      if (end === -1) return null;
+      validateEntities(attributes.slice(at + 1, end).replace(/\$\{[^}]*\}/g, ""));
+      at = end + 1;
+    }
+    let quote = null;
+    let segmentStart = 0;
+    for (let index = 0; index < tag.length; index += 1) {
+      if (tag[index] === '"' || tag[index] === "'") {
+        quote = quote === tag[index] ? null : quote ?? tag[index];
+        continue;
+      }
+      if (tag.startsWith("${", index)) {
+        if (!quote)
+          parser.fail(line, "LNG1248", "XML interpolation is only valid in text or quoted attributes");
+        const end = tag.indexOf("}", index + 2);
+        if (end === -1) return null;
+        appendText(tag.slice(segmentStart, index));
+        const expression = tag.slice(index + 2, end).trim();
+        if (!expression)
+          parser.fail(line, "LNG1248", "XML interpolation requires an expression");
+        parts.push({ type: "expression", value: expr(expression, line, parser) });
+        index = end;
+        segmentStart = end + 1;
+      }
+    }
+    appendText(tag.slice(segmentStart));
+    return { name: match[1], selfClosing };
+  };
+
+  const stack = [];
+  let rootSeen = false;
+  let rootClosed = false;
+  let at = 0;
+  while (at < source.length) {
+    if (source[at] !== "<") {
+      const end = source.indexOf("<", at);
+      const text = source.slice(at, end === -1 ? source.length : end);
+      if (rootClosed && text.trim())
+        parser.fail(line, "LNG1249", "XML literal may contain one root element");
+      validateEntities(text.replace(/\$\{[^}]*\}/g, ""));
+      if (!appendInterpolations(text, true)) return null;
+      at = end === -1 ? source.length : end;
+      continue;
+    }
+    if (source.startsWith("<!--", at)) {
+      const end = source.indexOf("-->", at + 4);
+      if (end === -1) return null;
+      appendText(source.slice(at, end + 3));
+      at = end + 3;
+      continue;
+    }
+    const end = xmlTagEnd(source, at);
+    if (end === -1) return null;
+    const tag = source.slice(at, end + 1);
+    if (tag.startsWith("</")) {
+      const match = /^<\/([A-Za-z_][\w:.-]*)\s*>$/.exec(tag);
+      if (!match) parser.fail(line, "LNG1249", "invalid XML closing tag");
+      if (stack.pop() !== match[1])
+        parser.fail(line, "LNG1249", `XML closing tag ${match[1]} does not match its opening tag`);
+      appendText(tag);
+      if (stack.length === 0) rootClosed = true;
+    } else {
+      if (rootClosed) parser.fail(line, "LNG1249", "XML literal may contain one root element");
+      const opening = appendOpenTag(tag);
+      if (opening === null) return null;
+      if (!rootSeen) rootSeen = true;
+      if (!opening.selfClosing) stack.push(opening.name);
+      else if (stack.length === 0) rootClosed = true;
+    }
+    at = end + 1;
+  }
+  if (!rootSeen || stack.length) return null;
+  return { type: "xml", parts, line: line.number };
+}
+
+function xmlTagEnd(source, start) {
+  let quote = null;
+  for (let index = start + 1; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '"' || character === "'") quote = quote === character ? null : quote ?? character;
+    else if (character === ">" && !quote) return index;
+  }
+  return -1;
 }
 
 function stripComment(line) {
@@ -1919,6 +2082,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.decimal && "decimal as __decimal",
     flags.print && "println as __println",
     flags.translate && "translate as __translate",
+    flags.xml && "xmlEscape as __xmlEscape",
     flags.context && "contextGet as __contextGet",
     flags.context && "contextSet as __contextSet",
     flags.context && "contextRestore as __contextRestore",
@@ -2524,6 +2688,16 @@ function emitExpr(node, flags) {
     } else
       return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "string") return emitString(node.literal, flags);
+  if (node.type === "xml") {
+    flags.xml = true;
+    return `[${node.parts
+      .map((part) =>
+        part.type === "text"
+          ? JSON.stringify(part.value)
+          : `__xmlEscape(${emitExpr(part.value, flags)})`,
+      )
+      .join(", ")}].join("")`;
+  }
   flags.translate = true;
   const template = node.literal
     .map(
