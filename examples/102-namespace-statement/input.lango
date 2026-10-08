@@ -1,0 +1,6 @@
+import js "node:fs" as fs
+
+export main(args)
+
+main(args)
+    fs/promises/readFile("input.txt")

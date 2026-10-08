@@ -1,0 +1,7 @@
+import js "node:fs" as fs
+
+export main(args)
+
+main(args)
+    $offset = 12.50
+    fs/promises/readFile("input.txt", to_js_number($offset))

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { buildFile, LangoError } from "../src/compiler.mjs";
+import { pathToFileURL } from "node:url";
 
 test("Faz 100 permits a cycle containing only function declarations", async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase100-"));
@@ -26,6 +27,14 @@ get_b()
     return 1
 `);
     await assert.doesNotReject(() => buildFile(a, path.join(directory, "a.mjs")));
+});
+
+test("Faz 100 module-cycle conformance fixture runs", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase100-example-"));
+    const output = path.join(directory, "a.mjs");
+    await buildFile(path.resolve("examples/100-module-cycles/a.lango"), output);
+    const program = await import(pathToFileURL(output).href);
+    assert.equal(program.get_a(), 1);
 });
 
 test("Faz 100 rejects a cyclic initializer reading an imported global", async () => {

@@ -1,0 +1,7 @@
+import "./b"
+    get_b()
+
+export get_a()
+
+get_a()
+    return get_b()

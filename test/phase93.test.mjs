@@ -36,3 +36,9 @@ test("Faz 93 formatting is idempotent for inline comments", () => {
 `);
     assert.equal(formatSource(once), once);
 });
+
+test("Faz 93 formatter conformance fixture has its canonical form", async () => {
+    const input = await readFile("examples/093-formatter/input.lango", "utf8");
+    const expected = await readFile("examples/093-formatter/expected.lango", "utf8");
+    assert.equal(formatSource(input), expected);
+});

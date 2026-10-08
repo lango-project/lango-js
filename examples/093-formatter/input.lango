@@ -1,0 +1,5 @@
+export main(args)   # entry
+
+
+main(args)
+    return "ok"   # result

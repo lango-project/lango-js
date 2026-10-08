@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compile, LangoError } from "../src/compiler.mjs";
+import { mkdtemp } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { buildFile, compile, LangoError } from "../src/compiler.mjs";
 
 test("Faz 101 requires explicit Decimal conversion at JavaScript namespace boundaries", () => {
     assert.throws(
@@ -29,5 +32,13 @@ main(args)
     value = new buffer/SlowBuffer($size)
 `),
         (error) => error instanceof LangoError && error.code === "LNG1252",
+    );
+});
+
+test("Faz 101 JavaScript-boundary conformance fixture builds", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase101-example-"));
+    await buildFile(
+        path.resolve("examples/101-js-boundary/input.lango"),
+        path.join(directory, "main.mjs"),
     );
 });

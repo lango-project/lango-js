@@ -14,3 +14,7 @@ review order remain deterministic.
 `096-decimals` covers dollar bindings and six-place Decimal division.
 `098-xml` covers validated multiline XML and escaped interpolation.
 `099-import-globals` covers explicitly exported globals and import aliases.
+`100-module-cycles` covers permitted function-only module cycles.
+`101-js-boundary` covers explicit Decimal conversion at a JavaScript boundary.
+`102-namespace-statement` covers a discarded JavaScript namespace call.
+`093-formatter` covers canonical blank lines and inline comments.
