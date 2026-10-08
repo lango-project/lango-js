@@ -1324,6 +1324,19 @@ function validate(program, imports = []) {
     findMethod(classNode, "constructor", false);
   const walk = (value, localCallables, classNode = null, staticMethod = false) => {
     if (!value || typeof value !== "object") return;
+    if (value.type === "binary" && ["+", "-", "*", "/", ">", "<"].includes(value.operator)) {
+      const string = (item) => item.type === "string";
+      const number = (item) => item.type === "raw" && /^\d/.test(item.value);
+      const boolean = (item) => item.type === "raw" && /^(true|false)$/.test(item.value);
+      const absent = (item) => item.type === "raw" && item.value === "null";
+      const kind = (item) => string(item) ? "string" : number(item) ? "number" : boolean(item) ? "boolean" : absent(item) ? "null" : null;
+      const leftKind = kind(value.left);
+      const rightKind = kind(value.right);
+      if (leftKind && rightKind &&
+          (leftKind !== rightKind || leftKind === "boolean" || leftKind === "null" ||
+           (leftKind === "string" && value.operator !== "+")))
+        throw new LangoError("LNG1254", value.line ?? 1, "primitive values do not coerce in operators");
+    }
     if (value.type === "call") {
       const target = names.get(value.name) ?? importedFunctions.get(value.name);
       if (
