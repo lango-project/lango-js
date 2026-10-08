@@ -13,3 +13,4 @@ review order remain deterministic.
 `103-promises` covers ordinary `then`, `catch`, and returned Promise chains.
 `096-decimals` covers dollar bindings and six-place Decimal division.
 `098-xml` covers validated multiline XML and escaped interpolation.
+`099-import-globals` covers explicitly exported globals and import aliases.

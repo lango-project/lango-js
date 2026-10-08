@@ -28,6 +28,18 @@ main(args)
     assert.equal(program.main([]), 42);
 });
 
+test("Faz 99 imported-global conformance fixture runs", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase99-example-"));
+    const output = path.join(directory, "main.mjs");
+    await buildFile(path.resolve("examples/099-import-globals/input.lango"), output);
+    const runtime = await import(pathToFileURL(path.join(directory, ".lango/runtime.mjs")).href);
+    const program = await import(pathToFileURL(output).href);
+    const values = [];
+    runtime.configure({ output: (value) => values.push(value) });
+    program.main([]);
+    assert.deepEqual(values, ["42"]);
+});
+
 test("Faz 99 rejects an unexported or assigned imported global", async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase99-"));
     const library = path.join(directory, "state.lango");
