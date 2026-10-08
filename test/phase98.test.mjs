@@ -30,6 +30,18 @@ main(args)
     ]);
 });
 
+test("Faz 98 XML conformance fixture escapes interpolation", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase98-example-"));
+    const output = path.join(directory, "main.mjs");
+    await buildFile(path.resolve("examples/098-xml/input.lango"), output);
+    const runtime = await import(pathToFileURL(path.join(directory, ".lango/runtime.mjs")).href);
+    const program = await import(pathToFileURL(output).href);
+    const values = [];
+    runtime.configure({ output: (value) => values.push(value) });
+    program.main([]);
+    assert.equal(values[0], '<customer name="&lt;Savaş &amp; Co&gt;">\n        <status>active</status>\n      </customer>');
+});
+
 test("Faz 98 supports a self-closing XML literal in a call expression", () => {
     const output = compile(`main(args)
     println(<item/>)

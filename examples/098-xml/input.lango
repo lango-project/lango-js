@@ -1,0 +1,8 @@
+export main(args)
+
+main(args)
+    name = "<Savaş & Co>"
+    xml = <customer name="${name}">
+        <status>active</status>
+      </customer>
+    println(xml)
