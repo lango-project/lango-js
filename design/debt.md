@@ -36,6 +36,7 @@ contextual default connection and join-only nested transactions (D-054).
 
 ### Expand executable conformance examples
 
-Faz 1 establishes the first formatting and compiler/runtime fixtures. Every
-accepted decision should gain at least one Lango input, expected JavaScript
-output, and a runtime assertion as its implementation becomes available.
+Faz 1 establishes the first formatting and compiler/runtime fixtures; Faz 103
+adds a Promise-chain fixture. Continue adding a Lango input, expected
+JavaScript output, and runtime assertion for every accepted decision as its
+implementation becomes available.

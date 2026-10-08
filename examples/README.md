@@ -9,3 +9,5 @@ compiler-output detail, never Lango source API.
 Add a fixture when accepting a new decision or when implementing an existing
 one. Example names start with a stable numeric prefix so test discovery and
 review order remain deterministic.
+
+`103-promises` covers ordinary `then`, `catch`, and returned Promise chains.

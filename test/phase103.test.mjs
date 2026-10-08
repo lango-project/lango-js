@@ -130,3 +130,11 @@ main(client)
     assert.equal(await program.main({ fetch: () => Promise.resolve("ok") }), "ok");
     assert.deepEqual(values, ["done"]);
 });
+
+test("Faz 103 conformance fixture builds", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase103-example-"));
+    await buildFile(
+        path.resolve("examples/103-promises/input.lango"),
+        path.join(directory, "main.mjs"),
+    );
+});

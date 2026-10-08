@@ -1,0 +1,8 @@
+export main(client)
+
+main(client)
+    return client.fetch("/data").then((response)
+        return response.name
+    ).catch((error)
+        return error.message
+    )
