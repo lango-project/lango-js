@@ -11,3 +11,4 @@ one. Example names start with a stable numeric prefix so test discovery and
 review order remain deterministic.
 
 `103-promises` covers ordinary `then`, `catch`, and returned Promise chains.
+`096-decimals` covers dollar bindings and six-place Decimal division.

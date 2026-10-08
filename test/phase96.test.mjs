@@ -19,6 +19,18 @@ main(args)
     assert.match(output, /let \$total = \$price\.plus\(__decimal\("1"\)\);/);
 });
 
+test("Faz 96 Decimal conformance fixture runs with six-place division", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase96-example-"));
+    const output = path.join(directory, "main.mjs");
+    await buildFile(path.resolve("examples/096-decimals/input.lango"), output);
+    const runtime = await import(pathToFileURL(path.join(directory, ".lango/runtime.mjs")).href);
+    const program = await import(pathToFileURL(output).href);
+    const values = [];
+    runtime.configure({ output: (value) => values.push(value) });
+    program.main([]);
+    assert.deepEqual(values, ["3.333333"]);
+});
+
 test("Faz 96 executes Decimal addition with the embedded backend", async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase96-"));
     const input = path.join(directory, "input.lango");

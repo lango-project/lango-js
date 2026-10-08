@@ -1,0 +1,6 @@
+export main(args)
+
+main(args)
+    $price = 10
+    $third = $price / 3
+    println($third)
