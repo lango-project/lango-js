@@ -935,6 +935,12 @@ function expr(source, line, parser) {
       operator: "not",
       value: expr(text.slice(4), line, parser),
     };
+  if (/^-[^\s]/.test(text))
+    return {
+      type: "unary",
+      operator: "negate",
+      value: expr(text.slice(1), line, parser),
+    };
   if (text.startsWith("!"))
     return {
       type: "unary",
@@ -2919,7 +2925,18 @@ function emitExpr(node, flags) {
       .join(" + ");
     return `__query(${text}, ${JSON.stringify(node.parameters)})`;
   }
-  if (node.type === "unary") return `!${emitBoolean(node.value, flags)}`;
+  if (node.type === "unary") {
+    if (node.operator === "not") return `!${emitBoolean(node.value, flags)}`;
+    const decimalExpression = (value) =>
+      decimalRaw(value) ||
+      (value.type === "binary" && (decimalExpression(value.left) || decimalExpression(value.right)));
+    if (decimalExpression(node.value)) {
+      flags.decimal = true;
+      return `__decimal("0").minus(${emitExpr(node.value, flags)})`;
+    }
+    flags.finite = true;
+    return `__finite(-${emitExpr(node.value, flags)})`;
+  }
   if (node.type === "new")
     return `new ${node.name.replaceAll("/", ".")}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "superMethodCall")

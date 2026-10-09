@@ -514,3 +514,8 @@ Faz 120 evaluates equal-precedence arithmetic chains from left to right. See
 
 Faz 121 adds parentheses for explicit expression grouping. See
 `examples/121-parentheses`.
+
+## Faz 122
+
+Faz 122 adds unary minus for native and Decimal values. See
+`examples/122-negative-numbers`.
