@@ -30,3 +30,4 @@ review order remain deterministic.
 `114-sql-parameters` covers parameter recognition in SQL source.
 `115-sql-interpolation` covers deliberate raw SQL interpolation.
 `116-postgres-casts` covers colon parameters next to PostgreSQL casts.
+`117-decimal-literals` covers explicit Decimal numeric values.

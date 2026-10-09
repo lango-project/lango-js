@@ -489,3 +489,8 @@ separate from safe `:name` parameter binding. See `examples/115-sql-interpolatio
 
 Faz 116 recognizes PostgreSQL `::type` casts without treating a type name as a
 SQL parameter. See `examples/116-postgres-casts`.
+
+## Faz 117
+
+Faz 117 adds explicit Decimal literals such as `$10.50` and `$1e3`. See
+`examples/117-decimal-literals`.

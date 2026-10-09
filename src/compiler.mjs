@@ -941,6 +941,11 @@ function expr(source, line, parser) {
     };
   if (/^['"].*['"]$/.test(text))
     return { type: "string", literal: literal(text, line, parser) };
+  if (/^\$(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) {
+    if (!Number.isFinite(Number(text.slice(1))))
+      parser.fail(line, "LNG1120", "numeric literal must be finite");
+    return { type: "raw", value: text };
+  }
   if (
     /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text) ||
     /^0[xX][0-9a-fA-F]+$/.test(text)
@@ -2660,7 +2665,9 @@ function emitStatement(node, depth, declared, flags) {
       node.value.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.value.value)
         ? JSON.stringify(node.value.value)
         : value;
-    return `${pad}${prefix}${target} = ${decimalBinding && node.value.type !== "binary" ? `__decimal(${decimalInput})` : value};\n`;
+    const decimalLiteral =
+      node.value.type === "raw" && /^\$(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(node.value.value);
+    return `${pad}${prefix}${target} = ${decimalBinding && node.value.type !== "binary" && !decimalLiteral ? `__decimal(${decimalInput})` : value};\n`;
   }
   if (node.type === "expression")
     return `${pad}${emitExpr(node.value, flags)};\n`;
@@ -2823,6 +2830,11 @@ function emitExpr(node, flags) {
     if (/^DB\.(Active|RollbackOnly|Failed)$/.test(node.value)) {
       flags.databaseEnum = true;
       return `__${node.value}`;
+    }
+  if (node.type === "raw")
+    if (/^\$(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(node.value)) {
+      flags.decimal = true;
+      return `__decimal(${JSON.stringify(node.value.slice(1))})`;
     }
   if (node.type === "raw")
     return node.value.startsWith("@@")

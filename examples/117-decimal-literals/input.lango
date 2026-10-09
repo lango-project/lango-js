@@ -1,0 +1,5 @@
+export main(args)
+
+main(args)
+    price = $10.50
+    return to_json(price + $0.25)
