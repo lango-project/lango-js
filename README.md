@@ -494,3 +494,8 @@ SQL parameter. See `examples/116-postgres-casts`.
 
 Faz 117 adds explicit Decimal literals such as `$10.50` and `$1e3`. See
 `examples/117-decimal-literals`.
+
+## Faz 118
+
+Faz 118 recognizes operators only at the current expression level, including
+inside nested function arguments. See `examples/118-nested-expressions`.

@@ -31,3 +31,4 @@ review order remain deterministic.
 `115-sql-interpolation` covers deliberate raw SQL interpolation.
 `116-postgres-casts` covers colon parameters next to PostgreSQL casts.
 `117-decimal-literals` covers explicit Decimal numeric values.
+`118-nested-expressions` covers an operator inside a function argument.

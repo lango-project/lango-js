@@ -823,6 +823,25 @@ function collectSqlParameters(sql) {
   return [...new Set(names)];
 }
 
+function topLevelOperator(text, operator) {
+  let quote = null;
+  let depth = 0;
+  const token = ` ${operator} `;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (quote !== null) {
+      if (character === "\\") { index += 1; continue; }
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') { quote = character; continue; }
+    if ("([{".includes(character)) { depth += 1; continue; }
+    if (")]}".includes(character)) { depth -= 1; continue; }
+    if (depth === 0 && text.startsWith(token, index)) return index;
+  }
+  return -1;
+}
+
 function expr(source, line, parser) {
   const text = source.trim();
   if (text.startsWith("<")) {
@@ -854,7 +873,7 @@ function expr(source, line, parser) {
     "*",
     "/",
   ]) {
-    const index = text.indexOf(` ${operator} `);
+    const index = topLevelOperator(text, operator);
     if (index > -1)
       return {
         type: "binary",
