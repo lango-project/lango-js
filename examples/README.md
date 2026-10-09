@@ -33,3 +33,4 @@ review order remain deterministic.
 `117-decimal-literals` covers explicit Decimal numeric values.
 `118-nested-expressions` covers an operator inside a function argument.
 `119-nested-arguments` covers commas in nested arguments.
+`120-operator-order` covers left-to-right arithmetic chains.

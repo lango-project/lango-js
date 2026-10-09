@@ -38,7 +38,7 @@ test("Faz 13 emits extends, super constructor, and super method calls", () => {
     const output = compile(source).javascript;
     assert.match(output, /export class Employee extends Person/);
     assert.match(output, /super\(name\);/);
-    assert.match(output, /return __finite\(super\.describe\(\) \+ __finite\(": " \+ __normalize\(this\.\#id\)\)\);/);
+    assert.match(output, /return __finite\(__finite\(super\.describe\(\) \+ ": "\) \+ __normalize\(this\.\#id\)\);/);
 });
 
 test("Faz 13 requires one leading super call in a child constructor", () => {

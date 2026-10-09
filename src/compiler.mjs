@@ -823,10 +823,10 @@ function collectSqlParameters(sql) {
   return [...new Set(names)];
 }
 
-function topLevelOperator(text, operator) {
+function topLevelBinary(text, operators) {
   let quote = null;
   let depth = 0;
-  const token = ` ${operator} `;
+  let match = null;
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
     if (quote !== null) {
@@ -837,9 +837,16 @@ function topLevelOperator(text, operator) {
     if (character === "'" || character === '"') { quote = character; continue; }
     if ("([{".includes(character)) { depth += 1; continue; }
     if (")]}".includes(character)) { depth -= 1; continue; }
-    if (depth === 0 && text.startsWith(token, index)) return index;
+    if (depth !== 0) continue;
+    for (const operator of operators) {
+      if (text.startsWith(` ${operator} `, index)) {
+        match = { index, operator };
+        index += operator.length + 1;
+        break;
+      }
+    }
   }
-  return -1;
+  return match;
 }
 
 function splitTopLevel(text, separator = ", ") {
@@ -882,26 +889,21 @@ function expr(source, line, parser) {
           ? []
           : splitTopLevel(text.slice(1, -1)).map((item) => expr(item, line, parser)),
     };
-  for (const operator of [
-    "or",
-    "||",
-    "and",
-    "&&",
-    "==",
-    ">",
-    "<",
-    "+",
-    "-",
-    "*",
-    "/",
+  for (const operators of [
+    ["or", "||"],
+    ["and", "&&"],
+    ["=="],
+    [">", "<"],
+    ["+", "-"],
+    ["*", "/"],
   ]) {
-    const index = topLevelOperator(text, operator);
-    if (index > -1)
+    const match = topLevelBinary(text, operators);
+    if (match !== null)
       return {
         type: "binary",
-        operator,
-        left: expr(text.slice(0, index), line, parser),
-        right: expr(text.slice(index + operator.length + 2), line, parser),
+        operator: match.operator,
+        left: expr(text.slice(0, match.index), line, parser),
+        right: expr(text.slice(match.index + match.operator.length + 2), line, parser),
       };
   }
   if (text.startsWith("not "))

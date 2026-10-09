@@ -504,3 +504,8 @@ inside nested function arguments. See `examples/118-nested-expressions`.
 
 Faz 119 preserves commas inside quoted and nested function arguments. See
 `examples/119-nested-arguments`.
+
+## Faz 120
+
+Faz 120 evaluates equal-precedence arithmetic chains from left to right. See
+`examples/120-operator-order`.
