@@ -2988,27 +2988,18 @@ function emitExpr(node, flags) {
     const operators = { "==": "===", and: "&&", or: "||" };
     if (node.operator === "and" || node.operator === "or")
       return `${emitBoolean(node.left, flags)} ${operators[node.operator]} ${emitBoolean(node.right, flags)}`;
-    if (
-      node.operator === "==" &&
-      decimalRaw(node.right)
-    ) {
+    if (node.operator === "==" &&
+        (decimalValue(node.left) || decimalValue(node.right))) {
       flags.decimal = true;
-      const left =
-        node.left.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.left.value)
-          ? `__decimal(${JSON.stringify(node.left.value)})`
-          : emitExpr(node.left, flags);
-      return `${left}.eq(${emitExpr(node.right, flags)})`;
-    }
-    if (
-      node.operator === "==" &&
-      decimalRaw(node.left)
-    ) {
-      flags.decimal = true;
-      const right =
-        node.right.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.right.value)
-          ? `__decimal(${JSON.stringify(node.right.value)})`
-          : emitExpr(node.right, flags);
-      return `${emitExpr(node.left, flags)}.eq(${right})`;
+      const operand = (value) =>
+        decimalValue(value)
+          ? emitExpr(value, flags)
+          : value.type === "raw" && /^\d+(?:\.\d+)?$/.test(value.value)
+            ? `__decimal(${JSON.stringify(value.value)})`
+            : `__decimal(${emitExpr(value, flags)})`;
+      return decimalRaw(node.right) || decimalValue(node.left)
+        ? `${operand(node.left)}.eq(${operand(node.right)})`
+        : `${operand(node.right)}.eq(${operand(node.left)})`;
     }
     if (["<", ">", "<=", ">="].includes(node.operator) &&
         (decimalValue(node.left) || decimalValue(node.right))) {

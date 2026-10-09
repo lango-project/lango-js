@@ -529,3 +529,8 @@ Faz 123 adds inclusive `<=` and `>=` comparisons. See
 
 Faz 124 compares Decimal values without narrowing them to JavaScript numbers.
 See `examples/124-decimal-comparisons`.
+
+## Faz 125
+
+Faz 125 compares compound Decimal expressions with Decimal equality. See
+`examples/125-decimal-equality`.
