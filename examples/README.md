@@ -24,3 +24,4 @@ review order remain deterministic.
 `108-sql-errors` covers the fields exposed by a database failure.
 `109-database-configuration` covers host-selected default database setup.
 `110-failed-transaction` covers an adapter-reported failed transaction.
+`111-returning` covers result rows returned from an insert.

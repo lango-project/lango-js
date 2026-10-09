@@ -8,7 +8,7 @@ export function createSqliteAdapter(filename = ":memory:") {
   return {
     execute(sql, parameters = {}) {
       const statement = database.prepare(sql);
-      if (/^\s*(select|pragma|with)\b/i.test(sql))
+      if (/^\s*(select|pragma|with)\b/i.test(sql) || /\breturning\b/i.test(sql))
         return { rows: statement.all(parameters).map((row) => ({ ...row })), changes: null, lastInsertRowid: null };
       const result = statement.run(parameters);
       const dataChange = /^\s*(insert|update|delete)\b/i.test(sql);

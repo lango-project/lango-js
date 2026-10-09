@@ -459,3 +459,8 @@ unconfigured database work raises `DatabaseNotConfigured`. See
 
 Faz 110 exposes an adapter-reported unusable transaction as `DB.Failed`; it
 must be closed with `rollback_trans()`. See `examples/110-failed-transaction`.
+
+## Faz 111
+
+Faz 111 supports SQL `returning` clauses as normal query rows. See
+`examples/111-returning`.

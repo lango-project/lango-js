@@ -1,0 +1,11 @@
+export main(args)
+
+main(args)
+    rs = SQL
+        insert into item (name) values (@name)
+        returning id
+    rs.name = "Ada"
+    rs.execute()
+    if rs.next()
+        return rs.id
+    return null
