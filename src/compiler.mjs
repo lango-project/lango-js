@@ -583,7 +583,7 @@ class Parser {
         body.push({
           type: "superConstructor",
           arguments: argumentsText
-            ? argumentsText.split(", ").map((item) => expr(item, line, this))
+            ? splitTopLevel(argumentsText).map((item) => expr(item, line, this))
             : [],
           line: line.number,
         });
@@ -706,7 +706,7 @@ class Parser {
   }
   parameters(raw, line) {
     if (raw === "") return [];
-    return raw.split(", ").map((item) => {
+    return splitTopLevel(raw).map((item) => {
       const match = /^(\$?[A-Za-z_]\w*)(?: = (.+))?$/.exec(item);
       if (!match) this.fail(line, "LNG1102", "invalid parameter list");
       return {
@@ -731,7 +731,7 @@ class Parser {
   captures() {
     if (!(this.peek() ?? "").trimStart().startsWith("capture ")) return [];
     const line = this.line();
-    const names = line.text.trim().slice(8).split(", ");
+    const names = splitTopLevel(line.text.trim().slice(8));
     if (
       names.some(
         (name) =>
@@ -842,6 +842,31 @@ function topLevelOperator(text, operator) {
   return -1;
 }
 
+function splitTopLevel(text, separator = ", ") {
+  const parts = [];
+  let start = 0;
+  let quote = null;
+  let depth = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (quote !== null) {
+      if (character === "\\") { index += 1; continue; }
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') { quote = character; continue; }
+    if ("([{".includes(character)) { depth += 1; continue; }
+    if (")]}".includes(character)) { depth -= 1; continue; }
+    if (depth === 0 && text.startsWith(separator, index)) {
+      parts.push(text.slice(start, index));
+      start = index + separator.length;
+      index += separator.length - 1;
+    }
+  }
+  parts.push(text.slice(start));
+  return parts;
+}
+
 function expr(source, line, parser) {
   const text = source.trim();
   if (text.startsWith("<")) {
@@ -855,10 +880,7 @@ function expr(source, line, parser) {
       values:
         text.slice(1, -1) === ""
           ? []
-          : text
-              .slice(1, -1)
-              .split(", ")
-              .map((item) => expr(item, line, parser)),
+          : splitTopLevel(text.slice(1, -1)).map((item) => expr(item, line, parser)),
     };
   for (const operator of [
     "or",
@@ -904,7 +926,7 @@ function expr(source, line, parser) {
       type: "new",
       name: construct[1],
       arguments: construct[2]
-        ? construct[2].split(", ").map((item) => expr(item, line, parser))
+        ? splitTopLevel(construct[2]).map((item) => expr(item, line, parser))
         : [],
       line: line.number,
     };
@@ -914,7 +936,7 @@ function expr(source, line, parser) {
       type: "superMethodCall",
       name: superMethodCall[1],
       arguments: superMethodCall[2]
-        ? superMethodCall[2].split(", ").map((item) => expr(item, line, parser))
+        ? splitTopLevel(superMethodCall[2]).map((item) => expr(item, line, parser))
         : [],
       line: line.number,
     };
@@ -932,9 +954,7 @@ function expr(source, line, parser) {
       receiver: namespaceMethodCall[1],
       name: namespaceMethodCall[2],
       arguments: namespaceMethodCall[3]
-        ? namespaceMethodCall[3]
-            .split(", ")
-            .map((item) => expr(item, line, parser))
+        ? splitTopLevel(namespaceMethodCall[3]).map((item) => expr(item, line, parser))
         : [],
       line: line.number,
     };
@@ -944,7 +964,7 @@ function expr(source, line, parser) {
       receiver: methodCall[1],
       name: methodCall[2],
       arguments: methodCall[3]
-        ? methodCall[3].split(", ").map((item) => expr(item, line, parser))
+        ? splitTopLevel(methodCall[3]).map((item) => expr(item, line, parser))
         : [],
       line: line.number,
     };
@@ -954,7 +974,7 @@ function expr(source, line, parser) {
       type: "call",
       name: call[1],
       arguments: call[2]
-        ? call[2].split(", ").map((item) => expr(item, line, parser))
+        ? splitTopLevel(call[2]).map((item) => expr(item, line, parser))
         : [],
       line: line.number,
     };
@@ -3271,7 +3291,7 @@ function validateImportedClassInterface(
 }
 function importParameters(raw) {
   if (!raw) return [];
-  return raw.split(", ").map((parameter) => {
+  return splitTopLevel(raw).map((parameter) => {
     const match = /^([A-Za-z_]\w*)(?: = .+)?$/.exec(parameter);
     if (!match) throw new Error("invalid import parameter");
     return {

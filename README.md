@@ -499,3 +499,8 @@ Faz 117 adds explicit Decimal literals such as `$10.50` and `$1e3`. See
 
 Faz 118 recognizes operators only at the current expression level, including
 inside nested function arguments. See `examples/118-nested-expressions`.
+
+## Faz 119
+
+Faz 119 preserves commas inside quoted and nested function arguments. See
+`examples/119-nested-arguments`.
