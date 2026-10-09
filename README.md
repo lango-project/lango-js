@@ -469,3 +469,8 @@ Faz 111 supports SQL `returning` clauses as normal query rows. See
 
 Faz 112 binds Decimal SQL parameters as canonical text without narrowing them
 to JavaScript numbers. See `examples/112-decimal-sql`.
+
+## Faz 113
+
+Faz 113 keeps arithmetic assigned to a Decimal binding in Decimal precision.
+See `examples/113-decimal-assignment`.

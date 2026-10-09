@@ -2548,6 +2548,24 @@ function collectEmitLocals(body, names = new Set(), nested = false) {
   }
   return names;
 }
+function emitDecimalExpression(node, flags) {
+  const operand = (value) => {
+    if (value.type === "binary" && ["+", "-", "*", "/"].includes(value.operator))
+      return emitDecimalExpression(value, flags);
+    if (value.type === "raw" && /^\d+(?:\.\d+)?$/.test(value.value)) {
+      flags.decimal = true;
+      return `__decimal(${JSON.stringify(value.value)})`;
+    }
+    if (value.type === "raw" && value.value.startsWith("$")) return emitExpr(value, flags);
+    flags.decimal = true;
+    return `__decimal(${emitExpr(value, flags)})`;
+  };
+  if (node.type !== "binary" || !["+", "-", "*", "/"].includes(node.operator))
+    return operand(node);
+  flags.decimal = true;
+  const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div" };
+  return `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`;
+}
 function emitStatement(node, depth, declared, flags) {
   const pad = "    ".repeat(depth);
   if (node.type === "globalDeclare") return "";
@@ -2584,18 +2602,15 @@ function emitStatement(node, depth, declared, flags) {
         : "let ";
     declared.add(node.name);
     if (node.value.type === "array") flags.arrayBindings?.add(node.name);
-    const value = emitExpr(node.value, flags);
+    const value = decimalBinding && node.value.type === "binary"
+      ? emitDecimalExpression(node.value, flags)
+      : emitExpr(node.value, flags);
     if (decimalBinding) flags.decimal = true;
-    const decimalExpression =
-      node.value.type === "binary" &&
-      [node.value.left, node.value.right].some(
-        (item) => item.type === "raw" && item.value.startsWith("$"),
-      );
     const decimalInput =
       node.value.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.value.value)
         ? JSON.stringify(node.value.value)
         : value;
-    return `${pad}${prefix}${target} = ${decimalBinding && !decimalExpression ? `__decimal(${decimalInput})` : value};\n`;
+    return `${pad}${prefix}${target} = ${decimalBinding && node.value.type !== "binary" ? `__decimal(${decimalInput})` : value};\n`;
   }
   if (node.type === "expression")
     return `${pad}${emitExpr(node.value, flags)};\n`;
