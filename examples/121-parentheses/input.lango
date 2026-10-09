@@ -1,0 +1,4 @@
+export main(args)
+
+main(args)
+    return (1 + 2) * 3

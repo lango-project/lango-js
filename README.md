@@ -509,3 +509,8 @@ Faz 119 preserves commas inside quoted and nested function arguments. See
 
 Faz 120 evaluates equal-precedence arithmetic chains from left to right. See
 `examples/120-operator-order`.
+
+## Faz 121
+
+Faz 121 adds parentheses for explicit expression grouping. See
+`examples/121-parentheses`.

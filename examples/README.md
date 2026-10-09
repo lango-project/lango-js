@@ -34,3 +34,4 @@ review order remain deterministic.
 `118-nested-expressions` covers an operator inside a function argument.
 `119-nested-arguments` covers commas in nested arguments.
 `120-operator-order` covers left-to-right arithmetic chains.
+`121-parentheses` covers explicit arithmetic grouping.

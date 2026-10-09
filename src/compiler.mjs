@@ -874,8 +874,31 @@ function splitTopLevel(text, separator = ", ") {
   return parts;
 }
 
+function parenthesizedExpression(text) {
+  if (!text.startsWith("(") || !text.endsWith(")")) return null;
+  let quote = null;
+  let depth = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (quote !== null) {
+      if (character === "\\") { index += 1; continue; }
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') { quote = character; continue; }
+    if (character === "(") depth += 1;
+    if (character === ")") {
+      depth -= 1;
+      if (depth === 0 && index !== text.length - 1) return null;
+    }
+  }
+  return depth === 0 ? text.slice(1, -1) : null;
+}
+
 function expr(source, line, parser) {
   const text = source.trim();
+  const grouped = parenthesizedExpression(text);
+  if (grouped !== null) return expr(grouped, line, parser);
   if (text.startsWith("<")) {
     const parsed = xmlLiteral(text, line, parser);
     if (parsed !== null) return parsed;
