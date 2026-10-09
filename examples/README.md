@@ -28,3 +28,4 @@ review order remain deterministic.
 `112-decimal-sql` covers Decimal parameter binding.
 `113-decimal-assignment` covers Decimal arithmetic in a dollar binding.
 `114-sql-parameters` covers parameter recognition in SQL source.
+`115-sql-interpolation` covers deliberate raw SQL interpolation.

@@ -479,3 +479,8 @@ See `examples/113-decimal-assignment`.
 
 Faz 114 recognizes SQL parameters only outside quoted SQL text and comments.
 See `examples/114-sql-parameters`.
+
+## Faz 115
+
+Faz 115 adds deliberate raw `${expression}` interpolation to SQL literals,
+separate from safe `:name` parameter binding. See `examples/115-sql-interpolation`.

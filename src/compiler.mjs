@@ -664,11 +664,26 @@ class Parser {
         if (!sql.some((item) => item.trim()))
           this.fail(line, "LNG1255", "SQL body requires a statement");
         const sqlText = sql.join("\n");
-        const parameters = collectSqlParameters(sqlText);
+        const parts = [];
+        let at = 0;
+        for (const match of sqlText.matchAll(/\$\{([^}]*)\}/g)) {
+          if (match.index > at) parts.push({ type: "text", value: sqlText.slice(at, match.index) });
+          const source = match[1].trim();
+          if (!source) this.fail(line, "LNG1257", "SQL interpolation requires an expression");
+          parts.push({ type: "expression", value: expr(source, line, this) });
+          at = match.index + match[0].length;
+        }
+        if (at < sqlText.length || !parts.length)
+          parts.push({ type: "text", value: sqlText.slice(at) });
+        const parameters = [...new Set(
+          parts
+            .filter((part) => part.type === "text")
+            .flatMap((part) => collectSqlParameters(part.value)),
+        )];
         body.push({
           type: "assign",
           name,
-          value: { type: "sql", text: sqlText, parameters: [...new Set(parameters)] },
+          value: { type: "sql", text: sqlText, parts, parameters },
         });
       } else {
         const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*) = (.+)$/.exec(text);
@@ -2823,7 +2838,10 @@ function emitExpr(node, flags) {
             : node.value;
   if (node.type === "sql") {
     flags.sql = true;
-    return `__query(${JSON.stringify(node.text)}, ${JSON.stringify(node.parameters)})`;
+    const text = node.parts
+      .map((part) => part.type === "text" ? JSON.stringify(part.value) : `String(${emitExpr(part.value, flags)})`)
+      .join(" + ");
+    return `__query(${text}, ${JSON.stringify(node.parameters)})`;
   }
   if (node.type === "unary") return `!${emitBoolean(node.value, flags)}`;
   if (node.type === "new")
