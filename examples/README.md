@@ -36,3 +36,4 @@ review order remain deterministic.
 `120-operator-order` covers left-to-right arithmetic chains.
 `121-parentheses` covers explicit arithmetic grouping.
 `122-negative-numbers` covers unary minus.
+`123-inclusive-comparisons` covers inclusive comparisons.

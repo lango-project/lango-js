@@ -1,0 +1,4 @@
+export main(args)
+
+main(args)
+    return 2 <= 2 and 3 >= 2

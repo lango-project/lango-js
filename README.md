@@ -519,3 +519,8 @@ Faz 121 adds parentheses for explicit expression grouping. See
 
 Faz 122 adds unary minus for native and Decimal values. See
 `examples/122-negative-numbers`.
+
+## Faz 123
+
+Faz 123 adds inclusive `<=` and `>=` comparisons. See
+`examples/123-inclusive-comparisons`.

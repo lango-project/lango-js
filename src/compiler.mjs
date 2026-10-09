@@ -916,7 +916,7 @@ function expr(source, line, parser) {
     ["or", "||"],
     ["and", "&&"],
     ["=="],
-    [">", "<"],
+    [">=", "<=", ">", "<"],
     ["+", "-"],
     ["*", "/"],
   ]) {
@@ -1497,7 +1497,7 @@ function validate(program, imports = []) {
     findMethod(classNode, "constructor", false);
   const walk = (value, localCallables, classNode = null, staticMethod = false) => {
     if (!value || typeof value !== "object") return;
-    if (value.type === "binary" && ["+", "-", "*", "/", ">", "<"].includes(value.operator)) {
+    if (value.type === "binary" && ["+", "-", "*", "/", ">", "<", ">=", "<="].includes(value.operator)) {
       const string = (item) => item.type === "string";
       const number = (item) => item.type === "raw" && /^\d/.test(item.value);
       const boolean = (item) => item.type === "raw" && /^(true|false)$/.test(item.value);
