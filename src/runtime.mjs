@@ -40,6 +40,16 @@ export function commitTrans() { requireDatabase().commit(); return null; }
 export function rollbackTrans() { requireDatabase().rollback(); return null; }
 export function transState() { return requireDatabase().transactionState(); }
 
+export class SqlError extends Error {
+    constructor(cause, query) {
+        super(cause?.message ?? "Database error");
+        this.name = "SqlError";
+        this.code = typeof cause?.code === "string" ? cause.code : null;
+        this.query = query;
+        this.position = Number.isInteger(cause?.position) ? cause.position : null;
+    }
+}
+
 export function query(sql, parameterNames) {
     const parameters = Object.create(null);
     let rows = [];
@@ -47,7 +57,11 @@ export function query(sql, parameterNames) {
     let result = { changes: null, lastInsertRowid: null };
     const api = {
         execute() {
-            result = requireDatabase().execute(sql, parameters);
+            try {
+                result = requireDatabase().execute(sql, parameters);
+            } catch (error) {
+                throw new SqlError(error, sql);
+            }
             rows = result.rows;
             cursor = -1;
             return proxy;

@@ -2539,7 +2539,7 @@ function emitFunction(fn, flags) {
 }
 function collectEmitLocals(body, names = new Set(), nested = false) {
   for (const node of body) {
-    if (nested && node.type === "assign" && !node.name.startsWith("@") && !node.name.startsWith("_"))
+    if (nested && node.type === "assign" && /^[A-Za-z_]\w*$/.test(node.name))
       names.add(node.name);
     if (nested && node.type === "closureAssign") names.add(node.name);
     [node.thenBody, node.elseBody, node.tryBody, node.catchBody, node.finallyBody]

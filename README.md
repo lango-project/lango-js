@@ -443,3 +443,8 @@ parameters, `execute()`, `next()`, and current-row field access. See
 
 Faz 107 adds `affected_rows` and `generated_key` on executed SQL query
 objects. See `examples/107-query-results`.
+
+## Faz 108
+
+Faz 108 maps adapter failures to parameter-safe `SqlError` values with
+`code`, `query`, and `position`. See `examples/108-sql-errors`.

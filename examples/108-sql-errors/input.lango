@@ -1,0 +1,11 @@
+export main(args)
+
+main(args)
+    try
+        rs = SQL
+            select name from missing_table where name = @name
+        rs.name = "Ada"
+        rs.execute()
+    catch err
+        return err.code
+    return null
