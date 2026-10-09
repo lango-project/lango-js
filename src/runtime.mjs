@@ -76,8 +76,14 @@ export function query(sql, parameterNames) {
     const api = {
         execute() {
             const adapter = requireDatabase();
+            const boundParameters = Object.fromEntries(
+                Object.entries(parameters).map(([name, value]) => [
+                    name,
+                    isDecimal(value) ? value.toFixed() : value,
+                ]),
+            );
             try {
-                result = adapter.execute(sql, parameters);
+                result = adapter.execute(sql, boundParameters);
             } catch (error) {
                 if (error?.transactionUnusable === true && adapter.transactionState() !== null)
                     failedTransaction = true;

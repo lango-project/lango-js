@@ -1,0 +1,9 @@
+export main(args)
+
+main(args)
+    $one = 1
+    $amount = $one / 3
+    rs = SQL
+        insert into item (amount) values (@amount)
+    rs.amount = $amount
+    rs.execute()

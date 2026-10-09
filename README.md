@@ -464,3 +464,8 @@ must be closed with `rollback_trans()`. See `examples/110-failed-transaction`.
 
 Faz 111 supports SQL `returning` clauses as normal query rows. See
 `examples/111-returning`.
+
+## Faz 112
+
+Faz 112 binds Decimal SQL parameters as canonical text without narrowing them
+to JavaScript numbers. See `examples/112-decimal-sql`.

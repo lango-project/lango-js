@@ -25,3 +25,4 @@ review order remain deterministic.
 `109-database-configuration` covers host-selected default database setup.
 `110-failed-transaction` covers an adapter-reported failed transaction.
 `111-returning` covers result rows returned from an insert.
+`112-decimal-sql` covers Decimal parameter binding.
