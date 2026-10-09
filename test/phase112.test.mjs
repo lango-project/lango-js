@@ -16,7 +16,7 @@ main(args)
     $one = 1
     $amount = $one / 3
     rs = SQL
-        select @amount
+        select :amount
     rs.amount = $amount
     rs.execute()
 `);

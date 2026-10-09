@@ -33,7 +33,7 @@ test("Faz 107 exposes affected_rows and generated_key on a Lango query", async (
 
 main(args)
     rs = SQL
-        insert into item (name) values (@name)
+        insert into item (name) values (:name)
     rs.name = "Ada"
     rs.execute()
     return rs.generated_key

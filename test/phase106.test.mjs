@@ -10,12 +10,12 @@ import { createSqliteAdapter } from "../src/database.mjs";
 test("Faz 106 lowers an indented SQL query and its parameter names", () => {
     const output = compile(`main(args)
     rs = SQL
-        select name from item where id = @id
+        select name from item where id = :id
     rs.id = 1
     return rs
 `).javascript;
     assert.match(output, /query as __query/);
-    assert.match(output, /__query\("select name from item where id = @id", \["id"\]\)/);
+    assert.match(output, /__query\("select name from item where id = :id", \["id"\]\)/);
     assert.match(output, /rs\.id = 1/);
 });
 
@@ -27,7 +27,7 @@ test("Faz 106 executes a bound SQL query and reads its current row", async () =>
 
 main(args)
     rs = SQL
-        select name from item where id = @id
+        select name from item where id = :id
     rs.id = 2
     rs.execute()
     if rs.next()
@@ -59,7 +59,7 @@ test("Faz 106 rejects binding a parameter not declared by the SQL body", () => {
     assert.throws(
         () => compile(`main(args)
     rs = SQL
-        select name from item where id = @id
+        select name from item where id = :id
     rs.name = "Ada"
 `),
         (error) => error.code === "LNG1256",

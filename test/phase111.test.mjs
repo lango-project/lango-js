@@ -15,7 +15,7 @@ test("Faz 111 exposes INSERT RETURNING values as ordinary result rows", async ()
 
 main(args)
     rs = SQL
-        insert into item (name) values (@name)
+        insert into item (name) values (:name)
         returning id, name
     rs.name = "Ada"
     rs.execute()

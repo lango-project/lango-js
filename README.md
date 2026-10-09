@@ -474,3 +474,8 @@ to JavaScript numbers. See `examples/112-decimal-sql`.
 
 Faz 113 keeps arithmetic assigned to a Decimal binding in Decimal precision.
 See `examples/113-decimal-assignment`.
+
+## Faz 114
+
+Faz 114 recognizes SQL parameters only outside quoted SQL text and comments.
+See `examples/114-sql-parameters`.

@@ -2,7 +2,7 @@ export main(args)
 
 main(args)
     rs = SQL
-        insert into item (name) values (@name)
+        insert into item (name) values (:name)
         returning id
     rs.name = "Ada"
     rs.execute()

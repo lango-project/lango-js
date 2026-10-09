@@ -343,12 +343,12 @@ D-037. D-040's `NonFiniteNumber` error applies before JSON could substitute
 
 **Status:** Draft
 
-An `SQL` literal is a structured query template. An `@name` occurrence in the
+An `SQL` literal is a structured query template. A `:name` occurrence in the
 template denotes a named parameter, not a textual substitution. Assigning
 `result.name = value` provides the parameter value before `result.execute()`.
 The environment adapts the template and bindings to its database driver.
 
-An `@name` parameter is statically recognized from the SQL literal source and
+A `:name` parameter is statically recognized from the SQL literal source and
 is always bound as data. `${expression}` is separately permitted as raw SQL
 string interpolation, using ordinary string conversion. It may supply any SQL
 string fragment, including
@@ -961,7 +961,7 @@ source. A conversion that cannot produce a finite Number raises the D-040
 **Status:** Accepted
 
 An `SQL` body removes its shared leading indentation and otherwise preserves its
-SQL string. The compiler statically collects its `@name` parameters; repeated
+SQL string. The compiler statically collects its `:name` parameters; repeated
 occurrences of one name share one parameter binding. Before `execute()`,
 `result.name = value` is valid only for one of those declared parameter names.
 An unknown parameter assignment is a compile-time error. This assignment never

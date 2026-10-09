@@ -4,7 +4,7 @@ main(args)
     rs = SQL
         select name
         from item
-        where id = @id
+        where id = :id
     rs.id = 1
     rs.execute()
     if rs.next()

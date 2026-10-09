@@ -500,13 +500,13 @@ Here's an example:
 rs = SQL
     select name, surname
     from students
-    where birth_year > @year
+    where birth_year > :year
 rs.year = 2011
 rs.execute()
 loop while rs.next()
     println("${rs.name} ${rs.surname}")
 ```
-`@year` is a named query parameter. Set it through the result before execution;
+`:year` is a named query parameter. Set it through the result before execution;
 it is bound as data rather than inserted into the SQL text.
 
 Assigning a `$` Decimal to a named SQL parameter preserves its exact canonical
@@ -528,7 +528,7 @@ and read ordinary result rows instead.
 ```lango
 rs = SQL
     insert into orders (customer_id)
-    values (@customer_id)
+    values (:customer_id)
 
 rs.customer_id = customer_id
 rs.execute()
@@ -538,7 +538,7 @@ order_id = rs.generated_key
 ```lango
 rs = SQL
     insert into orders (customer_id)
-    values (@customer_id)
+    values (:customer_id)
     returning id
 
 rs.customer_id = customer_id
@@ -548,12 +548,12 @@ if rs.next()
     order_id = rs.id
 ```
 
-Use named `@parameter` values for dynamic SQL values. String interpolation is not
-used for parameter binding: `@parameter` is always passed to the database as
+Use named `:parameter` values for dynamic SQL values. String interpolation is not
+used for parameter binding: `:parameter` is always passed to the database as
 data. `${expression}` is also allowed in SQL and is inserted directly into the
 SQL string. It uses ordinary string conversion. Use it deliberately for dynamic identifiers, keywords, or SQL
 fragments; it is not escaped or parameterized, and interpolated content cannot
-create new `@parameter` bindings.
+create new `:parameter` bindings.
 
 ### Transactions
 

@@ -16,7 +16,7 @@ test("Faz 108 wraps database failures as a parameter-safe SqlError", async () =>
 main(args)
     try
         rs = SQL
-            select name from missing_table where name = @name
+            select name from missing_table where name = :name
         rs.name = "secret-value"
         rs.execute()
     catch err
@@ -28,7 +28,7 @@ main(args)
     const database = createSqliteAdapter();
     try {
         runtime.configure({ database_adapter: database });
-        assert.equal(program.main([]), "select name from missing_table where name = @name");
+        assert.equal(program.main([]), "select name from missing_table where name = :name");
     } finally { database.close(); }
 });
 

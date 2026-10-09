@@ -664,7 +664,7 @@ class Parser {
         if (!sql.some((item) => item.trim()))
           this.fail(line, "LNG1255", "SQL body requires a statement");
         const sqlText = sql.join("\n");
-        const parameters = [...sqlText.matchAll(/@([A-Za-z_]\w*)/g)].map((item) => item[1]);
+        const parameters = collectSqlParameters(sqlText);
         body.push({
           type: "assign",
           name,
@@ -771,6 +771,41 @@ class Parser {
   fail(line, code, message) {
     throw new LangoError(code, line.number, `${this.name}: ${message}`);
   }
+}
+
+function collectSqlParameters(sql) {
+  const names = [];
+  let quote = null;
+  let lineComment = false;
+  let blockComment = false;
+  for (let index = 0; index < sql.length; index += 1) {
+    const character = sql[index];
+    const next = sql[index + 1];
+    if (lineComment) {
+      if (character === "\n") lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (character === "*" && next === "/") { blockComment = false; index += 1; }
+      continue;
+    }
+    if (quote !== null) {
+      if (character === quote) {
+        if (next === quote) { index += 1; continue; }
+        quote = null;
+      }
+      continue;
+    }
+    if (character === "-" && next === "-") { lineComment = true; index += 1; continue; }
+    if (character === "/" && next === "*") { blockComment = true; index += 1; continue; }
+    if (character === "'" || character === '"') { quote = character; continue; }
+    if (character !== ":" || !/[A-Za-z_]/.test(next ?? "")) continue;
+    let end = index + 2;
+    while (/\w/.test(sql[end] ?? "")) end += 1;
+    names.push(sql.slice(index + 1, end));
+    index = end - 1;
+  }
+  return [...new Set(names)];
 }
 
 function expr(source, line, parser) {

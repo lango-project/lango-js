@@ -1,0 +1,10 @@
+export main(args)
+
+main(args)
+    rs = SQL
+        select ':not_a_parameter'
+        from item
+        where id = :id
+    rs.id = 1
+    rs.execute()
+    return null
