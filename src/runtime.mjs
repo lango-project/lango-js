@@ -31,7 +31,7 @@ export function configure(options = {}) {
 }
 
 function requireDatabase() {
-    if (database === null) throw new Error("DatabaseUnavailable");
+    if (database === null) throw new Error("DatabaseNotConfigured");
     return database;
 }
 
@@ -57,8 +57,9 @@ export function query(sql, parameterNames) {
     let result = { changes: null, lastInsertRowid: null };
     const api = {
         execute() {
+            const adapter = requireDatabase();
             try {
-                result = requireDatabase().execute(sql, parameters);
+                result = adapter.execute(sql, parameters);
             } catch (error) {
                 throw new SqlError(error, sql);
             }

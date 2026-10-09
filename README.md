@@ -448,3 +448,9 @@ objects. See `examples/107-query-results`.
 
 Faz 108 maps adapter failures to parameter-safe `SqlError` values with
 `code`, `query`, and `position`. See `examples/108-sql-errors`.
+
+## Faz 109
+
+Faz 109 requires the host to configure the one default database adapter;
+unconfigured database work raises `DatabaseNotConfigured`. See
+`examples/109-database-configuration`.

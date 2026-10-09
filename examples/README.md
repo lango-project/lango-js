@@ -22,3 +22,4 @@ review order remain deterministic.
 `106-sql-query` covers a bound SQL query and current-row access.
 `107-query-results` covers affected rows and a generated insert key.
 `108-sql-errors` covers the fields exposed by a database failure.
+`109-database-configuration` covers host-selected default database setup.
