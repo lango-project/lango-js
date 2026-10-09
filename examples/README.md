@@ -40,3 +40,4 @@ review order remain deterministic.
 `124-decimal-comparisons` covers precision-safe Decimal comparisons.
 `125-decimal-equality` covers precision-safe equality for compound Decimal expressions.
 `126-not-equal` covers strict and Decimal inequality.
+`127-remainder` covers native and Decimal remainder.
