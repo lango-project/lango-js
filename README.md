@@ -454,3 +454,8 @@ Faz 108 maps adapter failures to parameter-safe `SqlError` values with
 Faz 109 requires the host to configure the one default database adapter;
 unconfigured database work raises `DatabaseNotConfigured`. See
 `examples/109-database-configuration`.
+
+## Faz 110
+
+Faz 110 exposes an adapter-reported unusable transaction as `DB.Failed`; it
+must be closed with `rollback_trans()`. See `examples/110-failed-transaction`.

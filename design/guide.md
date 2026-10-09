@@ -626,6 +626,10 @@ transaction unusable, `trans_state()` becomes `'failed'` and the only valid
 finish is `rollback_trans()`. Client-driven cancellation and cancellation that
 needs another database connection belong to an advanced database library.
 
+An adapter reports this condition by throwing its normal database error with
+`transactionUnusable` set to `true`; the runtime still exposes that error as a
+`SqlError`.
+
 ### Database configuration
 
 Lango source does not name a database adapter, connection string, or credential.

@@ -1,0 +1,12 @@
+export main(args)
+
+main(args)
+    start_trans()
+    try
+        rs = SQL
+            select 1
+        rs.execute()
+    catch err
+        if trans_state() == DB.Failed
+            rollback_trans()
+        throw err

@@ -20,6 +20,7 @@ export function toJsNumber(value) {
 let catalog = {};
 let output = null;
 let database = null;
+let failedTransaction = false;
 export const DB = Object.freeze({ Active: "active", RollbackOnly: "rollback_only", Failed: "failed" });
 const contexts = new Map();
 
@@ -27,6 +28,7 @@ export function configure(options = {}) {
     catalog = options.catalog ?? {};
     output = options.output ?? null;
     database = options.database_adapter ?? null;
+    failedTransaction = false;
     contexts.clear();
 }
 
@@ -35,10 +37,26 @@ function requireDatabase() {
     return database;
 }
 
-export function startTrans() { requireDatabase().begin(); return null; }
-export function commitTrans() { requireDatabase().commit(); return null; }
-export function rollbackTrans() { requireDatabase().rollback(); return null; }
-export function transState() { return requireDatabase().transactionState(); }
+export function startTrans() {
+    if (failedTransaction) throw new Error("TransactionFailed");
+    requireDatabase().begin();
+    return null;
+}
+export function commitTrans() {
+    if (failedTransaction) throw new Error("TransactionFailed");
+    requireDatabase().commit();
+    return null;
+}
+export function rollbackTrans() {
+    const adapter = requireDatabase();
+    adapter.rollback();
+    if (adapter.transactionState() === null) failedTransaction = false;
+    return null;
+}
+export function transState() {
+    const state = requireDatabase().transactionState();
+    return failedTransaction && state !== null ? DB.Failed : state;
+}
 
 export class SqlError extends Error {
     constructor(cause, query) {
@@ -61,6 +79,8 @@ export function query(sql, parameterNames) {
             try {
                 result = adapter.execute(sql, parameters);
             } catch (error) {
+                if (error?.transactionUnusable === true && adapter.transactionState() !== null)
+                    failedTransaction = true;
                 throw new SqlError(error, sql);
             }
             rows = result.rows;
