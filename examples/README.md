@@ -39,3 +39,4 @@ review order remain deterministic.
 `123-inclusive-comparisons` covers inclusive comparisons.
 `124-decimal-comparisons` covers precision-safe Decimal comparisons.
 `125-decimal-equality` covers precision-safe equality for compound Decimal expressions.
+`126-not-equal` covers strict and Decimal inequality.

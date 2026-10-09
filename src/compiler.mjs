@@ -915,7 +915,7 @@ function expr(source, line, parser) {
   for (const operators of [
     ["or", "||"],
     ["and", "&&"],
-    ["=="],
+    ["==", "!="],
     [">=", "<=", ">", "<"],
     ["+", "-"],
     ["*", "/"],
@@ -2985,10 +2985,10 @@ function emitExpr(node, flags) {
       return `${JSON.stringify(item.key)}: __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value})`;
     }).join(", ")} }`;
   if (node.type === "binary") {
-    const operators = { "==": "===", and: "&&", or: "||" };
+    const operators = { "==": "===", "!=": "!==", and: "&&", or: "||" };
     if (node.operator === "and" || node.operator === "or")
       return `${emitBoolean(node.left, flags)} ${operators[node.operator]} ${emitBoolean(node.right, flags)}`;
-    if (node.operator === "==" &&
+    if (["==", "!="].includes(node.operator) &&
         (decimalValue(node.left) || decimalValue(node.right))) {
       flags.decimal = true;
       const operand = (value) =>
@@ -2997,9 +2997,10 @@ function emitExpr(node, flags) {
           : value.type === "raw" && /^\d+(?:\.\d+)?$/.test(value.value)
             ? `__decimal(${JSON.stringify(value.value)})`
             : `__decimal(${emitExpr(value, flags)})`;
-      return decimalRaw(node.right) || decimalValue(node.left)
+      const comparison = decimalRaw(node.right) || decimalValue(node.left)
         ? `${operand(node.left)}.eq(${operand(node.right)})`
         : `${operand(node.right)}.eq(${operand(node.left)})`;
+      return node.operator === "!=" ? `!(${comparison})` : comparison;
     }
     if (["<", ">", "<=", ">="].includes(node.operator) &&
         (decimalValue(node.left) || decimalValue(node.right))) {

@@ -445,7 +445,8 @@ write short text as `"text"`. Use explicit `\n` or `\t` when those characters
 are part of the value.
 ### Comparison
 
-String comparisons are exact and case-sensitive: `"I" == "i"` is false.
+String comparisons are exact and case-sensitive: `"I" == "i"` is false. Use
+`!=` for the inverse comparison.
 
 ### As an Array
 

@@ -43,7 +43,7 @@ npm run run -- examples/002-main-branch/input.lango Ada
 ## Faz 2
 
 Faz 2 adds same-module functions, `return`, calls with arity validation,
-Boolean/null literals, and numeric `+`, `-`, `*`, `/`, `>`, and `==` expressions.
+Boolean/null literals, and numeric `+`, `-`, `*`, `/`, `>`, `==`, and `!=` expressions.
 See `examples/003-functions`.
 
 ## Faz 3
@@ -534,3 +534,8 @@ See `examples/124-decimal-comparisons`.
 
 Faz 125 compares compound Decimal expressions with Decimal equality. See
 `examples/125-decimal-equality`.
+
+## Faz 126
+
+Faz 126 adds strict inequality with `!=`, including precision-safe Decimal
+comparisons. See `examples/126-not-equal`.
