@@ -524,3 +524,8 @@ Faz 122 adds unary minus for native and Decimal values. See
 
 Faz 123 adds inclusive `<=` and `>=` comparisons. See
 `examples/123-inclusive-comparisons`.
+
+## Faz 124
+
+Faz 124 compares Decimal values without narrowing them to JavaScript numbers.
+See `examples/124-decimal-comparisons`.

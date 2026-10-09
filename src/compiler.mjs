@@ -2887,6 +2887,10 @@ function emitExpr(node, flags) {
   const decimalRaw = (value) =>
     value?.type === "raw" &&
     (value.value.startsWith("$") || value.value.includes(".$"));
+  const decimalValue = (value) =>
+    decimalRaw(value) ||
+    (value?.type === "binary" && (decimalValue(value.left) || decimalValue(value.right))) ||
+    (value?.type === "unary" && decimalValue(value.value));
   const normalize = (value) => {
     flags.normalize = true;
     return `__normalize(${value})`;
@@ -3005,6 +3009,21 @@ function emitExpr(node, flags) {
           ? `__decimal(${JSON.stringify(node.right.value)})`
           : emitExpr(node.right, flags);
       return `${emitExpr(node.left, flags)}.eq(${right})`;
+    }
+    if (["<", ">", "<=", ">="].includes(node.operator) &&
+        (decimalValue(node.left) || decimalValue(node.right))) {
+      flags.decimal = true;
+      const operand = (value) =>
+        decimalValue(value)
+          ? emitExpr(value, flags)
+          : value.type === "raw" && /^\d+(?:\.\d+)?$/.test(value.value)
+            ? `__decimal(${JSON.stringify(value.value)})`
+            : `__decimal(${emitExpr(value, flags)})`;
+      const methods = { "<": "lt", ">": "gt", "<=": "lte", ">=": "gte" };
+      const reverse = { "<": "gt", ">": "lt", "<=": "gte", ">=": "lte" };
+      return decimalValue(node.left)
+        ? `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`
+        : `${operand(node.right)}.${reverse[node.operator]}(${operand(node.left)})`;
     }
     if (
       ["+", "-", "*", "/"].includes(node.operator) &&

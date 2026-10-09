@@ -37,3 +37,4 @@ review order remain deterministic.
 `121-parentheses` covers explicit arithmetic grouping.
 `122-negative-numbers` covers unary minus.
 `123-inclusive-comparisons` covers inclusive comparisons.
+`124-decimal-comparisons` covers precision-safe Decimal comparisons.

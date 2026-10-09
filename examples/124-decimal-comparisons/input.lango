@@ -1,0 +1,4 @@
+export main(args)
+
+main(args)
+    return $10 <= 10 and 9 < $10
