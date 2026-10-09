@@ -9,12 +9,20 @@ export function createSqliteAdapter(filename = ":memory:") {
     execute(sql, parameters = {}) {
       const statement = database.prepare(sql);
       if (/^\s*(select|pragma|with)\b/i.test(sql))
-        return { rows: statement.all(parameters).map((row) => ({ ...row })), changes: 0, lastInsertRowid: null };
+        return { rows: statement.all(parameters).map((row) => ({ ...row })), changes: null, lastInsertRowid: null };
       const result = statement.run(parameters);
+      const dataChange = /^\s*(insert|update|delete)\b/i.test(sql);
+      const valuesAt = sql.search(/\bvalues\s*\(/i);
+      const singleRowInsert =
+        /^\s*insert\b/i.test(sql) &&
+        valuesAt >= 0 &&
+        !/\)\s*,\s*\(/.test(sql.slice(valuesAt));
       return {
         rows: [],
-        changes: Number(result.changes),
-        lastInsertRowid: result.lastInsertRowid === undefined ? null : Number(result.lastInsertRowid),
+        changes: dataChange ? Number(result.changes) : null,
+        lastInsertRowid: singleRowInsert && result.lastInsertRowid !== undefined
+          ? Number(result.lastInsertRowid)
+          : null,
       };
     },
     begin() {

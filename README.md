@@ -438,3 +438,8 @@ makes it rollback-only. See `examples/105-transactions`.
 Faz 106 adds indented `SQL` query objects with statically declared named
 parameters, `execute()`, `next()`, and current-row field access. See
 `examples/106-sql-query`.
+
+## Faz 107
+
+Faz 107 adds `affected_rows` and `generated_key` on executed SQL query
+objects. See `examples/107-query-results`.

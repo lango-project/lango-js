@@ -1,0 +1,8 @@
+export main(args)
+
+main(args)
+    rs = SQL
+        insert into item (name) values (@name)
+    rs.name = "Ada"
+    rs.execute()
+    return rs.generated_key
