@@ -29,3 +29,4 @@ review order remain deterministic.
 `113-decimal-assignment` covers Decimal arithmetic in a dollar binding.
 `114-sql-parameters` covers parameter recognition in SQL source.
 `115-sql-interpolation` covers deliberate raw SQL interpolation.
+`116-postgres-casts` covers colon parameters next to PostgreSQL casts.

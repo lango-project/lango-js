@@ -484,3 +484,8 @@ See `examples/114-sql-parameters`.
 
 Faz 115 adds deliberate raw `${expression}` interpolation to SQL literals,
 separate from safe `:name` parameter binding. See `examples/115-sql-interpolation`.
+
+## Faz 116
+
+Faz 116 recognizes PostgreSQL `::type` casts without treating a type name as a
+SQL parameter. See `examples/116-postgres-casts`.

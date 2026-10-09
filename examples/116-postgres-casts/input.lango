@@ -1,0 +1,8 @@
+export main(args)
+
+main(args)
+    rs = SQL
+        select :amount::numeric as amount
+    rs.amount = 12.5
+    rs.execute()
+    return null

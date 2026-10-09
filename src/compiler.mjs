@@ -814,7 +814,7 @@ function collectSqlParameters(sql) {
     if (character === "-" && next === "-") { lineComment = true; index += 1; continue; }
     if (character === "/" && next === "*") { blockComment = true; index += 1; continue; }
     if (character === "'" || character === '"') { quote = character; continue; }
-    if (character !== ":" || !/[A-Za-z_]/.test(next ?? "")) continue;
+    if (character !== ":" || sql[index - 1] === ":" || !/[A-Za-z_]/.test(next ?? "")) continue;
     let end = index + 2;
     while (/\w/.test(sql[end] ?? "")) end += 1;
     names.push(sql.slice(index + 1, end));
