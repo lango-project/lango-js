@@ -40,6 +40,45 @@ export function commitTrans() { requireDatabase().commit(); return null; }
 export function rollbackTrans() { requireDatabase().rollback(); return null; }
 export function transState() { return requireDatabase().transactionState(); }
 
+export function query(sql, parameterNames) {
+    const parameters = Object.create(null);
+    let rows = [];
+    let cursor = -1;
+    let result = { changes: null, lastInsertRowid: null };
+    const api = {
+        execute() {
+            result = requireDatabase().execute(sql, parameters);
+            rows = result.rows;
+            cursor = -1;
+            return proxy;
+        },
+        next() {
+            if (cursor + 1 >= rows.length) {
+                cursor = rows.length;
+                return false;
+            }
+            cursor += 1;
+            return true;
+        },
+        next_result() { return false; },
+    };
+    const proxy = new Proxy(api, {
+        get(target, name) {
+            if (name === "affected_rows") return result.changes;
+            if (name === "generated_key") return result.lastInsertRowid;
+            if (name in target) return target[name];
+            if (cursor < 0 || cursor >= rows.length) throw new Error("SqlNoCurrentRow");
+            return rows[cursor][name] ?? null;
+        },
+        set(target, name, value) {
+            if (!parameterNames.includes(name)) throw new Error("SqlUnknownParameter");
+            parameters[name] = value;
+            return true;
+        },
+    });
+    return proxy;
+}
+
 export function translate(template, values) {
     const translated = catalog[template] ?? template;
 

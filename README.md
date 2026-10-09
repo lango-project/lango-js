@@ -432,3 +432,9 @@ Faz 105 adds the initial synchronous SQLite adapter and core transactions:
 `start_trans()`, `commit_trans()`, `rollback_trans()`, and `trans_state()`.
 Nested transactions join the outer physical transaction; an inner rollback
 makes it rollback-only. See `examples/105-transactions`.
+
+## Faz 106
+
+Faz 106 adds indented `SQL` query objects with statically declared named
+parameters, `execute()`, `next()`, and current-row field access. See
+`examples/106-sql-query`.

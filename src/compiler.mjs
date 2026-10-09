@@ -649,8 +649,29 @@ class Parser {
       } else if (/^([A-Za-z_]\w*) = \{$/.test(text)) {
         const [, name] = /^([A-Za-z_]\w*) = \{$/.exec(text);
         body.push({ type: "assign", name, value: this.object(indent) });
+      } else if (/^([A-Za-z_]\w*) = SQL$/.test(text)) {
+        const [, name] = /^([A-Za-z_]\w*) = SQL$/.exec(text);
+        const sql = [];
+        while (this.i < this.lines.length) {
+          const sqlLine = this.peek();
+          if (sqlLine.trim() === "") { sql.push(""); this.i += 1; continue; }
+          if (spaces(sqlLine) <= indent) break;
+          if (spaces(sqlLine) < indent + 4)
+            this.fail({ text: sqlLine, number: this.i + 1 }, "LNG1255", "SQL body must be indented");
+          sql.push(sqlLine.slice(indent + 4));
+          this.i += 1;
+        }
+        if (!sql.some((item) => item.trim()))
+          this.fail(line, "LNG1255", "SQL body requires a statement");
+        const sqlText = sql.join("\n");
+        const parameters = [...sqlText.matchAll(/@([A-Za-z_]\w*)/g)].map((item) => item[1]);
+        body.push({
+          type: "assign",
+          name,
+          value: { type: "sql", text: sqlText, parameters: [...new Set(parameters)] },
+        });
       } else {
-        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*) = (.+)$/.exec(text);
+        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*) = (.+)$/.exec(text);
         if (!assignment)
           this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
         body.push({
@@ -1195,7 +1216,33 @@ function validate(program, imports = []) {
         .forEach(validateDecimalAssignments);
     }
   };
+  const validateSqlParameters = (body, bindings = new Map()) => {
+    for (const node of body) {
+      if (node.type === "assign" && node.value.type === "sql") {
+        bindings.set(node.name, new Set(node.value.parameters));
+        continue;
+      }
+      if (node.type === "assign") {
+        const property = /^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$/.exec(node.name);
+        if (property && bindings.has(property[1]) && !bindings.get(property[1]).has(property[2]))
+          throw new LangoError(
+            "LNG1256",
+            node.value.line ?? 1,
+            `${property[1]}: unknown SQL parameter ${property[2]}`,
+          );
+        if (!property) bindings.delete(node.name);
+      }
+      [node.thenBody, node.elseBody, node.tryBody, node.catchBody, node.finallyBody]
+        .filter(Boolean)
+        .forEach((child) => validateSqlParameters(child, new Map(bindings)));
+    }
+  };
   program.functions.forEach((fn) => validateDecimalAssignments(fn.body));
+  program.functions.forEach((fn) => validateSqlParameters(fn.body));
+  program.tests.forEach((test) => validateSqlParameters(test.body));
+  program.classes.forEach((classNode) =>
+    classNode.methods.forEach((method) => validateSqlParameters(method.body)),
+  );
   if (names.size !== program.functions.length)
     throw new LangoError("LNG1201", 1, "duplicate function name");
   if (globals.size !== program.globals.length)
@@ -2259,6 +2306,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.database && "rollbackTrans as __rollbackTrans",
     flags.database && "transState as __transState",
     flags.databaseEnum && "DB as __DB",
+    flags.sql && "query as __query",
     flags.arity && "requireArity as __requireArity",
     flags.closureArity && "withArity as __withArity",
   ].filter(Boolean);
@@ -2515,7 +2563,9 @@ function emitStatement(node, depth, declared, flags) {
   if (node.type === "assign") {
     const decimalBinding = node.name.startsWith("$") || /^@{1,2}\$/.test(node.name);
     const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
-    const target = node.name.startsWith("@@")
+    const target = /^[A-Za-z_]\w*\.\$?[A-Za-z_]\w*$/.test(node.name)
+      ? node.name
+      : node.name.startsWith("@@")
       ? `${flags.className}.${property}`
       : node.name.startsWith("@")
         ? flags.publicProperties?.has(property)
@@ -2525,7 +2575,9 @@ function emitStatement(node, depth, declared, flags) {
           ? `this.${node.name}`
           : node.name;
     const prefix =
-      node.name.startsWith("@") ||
+      /^[A-Za-z_]\w*\.\$?[A-Za-z_]\w*$/.test(node.name)
+        ? ""
+        : node.name.startsWith("@") ||
       (flags.className && node.name.startsWith("_")) ||
       declared.has(node.name) || flags.globalNames?.has(node.name)
         ? ""
@@ -2719,6 +2771,10 @@ function emitExpr(node, flags) {
           : /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value)
             ? normalize(node.value)
             : node.value;
+  if (node.type === "sql") {
+    flags.sql = true;
+    return `__query(${JSON.stringify(node.text)}, ${JSON.stringify(node.parameters)})`;
+  }
   if (node.type === "unary") return `!${emitBoolean(node.value, flags)}`;
   if (node.type === "new")
     return `new ${node.name.replaceAll("/", ".")}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
