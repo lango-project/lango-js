@@ -1,0 +1,7 @@
+export main(args)
+
+main(args)
+    start_trans()
+    if trans_state() == DB.Active
+        commit_trans()
+    return trans_state()

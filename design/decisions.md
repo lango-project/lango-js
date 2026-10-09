@@ -1143,6 +1143,10 @@ transaction unusable changes its state to `failed` and requires rollback.
 rolled-back transaction leaves no retained context state; code that needs to
 record an outcome does so explicitly.
 
+`DB.Active`, `DB.RollbackOnly`, and `DB.Failed` are source-level comparison
+constants for those three active states. No idle enum value exists: the only
+inactive state is `null`.
+
 Core transactions apply only to synchronous server-side database calls. As with
 all D-013 context, they do not cross Promise, timer, or event callback
 boundaries. Core nested calls do not emit SQL savepoints, and the core API has
@@ -1270,3 +1274,16 @@ than a dynamic XML templating language.
 The core language has no XML document value, parser, selector/query API, or
 mutation API. Programs that need dynamic XML structure or XML manipulation use
 an explicit library after the string boundary.
+
+## D-060: SQLite is the initial core database adapter
+
+**Status:** Accepted
+
+The initial core database adapter is SQLite through Node's `node:sqlite`
+`DatabaseSync` API. It fits the synchronous server-side database model and
+keeps the first deployment zero-configuration. Lango exposes its own database
+adapter interface, so the language API is not coupled to that host module.
+
+PostgreSQL, networked databases, pooling, savepoints, and independent
+connections remain separate adapter/library work. A host may provide
+`better-sqlite3` as a compatibility fallback without changing Lango semantics.

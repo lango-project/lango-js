@@ -19,13 +19,26 @@ export function toJsNumber(value) {
 
 let catalog = {};
 let output = null;
+let database = null;
+export const DB = Object.freeze({ Active: "active", RollbackOnly: "rollback_only", Failed: "failed" });
 const contexts = new Map();
 
 export function configure(options = {}) {
     catalog = options.catalog ?? {};
     output = options.output ?? null;
+    database = options.database_adapter ?? null;
     contexts.clear();
 }
+
+function requireDatabase() {
+    if (database === null) throw new Error("DatabaseUnavailable");
+    return database;
+}
+
+export function startTrans() { requireDatabase().begin(); return null; }
+export function commitTrans() { requireDatabase().commit(); return null; }
+export function rollbackTrans() { requireDatabase().rollback(); return null; }
+export function transState() { return requireDatabase().transactionState(); }
 
 export function translate(template, values) {
     const translated = catalog[template] ?? template;

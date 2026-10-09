@@ -425,3 +425,10 @@ namespaces; object properties and methods remain dot-separated.
 
 Faz 81 treats a JavaScript namespace itself as non-callable and reports
 `NotCallable`.
+
+## Faz 105
+
+Faz 105 adds the initial synchronous SQLite adapter and core transactions:
+`start_trans()`, `commit_trans()`, `rollback_trans()`, and `trans_state()`.
+Nested transactions join the outer physical transaction; an inner rollback
+makes it rollback-only. See `examples/105-transactions`.

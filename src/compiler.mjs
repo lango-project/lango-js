@@ -1128,6 +1128,7 @@ function validate(program, imports = []) {
     ["is_object", 1],
     ["is_array", 1],
     ["to_js_number", 1],
+    ["start_trans", 0], ["commit_trans", 0], ["rollback_trans", 0], ["trans_state", 0],
   ]);
   const hostFunctions = new Set(["fetch"]);
   const isDecimalValue = (value) =>
@@ -2253,6 +2254,11 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.finite && "finite as __finite",
     flags.call && "call as __call",
     flags.boundary && "boundary as __boundary",
+    flags.database && "startTrans as __startTrans",
+    flags.database && "commitTrans as __commitTrans",
+    flags.database && "rollbackTrans as __rollbackTrans",
+    flags.database && "transState as __transState",
+    flags.databaseEnum && "DB as __DB",
     flags.arity && "requireArity as __requireArity",
     flags.closureArity && "withArity as __withArity",
   ].filter(Boolean);
@@ -2697,6 +2703,11 @@ function emitExpr(node, flags) {
       return `__contextGet(${JSON.stringify(node.value)})`;
     }
   if (node.type === "raw")
+    if (/^DB\.(Active|RollbackOnly|Failed)$/.test(node.value)) {
+      flags.databaseEnum = true;
+      return `__${node.value}`;
+    }
+  if (node.type === "raw")
     return node.value.startsWith("@@")
       ? normalize(`${flags.className}.${node.value.slice(2)}`)
       : node.value.startsWith("@")
@@ -2836,6 +2847,12 @@ function emitExpr(node, flags) {
         is_array: "__isArray",
       }[node.name];
       return `${helper}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    }
+  if (node.type === "call")
+    if (["start_trans", "commit_trans", "rollback_trans", "trans_state"].includes(node.name)) {
+      flags.database = true;
+      const helper = { start_trans: "__startTrans", commit_trans: "__commitTrans", rollback_trans: "__rollbackTrans", trans_state: "__transState" }[node.name];
+      return `${helper}()`;
     }
   if (node.type === "call")
     if (

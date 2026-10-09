@@ -588,6 +588,10 @@ an error.
 transaction has no retained context state; application code that needs an audit
 result stores it itself.
 
+Use `DB.Active`, `DB.RollbackOnly`, and `DB.Failed` when comparing an active
+state. They are the corresponding stable state values; there is no `DB.Idle`,
+because the inactive state is `null`.
+
 Core transactions are for synchronous server-side database work. They do not
 cross Promise, timer, or event callback boundaries. The core library has no
 connection-selection API and does not create SQL savepoints for nested

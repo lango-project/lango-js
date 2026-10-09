@@ -18,3 +18,4 @@ review order remain deterministic.
 `101-js-boundary` covers explicit Decimal conversion at a JavaScript boundary.
 `102-namespace-statement` covers a discarded JavaScript namespace call.
 `093-formatter` covers canonical blank lines and inline comments.
+`105-transactions` covers the core transaction state and outer commit flow.
