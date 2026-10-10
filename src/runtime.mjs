@@ -238,6 +238,7 @@ export function isArray(value) {
 
 export function includes(value, collection) {
     if (Array.isArray(collection)) return collection.includes(value);
+    if (collection instanceof Set) return collection.has(value);
     if (typeof collection === "string" && typeof value === "string") {
         return collection.includes(value);
     }

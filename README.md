@@ -597,3 +597,8 @@ Faz 137 rejects duplicate object keys at compile time. See
 
 Faz 138 infers Decimal function results through null coalescing. See
 `examples/138-decimal-null-coalescing`.
+
+## Faz 140
+
+Faz 140 adds membership support for host `Set` values. See
+`examples/140-set-membership`.
