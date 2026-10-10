@@ -1,0 +1,4 @@
+main(args)
+    names = ["Ada", "Lin", "Ada"]
+    names.remove_all("Ada")
+    return names

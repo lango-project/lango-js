@@ -655,14 +655,17 @@ class Parser {
         this.i += 1;
         body.push({ type: "chain", base: expr(first, line, this), steps });
       }
-      else if (/^([A-Za-z_]\w*)\.add\((.+)\)$/.test(text)) {
-        const [, target, value] = /^([A-Za-z_]\w*)\.add\((.+)\)$/.exec(text);
-        body.push({ type: "add", target, value: expr(value, line, this) });
-      } else if (/^println\((.*)\)$/.test(text))
+      else if (/^println\((.*)\)$/.test(text))
         body.push({
           type: "println",
           value: expr(text.slice(8, -1), line, this),
         });
+      else if (/^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*) = ([A-Za-z_]\w*.*(?:\]|\))(?:\?\.|\.)[A-Za-z_]\w*\(.*\))$/.test(text)) {
+        const [, name, source] = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*) = ([A-Za-z_]\w*.*(?:\]|\))(?:\?\.|\.)[A-Za-z_]\w*\(.*\))$/.exec(text);
+        body.push({ type: "assign", name, value: this.expression(source, line) });
+      }
+      else if (/^[A-Za-z_]\w*.*(?:\]|\))(?:\?\.|\.)[A-Za-z_]\w*\(.*\)$/.test(text))
+        body.push({ type: "expression", value: expr(text, line, this) });
       else if (/^[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)+\(.*\)$/.test(text))
         body.push({ type: "expression", value: expr(text, line, this) });
       else if (/^[A-Za-z_]\w*(?:\/[A-Za-z_]\w*)+\(.*\)$/.test(text))
@@ -2679,6 +2682,12 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.entries && "entries as __entries",
     flags.range && "range as __range",
     flags.add && "add as __add",
+    flags.remove && "remove as __remove",
+    flags.removeAll && "remove_all as __removeAll",
+    flags.clear && "clear as __clear",
+    flags.removeAt && "remove_at as __removeAt",
+    flags.insertAt && "insert_at as __insertAt",
+    flags.optionalMethod && "optional as __optional",
     flags.toJsNumber && "toJsNumber as __toJsNumber",
     flags.boolean && "requireBoolean as __requireBoolean",
     flags.assert && "assert as __assert",
@@ -3246,9 +3255,35 @@ function emitExpr(node, flags) {
         ? "push"
         : node.name;
     const arguments_ = node.arguments.map((item) => emitExpr(item, flags)).join(", ");
+    const helperCall = (helper) => {
+      const call = `${helper}(${receiver}${arguments_ ? `, ${arguments_}` : ""})`;
+      if (!node.optional) return call;
+      flags.optionalMethod = true;
+      return `__optional(${receiver}, (value) => ${helper}(value${arguments_ ? `, ${arguments_}` : ""}))`;
+    };
     if (!namespace && node.name === "add" && visibility === undefined && method !== "push") {
       flags.add = true;
-      return `__add(${receiver}, ${arguments_})`;
+      return helperCall("__add");
+    }
+    if (!namespace && node.name === "remove" && visibility === undefined) {
+      flags.remove = true;
+      return helperCall("__remove");
+    }
+    if (!namespace && node.name === "remove_all" && visibility === undefined) {
+      flags.removeAll = true;
+      return helperCall("__removeAll");
+    }
+    if (!namespace && node.name === "clear" && visibility === undefined) {
+      flags.clear = true;
+      return helperCall("__clear");
+    }
+    if (!namespace && node.name === "remove_at" && visibility === undefined) {
+      flags.removeAt = true;
+      return helperCall("__removeAt");
+    }
+    if (!namespace && node.name === "insert_at" && visibility === undefined) {
+      flags.insertAt = true;
+      return helperCall("__insertAt");
     }
     const call = `${receiver}${visibility === false ? ".#" : node.optional ? "?." : "."}${method}(${arguments_})`;
     if (node.optional) return normalize(call);

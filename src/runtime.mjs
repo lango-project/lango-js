@@ -287,6 +287,76 @@ export function add(value, ...items) {
     throw new Error("NotAddable");
 }
 
+export function remove(value, item) {
+    if (Array.isArray(value)) {
+        const index = value.indexOf(item);
+        if (index < 0) return false;
+        value.splice(index, 1);
+        return true;
+    }
+    if (value !== null && typeof value?.remove === "function") {
+        return normalize(value.remove(item));
+    }
+    throw new Error("NotRemovable");
+}
+
+export function remove_all(value, item) {
+    if (Array.isArray(value)) {
+        let removed = 0;
+        for (let index = value.length - 1; index >= 0; index -= 1) {
+            if (value[index] !== item) continue;
+            value.splice(index, 1);
+            removed += 1;
+        }
+        return removed;
+    }
+    if (value !== null && typeof value?.remove_all === "function") {
+        return normalize(value.remove_all(item));
+    }
+    throw new Error("NotRemovable");
+}
+
+export function clear(value) {
+    if (Array.isArray(value)) {
+        value.length = 0;
+        return null;
+    }
+    if (value !== null && typeof value?.clear === "function") {
+        return normalize(value.clear());
+    }
+    throw new Error("NotClearable");
+}
+
+export function remove_at(value, index) {
+    if (Array.isArray(value)) {
+        if (!Number.isSafeInteger(index) || index < 0 || index >= value.length)
+            return false;
+        value.splice(index, 1);
+        return true;
+    }
+    if (value !== null && typeof value?.remove_at === "function") {
+        return normalize(value.remove_at(index));
+    }
+    throw new Error("NotRemovable");
+}
+
+export function insert_at(value, index, item) {
+    if (Array.isArray(value)) {
+        if (!Number.isSafeInteger(index) || index < 0 || index > value.length)
+            return false;
+        value.splice(index, 0, item);
+        return true;
+    }
+    if (value !== null && typeof value?.insert_at === "function") {
+        return normalize(value.insert_at(index, item));
+    }
+    throw new Error("NotInsertable");
+}
+
+export function optional(value, callback) {
+    return value === null || value === undefined ? null : callback(value);
+}
+
 export function requireBoolean(value) {
     if (typeof value !== "boolean") {
         throw new Error("BooleanRequired");

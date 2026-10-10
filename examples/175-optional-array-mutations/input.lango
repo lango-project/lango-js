@@ -1,0 +1,3 @@
+main(args)
+    removed = args[0]?.remove("Ada")
+    return removed

@@ -731,3 +731,48 @@ Faz 165 adds numeric `key: value` indexes for generic iterables. See
 
 Faz 166 lets `Array#add()` work through properties and host-provided arrays. See
 `examples/166-array-add-receivers`.
+
+## Faz 167
+
+Faz 167 adds statement method calls after indexed and call-result values. See
+`examples/167-chained-method-statements`.
+
+## Faz 168
+
+Faz 168 lets `Array#add()` append multiple values in one call. See
+`examples/168-array-add-multiple`.
+
+## Faz 169
+
+Faz 169 adds `Array#remove(value)`, which removes the first matching value and
+returns whether it was found. See `examples/169-array-remove`.
+
+## Faz 170
+
+Faz 170 permits assigning results from method calls on indexed and call-result
+values. See `examples/170-chained-method-expressions`.
+
+## Faz 171
+
+Faz 171 adds `Array#clear()` for emptying local and host-provided arrays. See
+`examples/171-array-clear`.
+
+## Faz 172
+
+Faz 172 adds `Array#remove_at(index)` for removing a value at a zero-based
+position. See `examples/172-array-remove-at`.
+
+## Faz 173
+
+Faz 173 adds `Array#insert_at(index, value)` for inserting at a zero-based
+position. See `examples/173-array-insert-at`.
+
+## Faz 174
+
+Faz 174 adds `Array#remove_all(value)` for removing every matching value. See
+`examples/174-array-remove-all`.
+
+## Faz 175
+
+Faz 175 preserves null-safe optional access for array mutation helpers. See
+`examples/175-optional-array-mutations`.

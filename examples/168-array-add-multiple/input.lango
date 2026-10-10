@@ -1,0 +1,4 @@
+main(args)
+    items = []
+    items.add("Ada", "Lin")
+    return items

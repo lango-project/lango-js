@@ -342,6 +342,22 @@ a.length
 ```
 `add()` also works when the array comes from a property or host argument, such
 as `state.items.add(value)`.
+It may also follow an indexed or function-result array, such as
+`groups[index].add(value)` or `find_group().add(value)`.
+Their results can be assigned too: `count = groups[index].add(value)`.
+Pass multiple values to append them in order: `items.add(first, second)`.
+Remove the first matching value with `items.remove(value)`. It returns `true`
+when it removed a value, otherwise `false`.
+Remove every matching value with `items.remove_all(value)`; it returns the
+number of removed values.
+Empty an array with `items.clear()`; it returns `null`.
+Remove by zero-based position with `items.remove_at(index)`. It returns `true`
+when that position exists, otherwise `false`.
+Insert at a zero-based position with `items.insert_at(index, value)`. The
+position equal to `items.length` appends; it returns `false` for other invalid
+positions.
+Optional collection calls preserve optional access: `items?.remove(value)` is
+`null` when `items` is `null`, without attempting a mutation.
 An array may use commas only when all of its members are on one physical line.
 A multiline array has one member per line and no commas:
 ```lango

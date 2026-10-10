@@ -1,0 +1,4 @@
+main(args)
+    names = ["Ada", "Lin"]
+    names.clear()
+    return names

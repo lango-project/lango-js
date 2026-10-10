@@ -1,0 +1,4 @@
+main(args)
+    groups = args[0]
+    count = groups[0].add("Ada")
+    return count

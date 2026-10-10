@@ -1,0 +1,4 @@
+main(args)
+    names = ["Ada", "Noa"]
+    names.insert_at(1, "Lin")
+    return names

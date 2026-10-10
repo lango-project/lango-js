@@ -79,3 +79,12 @@ review order remain deterministic.
 `164-range-end` covers the zero-based `range(end)` shorthand.
 `165-iterable-key-value-iteration` covers numeric indexes for generic iterables.
 `166-array-add-receivers` covers `Array#add()` on property and host array values.
+`167-chained-method-statements` covers method statements after indexed and call-result values.
+`168-array-add-multiple` covers appending multiple values with `Array#add()`.
+`169-array-remove` covers removing the first matching value with `Array#remove()`.
+`170-chained-method-expressions` covers assigning results from chained method calls.
+`171-array-clear` covers emptying an array with `Array#clear()`.
+`172-array-remove-at` covers removing a zero-based array position.
+`173-array-insert-at` covers inserting at a zero-based array position.
+`174-array-remove-all` covers removing every matching array value.
+`175-optional-array-mutations` covers null-safe optional array mutations.
