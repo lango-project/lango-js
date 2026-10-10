@@ -1,0 +1,8 @@
+main(args)
+    matrix = [[1]]
+    row = 0
+    column = 0
+    matrix[row][column] = 3
+    matrix[row][column] += 2
+    matrix[row][column]--
+    return matrix[row][column]

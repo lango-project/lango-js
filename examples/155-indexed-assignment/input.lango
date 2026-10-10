@@ -1,0 +1,7 @@
+main(args)
+    items = [1, 2]
+    position = 1
+    items[position] = 3
+    items[position] += 2
+    items[position]--
+    return items[position]

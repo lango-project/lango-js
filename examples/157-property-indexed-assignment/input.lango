@@ -1,0 +1,6 @@
+main(args)
+    state = { items: [1] }
+    state.items[0] = 3
+    state.items[0] += 2
+    state.items[0]--
+    return state.items[0]

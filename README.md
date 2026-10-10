@@ -666,3 +666,28 @@ Faz 152 adds chained safe access after call results. See
 
 Faz 153 adds compound numeric assignment and decrement. See
 `examples/153-compound-assignment`.
+
+## Faz 154
+
+Faz 154 adds postfix updates for properties and Decimal bindings. See
+`examples/154-postfix-updates`.
+
+## Faz 155
+
+Faz 155 adds indexed assignment and updates. See
+`examples/155-indexed-assignment`.
+
+## Faz 156
+
+Faz 156 adds multidimensional indexed updates. See
+`examples/156-multidimensional-assignment`.
+
+## Faz 157
+
+Faz 157 adds indexed updates for object-held collections. See
+`examples/157-property-indexed-assignment`.
+
+## Faz 158
+
+Faz 158 lets `for` loops use iterable expressions. See
+`examples/158-iterable-expressions`.

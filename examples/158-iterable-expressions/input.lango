@@ -1,0 +1,5 @@
+main(args)
+    total = 0
+    for args[0].items[0] as item
+        total += item
+    return total

@@ -237,7 +237,13 @@ immutable-binding declaration.
 
 Numeric bindings and ordinary properties support compound updates:
 `+=`, `-=`, `*=`, `/=`, `%=`, and `**=`. `name--` subtracts one; `name++`
-increments by one.
+increments by one. These postfix forms also work on ordinary properties and
+Decimal bindings, such as `state.count++` and `$price--`.
+
+An existing array or object binding may be updated at an index or computed key:
+`items[position] = value`, `items[position] += 1`, and `items[position]--`.
+Two-dimensional targets use the same forms, such as `matrix[row][column] += 1`.
+The collection may be held by an object property: `state.items[position] += 1`.
 
 It is a compiler error to read it before defined.
 
@@ -416,6 +422,8 @@ You can use the following to break from a 3 level inner loop:
 for array as n
     println(n)
 ```
+The collection may be an expression, such as `args[0].items[0]` or
+`find_items(args)`.
 ```lango
 for obj as name: value
     println("${name}=${value}")

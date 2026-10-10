@@ -1,0 +1,5 @@
+main(args)
+    state = { count: 1 }
+    state.count++
+    state.count--
+    return state.count

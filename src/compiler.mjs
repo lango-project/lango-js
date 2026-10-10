@@ -509,24 +509,22 @@ class Parser {
           until: true,
           body: this.block(indent + 4),
         });
-      } else if (
-        /^for ([A-Za-z_]\w*) as ([A-Za-z_]\w*): ([A-Za-z_]\w*)$/.test(text)
-      ) {
-        const [, collection, key, value] =
-          /^for ([A-Za-z_]\w*) as ([A-Za-z_]\w*): ([A-Za-z_]\w*)$/.exec(text);
+      } else if (/^for (.+) as ([A-Za-z_]\w*): ([A-Za-z_]\w*)$/.test(text)) {
+        const [, source, key, value] =
+          /^for (.+) as ([A-Za-z_]\w*): ([A-Za-z_]\w*)$/.exec(text);
         body.push({
           type: "forObject",
-          collection,
+          collection: this.expression(source, line),
           key,
           value,
           body: this.block(indent + 4),
         });
-      } else if (/^for ([A-Za-z_]\w*) as ([A-Za-z_]\w*)$/.test(text)) {
-        const [, collection, item] =
-          /^for ([A-Za-z_]\w*) as ([A-Za-z_]\w*)$/.exec(text);
+      } else if (/^for (.+) as ([A-Za-z_]\w*)$/.test(text)) {
+        const [, source, item] =
+          /^for (.+) as ([A-Za-z_]\w*)$/.exec(text);
         body.push({
           type: "for",
-          collection,
+          collection: this.expression(source, line),
           item,
           body: this.block(indent + 4),
         });
@@ -601,6 +599,19 @@ class Parser {
             operator,
             left: { type: "raw", value: name },
             right: this.expression(source, line),
+          },
+        });
+      }
+      else if (/^(\$[A-Za-z_]\w*|@{1,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*)(\+\+|--)$/.test(text)) {
+        const [, name, suffix] = /^(\$[A-Za-z_]\w*|@{1,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*)(\+\+|--)$/.exec(text);
+        body.push({
+          type: "assign",
+          name,
+          value: {
+            type: "binary",
+            operator: suffix === "++" ? "+" : "-",
+            left: { type: "raw", value: name },
+            right: { type: "raw", value: "1" },
           },
         });
       }
@@ -708,6 +719,66 @@ class Parser {
           type: "assign",
           name,
           value: { type: "sql", text: sqlText, parts, parameters },
+        });
+      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] = (.+)$/.test(text)) {
+        const [, receiver, firstIndex, secondIndex, sourceValue] =
+          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] = (.+)$/.exec(text);
+        body.push({
+          type: "indexAssign",
+          receiver,
+          indexes: [this.expression(firstIndex, line), this.expression(secondIndex, line)],
+          value: this.expression(sourceValue, line),
+          operator: null,
+        });
+      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.test(text)) {
+        const [, receiver, firstIndex, secondIndex, operator, sourceValue] =
+          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.exec(text);
+        body.push({
+          type: "indexAssign",
+          receiver,
+          indexes: [this.expression(firstIndex, line), this.expression(secondIndex, line)],
+          value: this.expression(sourceValue, line),
+          operator,
+        });
+      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\](\+\+|--)$/.test(text)) {
+        const [, receiver, firstIndex, secondIndex, suffix] =
+          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\](\+\+|--)$/.exec(text);
+        body.push({
+          type: "indexAssign",
+          receiver,
+          indexes: [this.expression(firstIndex, line), this.expression(secondIndex, line)],
+          value: { type: "raw", value: "1" },
+          operator: suffix === "++" ? "+" : "-",
+        });
+      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] = (.+)$/.test(text)) {
+        const [, receiver, sourceIndex, sourceValue] =
+          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] = (.+)$/.exec(text);
+        body.push({
+          type: "indexAssign",
+          receiver,
+          index: this.expression(sourceIndex, line),
+          value: this.expression(sourceValue, line),
+          operator: null,
+        });
+      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.test(text)) {
+        const [, receiver, sourceIndex, operator, sourceValue] =
+          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.exec(text);
+        body.push({
+          type: "indexAssign",
+          receiver,
+          index: this.expression(sourceIndex, line),
+          value: this.expression(sourceValue, line),
+          operator,
+        });
+      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\](\+\+|--)$/.test(text)) {
+        const [, receiver, sourceIndex, suffix] =
+          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\](\+\+|--)$/.exec(text);
+        body.push({
+          type: "indexAssign",
+          receiver,
+          index: this.expression(sourceIndex, line),
+          value: { type: "raw", value: "1" },
+          operator: suffix === "++" ? "+" : "-",
         });
       } else {
         const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*) = (.+)$/.exec(text);
@@ -1968,8 +2039,14 @@ function validate(program, imports = []) {
       if (node.type === "closureAssign" || node.type === "closure") continue;
       if (node.type === "increment" || node.type === "add")
         references.add(node.name ?? node.target);
+      if (node.type === "indexAssign") {
+        references.add(node.receiver.split(".")[0]);
+        (node.indexes ?? [node.index]).forEach((index) =>
+          expressionReferences(index, references),
+        );
+      }
       if (node.type === "for" || node.type === "forObject")
-        references.add(node.collection);
+        expressionReferences(node.collection, references);
       [node.value, node.condition, node.arguments, node.tests].forEach((value) => {
         if (Array.isArray(value))
           value.forEach((item) => expressionReferences(item, references));
@@ -2113,6 +2190,12 @@ function validate(program, imports = []) {
       const current = new Set(assigned);
       for (const node of nodes) {
         const references = new Set();
+        if (node.type === "indexAssign") {
+          references.add(node.receiver.split(".")[0]);
+          (node.indexes ?? [node.index]).forEach((index) =>
+            expressionReferences(index, references),
+          );
+        }
         [node.value, node.condition, node.arguments, node.tests].forEach((value) => {
           if (Array.isArray(value)) value.forEach((item) => expressionReferences(item, references));
           else expressionReferences(value, references);
@@ -2912,6 +2995,12 @@ function emitStatement(node, depth, declared, flags) {
       node.value.type === "raw" && /^\$(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(node.value.value);
     return `${pad}${prefix}${target} = ${decimalBinding && node.value.type !== "binary" && !decimalLiteral ? `__decimal(${decimalInput})` : value};\n`;
   }
+  if (node.type === "indexAssign") {
+    const target = `${node.receiver}${(node.indexes ?? [node.index]).map((index) => `[${emitExpr(index, flags)}]`).join("")}`;
+    const value = emitExpr(node.value, flags);
+    if (node.operator) flags.finite = true;
+    return `${pad}${target} = ${node.operator ? `__finite(${target} ${node.operator} ${value})` : value};\n`;
+  }
   if (node.type === "expression")
     return `${pad}${emitExpr(node.value, flags)};\n`;
   if (node.type === "chain")
@@ -2955,10 +3044,10 @@ function emitStatement(node, depth, declared, flags) {
     return `${pad}${label}: while (${node.condition === null ? "true" : `${node.until ? "!" : ""}${emitBoolean(node.condition, flags)}`}) {\n${body}${pad}}\n`;
   }
   if (node.type === "for")
-    return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+    return `${pad}for (const ${node.item} of ${emitExpr(node.collection, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
   if (node.type === "forObject") {
     flags.entries = true;
-    return `${pad}for (const [${node.key}, ${node.value}] of __entries(${node.collection})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+    return `${pad}for (const [${node.key}, ${node.value}] of __entries(${emitExpr(node.collection, flags)})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
   }
   if (node.type === "switch") {
     const conditions = node.cases.map((item) =>

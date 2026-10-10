@@ -66,3 +66,8 @@ review order remain deterministic.
 `151-call-result-indexing` covers indexing after function and method results.
 `152-chained-call-result-access` covers nested safe access after call results.
 `153-compound-assignment` covers compound numeric updates and decrement.
+`154-postfix-updates` covers postfix updates for properties and Decimal bindings.
+`155-indexed-assignment` covers indexed assignment and numeric updates.
+`156-multidimensional-assignment` covers nested indexed updates.
+`157-property-indexed-assignment` covers updates through an object collection property.
+`158-iterable-expressions` covers `for` loops over properties, indexes, and call results.
