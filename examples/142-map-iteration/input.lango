@@ -1,0 +1,4 @@
+main(args)
+    values = args[0]
+    for values as key: value
+        println("${key}=${value}")

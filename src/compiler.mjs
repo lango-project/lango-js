@@ -2461,6 +2461,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.predicates && "isObject as __isObject",
     flags.predicates && "isArray as __isArray",
     flags.membership && "includes as __includes",
+    flags.entries && "entries as __entries",
     flags.toJsNumber && "toJsNumber as __toJsNumber",
     flags.boolean && "requireBoolean as __requireBoolean",
     flags.assert && "assert as __assert",
@@ -2825,8 +2826,10 @@ function emitStatement(node, depth, declared, flags) {
   }
   if (node.type === "for")
     return `${pad}for (const ${node.item} of ${node.collection}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
-  if (node.type === "forObject")
-    return `${pad}for (const [${node.key}, ${node.value}] of Object.entries(${node.collection})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+  if (node.type === "forObject") {
+    flags.entries = true;
+    return `${pad}for (const [${node.key}, ${node.value}] of __entries(${node.collection})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+  }
   if (node.type === "switch") {
     const conditions = node.cases.map((item) =>
       item.tests

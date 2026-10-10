@@ -54,3 +54,4 @@ review order remain deterministic.
 `138-decimal-null-coalescing` covers Decimal returns through `??`.
 `140-set-membership` covers host `Set` membership.
 `141-map-membership` covers host `Map` key membership.
+`142-map-iteration` covers key-value iteration over host `Map` values.

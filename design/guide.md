@@ -401,7 +401,7 @@ for obj as name: value
 ```
 Arrays, strings, and other JavaScript iterables can be used with the
 single-value form. Plain objects use the `key: value` form. `Map` and `Set`
-remain ordinary JavaScript values; they have no special Lango syntax.
+remain ordinary JavaScript values; a `Map` may also use the `key: value` form.
 ### Return
 
 *return* returns a value (or not) from a function or method as expected.

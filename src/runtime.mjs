@@ -249,6 +249,14 @@ export function includes(value, collection) {
     throw new Error("MembershipTarget");
 }
 
+export function entries(collection) {
+    if (collection instanceof Map) return collection.entries();
+    if (collection !== null && typeof collection === "object") {
+        return Object.entries(collection);
+    }
+    throw new Error("EntriesTarget");
+}
+
 export function requireBoolean(value) {
     if (typeof value !== "boolean") {
         throw new Error("BooleanRequired");

@@ -607,3 +607,8 @@ Faz 140 adds membership support for host `Set` values. See
 
 Faz 141 adds key membership support for host `Map` values. See
 `examples/141-map-membership`.
+
+## Faz 142
+
+Faz 142 lets key-value loops iterate host `Map` values. See
+`examples/142-map-iteration`.

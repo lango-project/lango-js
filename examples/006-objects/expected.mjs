@@ -1,6 +1,7 @@
 import {
     println as __println,
     translate as __translate,
+    entries as __entries,
     boundary as __boundary,
     requireArity as __requireArity,
 } from "./.lango/runtime.mjs";
@@ -16,7 +17,7 @@ export function main(args) {
     __requireArity(arguments.length, [0], "main");
     args = __boundary(args);
     let order = { id: 42, customer: "Savaş" };
-    for (const [key, value] of Object.entries(order)) {
+    for (const [key, value] of __entries(order)) {
         __println(__translate("{0}={1}", [key, value]));
     }
     __println(show_order(order));
