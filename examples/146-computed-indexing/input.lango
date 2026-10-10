@@ -1,0 +1,4 @@
+main(args)
+    items = args[0]
+    position = args[1]
+    return items?.[position + 1] ?? "unknown"

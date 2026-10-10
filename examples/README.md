@@ -58,3 +58,4 @@ review order remain deterministic.
 `143-optional-properties` covers null-safe nested property access.
 `144-optional-indexing` covers null-safe array indexing.
 `145-optional-methods` covers null-safe method calls.
+`146-computed-indexing` covers expression-based array and object indexing.

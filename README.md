@@ -627,3 +627,8 @@ Faz 144 adds null-safe indexed access with `?.[]`. See
 
 Faz 145 adds null-safe method calls with `?.`. See
 `examples/145-optional-methods`.
+
+## Faz 146
+
+Faz 146 adds computed index expressions. See
+`examples/146-computed-indexing`.
