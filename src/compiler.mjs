@@ -917,7 +917,7 @@ function expr(source, line, parser) {
     ["or", "||"],
     ["and", "&&"],
     ["==", "!="],
-    [">=", "<=", ">", "<"],
+    [">=", "<=", ">", "<", "in"],
     ["+", "-"],
     ["*", "/", "%"],
   ]) {
@@ -2431,6 +2431,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.predicates && "isBool as __isBool",
     flags.predicates && "isObject as __isObject",
     flags.predicates && "isArray as __isArray",
+    flags.membership && "includes as __includes",
     flags.toJsNumber && "toJsNumber as __toJsNumber",
     flags.boolean && "requireBoolean as __requireBoolean",
     flags.assert && "assert as __assert",
@@ -3028,6 +3029,10 @@ function emitExpr(node, flags) {
       return decimalValue(node.left)
         ? `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`
         : `${operand(node.right)}.${reverse[node.operator]}(${operand(node.left)})`;
+    }
+    if (node.operator === "in") {
+      flags.membership = true;
+      return `__includes(${emitExpr(node.left, flags)}, ${emitExpr(node.right, flags)})`;
     }
     if (["+", "-", "*", "/", "%", "**"].includes(node.operator) &&
         (decimalValue(node.left) || decimalValue(node.right))) {

@@ -564,3 +564,8 @@ keeping Decimal comparisons Boolean. See `examples/130-decimal-return-inference`
 ## Faz 131
 
 Faz 131 adds null coalescing with `??`. See `examples/131-null-coalescing`.
+
+## Faz 132
+
+Faz 132 adds array and string membership with `in`. See
+`examples/132-membership`.

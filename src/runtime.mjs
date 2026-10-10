@@ -236,6 +236,14 @@ export function isArray(value) {
     return Array.isArray(value);
 }
 
+export function includes(value, collection) {
+    if (Array.isArray(collection)) return collection.includes(value);
+    if (typeof collection === "string" && typeof value === "string") {
+        return collection.includes(value);
+    }
+    throw new Error("MembershipTarget");
+}
+
 export function requireBoolean(value) {
     if (typeof value !== "boolean") {
         throw new Error("BooleanRequired");

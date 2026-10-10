@@ -411,6 +411,8 @@ Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be u
 There should be space before and after an operator, except unary operators.
 `value ?? fallback` evaluates to `fallback` only when `value` is `null`; `false`,
 `0`, and empty strings are retained.
+Use `item in values` to test exact membership in an array, or substring
+membership when both operands are strings.
 
 ## Strings and localization
 
