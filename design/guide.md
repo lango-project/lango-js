@@ -249,8 +249,12 @@ Use `value?.property` to access a property only when its receiver is present;
 the result is `null` when an optional receiver is `null`. Optional segments may
 be chained, for example `user?.profile?.name`. Use `value?.[index]` for
 null-safe indexed access; `index` may be an expression such as `position + 1`.
+Optional index segments may be chained, for example `matrix?.[row]?.[column]`.
 `value?.method()` calls a method only when its
 receiver is present.
+
+An indexed value can itself be followed by a property or method access:
+`users[position]?.name` and `users[position]?.format()`.
 
 It may be defined like this:
 ```lango

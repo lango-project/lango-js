@@ -636,3 +636,13 @@ Faz 146 adds computed index expressions. See
 ## Faz 147
 
 Faz 147 adds chained index access. See `examples/147-chained-indexing`.
+
+## Faz 148
+
+Faz 148 adds chained null-safe index access. See
+`examples/148-optional-chained-indexing`.
+
+## Faz 149
+
+Faz 149 adds property access and method calls after indexed values. See
+`examples/149-indexed-members`.

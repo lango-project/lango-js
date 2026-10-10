@@ -60,3 +60,5 @@ review order remain deterministic.
 `145-optional-methods` covers null-safe method calls.
 `146-computed-indexing` covers expression-based array and object indexing.
 `147-chained-indexing` covers nested array and object indexing.
+`148-optional-chained-indexing` covers null-safe nested indexing.
+`149-indexed-members` covers properties and methods after indexed values.

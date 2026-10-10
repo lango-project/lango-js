@@ -1,0 +1,4 @@
+main(args)
+    users = args[0]
+    position = args[1]
+    return users[position]?.name ?? users[position]?.format() ?? "unknown"

@@ -1005,7 +1005,7 @@ function expr(source, line, parser) {
       line: line.number,
     };
   const nestedIndex =
-    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*\[.+\])(\?\.)?\[(.+)\]$/.exec(
+    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*(?:\?\.)?\[.+\])(\?\.)?\[(.+)\]$/.exec(
       text,
     );
   if (nestedIndex)
@@ -1028,6 +1028,33 @@ function expr(source, line, parser) {
       receiver: computedIndex[1],
       optional: computedIndex[2] === "?.",
       index: expr(computedIndex[3], line, parser),
+    };
+  const indexedProperty =
+    /^([A-Za-z_]\w*.*\])(\?\.|\.)(\$?[A-Za-z_]\w*)$/.exec(text);
+  if (
+    indexedProperty &&
+    !/^[A-Za-z_]\w*\?\.\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(
+      indexedProperty[1],
+    )
+  )
+    return {
+      type: "property",
+      receiver: expr(indexedProperty[1], line, parser),
+      optional: indexedProperty[2] === "?.",
+      name: indexedProperty[3],
+    };
+  const indexedMethodCall =
+    /^([A-Za-z_]\w*.*\])(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+  if (indexedMethodCall)
+    return {
+      type: "methodCall",
+      receiver: expr(indexedMethodCall[1], line, parser),
+      optional: indexedMethodCall[2] === "?.",
+      name: indexedMethodCall[3],
+      arguments: indexedMethodCall[4]
+        ? splitTopLevel(indexedMethodCall[4]).map((item) => expr(item, line, parser))
+        : [],
+      line: line.number,
     };
   const methodCall =
     /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*?)(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(
@@ -1642,7 +1669,7 @@ function validate(program, imports = []) {
       const constructor = target && findConstructor(target);
       if (constructor) validateRequiredArguments(constructor, value, value.name);
     }
-    if (value.type === "methodCall") {
+    if (value.type === "methodCall" && typeof value.receiver === "string") {
       if (
         value.receiver.includes(".") &&
         jsImportNames.has(value.receiver.split(".")[0])
@@ -1790,8 +1817,10 @@ function validate(program, imports = []) {
       return;
     }
     if (node.type === "methodCall" || node.type === "namespaceMethodCall") {
-      if (node.receiver !== "this")
+      if (typeof node.receiver === "string" && node.receiver !== "this")
         references.add(node.receiver.split(/[./]/)[0]);
+      else if (typeof node.receiver !== "string")
+        expressionReferences(node.receiver, references);
       node.arguments.forEach((argument) =>
         expressionReferences(argument, references),
       );
@@ -1802,6 +1831,10 @@ function validate(program, imports = []) {
         references.add(node.receiver.split(/[./]/)[0]);
       else expressionReferences(node.receiver, references);
       expressionReferences(node.index, references);
+      return;
+    }
+    if (node.type === "property") {
+      expressionReferences(node.receiver, references);
       return;
     }
     if (node.type === "string" || node.type === "translate") {
@@ -3027,11 +3060,17 @@ function emitExpr(node, flags) {
     return normalize(
       `${typeof node.receiver === "string" ? node.receiver : emitExpr(node.receiver, flags)}${node.optional ? "?." : ""}[${emitExpr(node.index, flags)}]`,
     );
+  if (node.type === "property")
+    return normalize(
+      `${emitExpr(node.receiver, flags)}${node.optional ? "?." : "."}${node.name}`,
+    );
   if (node.type === "methodCall" || node.type === "namespaceMethodCall") {
     const namespace = node.type === "namespaceMethodCall";
     const sourceReceiver = namespace
       ? node.receiver.replaceAll("/", ".")
-      : node.receiver;
+      : typeof node.receiver === "string"
+        ? node.receiver
+        : emitExpr(node.receiver, flags);
     const type =
       sourceReceiver === flags.className ||
       (sourceReceiver === "this" && flags.staticMethod)
@@ -3044,14 +3083,16 @@ function emitExpr(node, flags) {
         : sourceReceiver;
     const method =
       !namespace &&
-      node.name === "add" && flags.arrayBindings?.has(node.receiver)
+      node.name === "add" &&
+      typeof node.receiver === "string" &&
+      flags.arrayBindings?.has(node.receiver)
         ? "push"
         : node.name;
     const call = `${receiver}${visibility === false ? ".#" : node.optional ? "?." : "."}${method}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
     if (node.optional) return normalize(call);
     if (
       visibility === undefined &&
-      !(!namespace && node.name === "add" && flags.arrayBindings?.has(node.receiver))
+      !(!namespace && node.name === "add" && typeof node.receiver === "string" && flags.arrayBindings?.has(node.receiver))
     ) {
       flags.normalize = true;
       return `__normalize(${call})`;
