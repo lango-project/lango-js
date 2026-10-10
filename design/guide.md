@@ -416,7 +416,8 @@ There should be space before and after an operator, except unary operators.
 Use `item in values` to test exact membership in an array, or substring
 membership when both operands are strings. With a string item and an object,
 it tests that object's own keys only. Host `Set` values use their native exact
-membership semantics.
+membership semantics. Host `Map` values test their keys with the same native
+semantics.
 Use `item not in values` for the inverse test.
 
 ## Strings and localization

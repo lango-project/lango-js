@@ -53,3 +53,4 @@ review order remain deterministic.
 `137-duplicate-object-keys` covers compile-time duplicate-key detection.
 `138-decimal-null-coalescing` covers Decimal returns through `??`.
 `140-set-membership` covers host `Set` membership.
+`141-map-membership` covers host `Map` key membership.

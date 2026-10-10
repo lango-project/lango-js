@@ -602,3 +602,8 @@ Faz 138 infers Decimal function results through null coalescing. See
 
 Faz 140 adds membership support for host `Set` values. See
 `examples/140-set-membership`.
+
+## Faz 141
+
+Faz 141 adds key membership support for host `Map` values. See
+`examples/141-map-membership`.
