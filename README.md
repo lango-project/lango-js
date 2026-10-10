@@ -612,3 +612,8 @@ Faz 141 adds key membership support for host `Map` values. See
 
 Faz 142 lets key-value loops iterate host `Map` values. See
 `examples/142-map-iteration`.
+
+## Faz 143
+
+Faz 143 adds null-safe property access with `?.`. See
+`examples/143-optional-properties`.

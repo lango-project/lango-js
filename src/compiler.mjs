@@ -1058,13 +1058,13 @@ function expr(source, line, parser) {
     return { type: "raw", value: text };
   }
   if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
-  if (/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\._[A-Za-z_]\w*$/.test(text))
+  if (/^[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*(?:\.|\?\.)_[A-Za-z_]\w*$/.test(text))
     parser.fail(
       line,
       "LNG1115",
       "protected properties are not accessible outside a class",
     );
-  if (/^[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)+$/.test(text))
+  if (/^[A-Za-z_]\w*(?:(?:\.|\?\.)\$?[A-Za-z_]\w*)+$/.test(text))
     return { type: "raw", value: text };
   if (/^[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(text))
     return { type: "raw", value: text };
@@ -2964,7 +2964,7 @@ function emitExpr(node, flags) {
           : normalize(`this.#${node.value.slice(1)}`)
         : flags.className && node.value.startsWith("_")
           ? normalize(`this.${node.value}`)
-          : /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value)
+          : (node.value.includes("?.") || /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value))
             ? normalize(node.value)
             : node.value;
   if (node.type === "sql") {

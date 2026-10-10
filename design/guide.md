@@ -245,6 +245,9 @@ assigned before the closure is created.
 
 `null` is the only absence value. JavaScript `undefined` and a missing object
 property are seen as `null` in Lango. Use `value == null` to test for absence.
+Use `value?.property` to access a property only when its receiver is present;
+the result is `null` when an optional receiver is `null`. Optional segments may
+be chained, for example `user?.profile?.name`.
 
 It may be defined like this:
 ```lango

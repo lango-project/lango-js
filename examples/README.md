@@ -55,3 +55,4 @@ review order remain deterministic.
 `140-set-membership` covers host `Set` membership.
 `141-map-membership` covers host `Map` key membership.
 `142-map-iteration` covers key-value iteration over host `Map` values.
+`143-optional-properties` covers null-safe nested property access.
