@@ -1056,6 +1056,28 @@ function expr(source, line, parser) {
         : [],
       line: line.number,
     };
+  const callResultProperty =
+    /^([A-Za-z_]\w*.*\))(\?\.|\.)(\$?[A-Za-z_]\w*)$/.exec(text);
+  if (callResultProperty)
+    return {
+      type: "property",
+      receiver: expr(callResultProperty[1], line, parser),
+      optional: callResultProperty[2] === "?.",
+      name: callResultProperty[3],
+    };
+  const callResultMethod =
+    /^([A-Za-z_]\w*.*\))(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+  if (callResultMethod)
+    return {
+      type: "methodCall",
+      receiver: expr(callResultMethod[1], line, parser),
+      optional: callResultMethod[2] === "?.",
+      name: callResultMethod[3],
+      arguments: callResultMethod[4]
+        ? splitTopLevel(callResultMethod[4]).map((item) => expr(item, line, parser))
+        : [],
+      line: line.number,
+    };
   const methodCall =
     /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*?)(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(
       text,

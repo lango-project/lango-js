@@ -646,3 +646,8 @@ Faz 148 adds chained null-safe index access. See
 
 Faz 149 adds property access and method calls after indexed values. See
 `examples/149-indexed-members`.
+
+## Faz 150
+
+Faz 150 adds property access and method calls after call results. See
+`examples/150-call-result-members`.

@@ -256,6 +256,9 @@ receiver is present.
 An indexed value can itself be followed by a property or method access:
 `users[position]?.name` and `users[position]?.format()`.
 
+A function or method result can be accessed in the same way:
+`find_user(args)?.name` and `find_user(args)?.format()`.
+
 It may be defined like this:
 ```lango
 if blabla

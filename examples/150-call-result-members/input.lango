@@ -1,0 +1,5 @@
+main(args)
+    return find_user(args)?.name ?? find_user(args)?.format() ?? "unknown"
+
+find_user(args)
+    return args[0]
