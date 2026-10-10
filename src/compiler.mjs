@@ -746,6 +746,7 @@ class Parser {
   }
   object(indent) {
     const fields = [];
+    const keys = new Set();
     while (true) {
       this.blank();
       if (this.peek() === `${" ".repeat(indent)}}`) {
@@ -761,6 +762,11 @@ class Parser {
       const line = this.line();
       const match = /^(\$?[A-Za-z_]\w*|['"][^'"]+['"]): (.+)$/.exec(line.text.slice(indent + 4));
       if (!match) this.fail(line, "LNG1111", "expected `key: value`");
+      const key = match[1].startsWith("'") || match[1].startsWith('"')
+        ? match[1].slice(1, -1).replace(/\\(['"\\])/g, "$1")
+        : match[1];
+      if (keys.has(key)) this.fail(line, "LNG1258", `duplicate object key ${key}`);
+      keys.add(key);
       fields.push({
         key: match[1],
         value:
@@ -915,11 +921,17 @@ function expr(source, line, parser) {
   if (text.startsWith("{") && text.endsWith("}")) {
     const fields = text.slice(1, -1).trim();
     if (fields === "") return { type: "object", fields: [] };
+    const keys = new Set();
     return {
       type: "object",
       fields: splitTopLevel(fields).map((field) => {
         const match = /^(\$?[A-Za-z_]\w*|['"][^'"]+['"]): (.+)$/.exec(field);
         if (!match) parser.fail(line, "LNG1111", "expected `key: value`");
+        const key = match[1].startsWith("'") || match[1].startsWith('"')
+          ? match[1].slice(1, -1).replace(/\\(['"\\])/g, "$1")
+          : match[1];
+        if (keys.has(key)) parser.fail(line, "LNG1258", `duplicate object key ${key}`);
+        keys.add(key);
         return { key: match[1], value: expr(match[2], line, parser) };
       }),
     };

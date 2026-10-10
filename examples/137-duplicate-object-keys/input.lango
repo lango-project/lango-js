@@ -1,0 +1,3 @@
+main(args)
+    user = { name: "Ada", active: true }
+    return user.name

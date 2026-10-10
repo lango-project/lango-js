@@ -587,3 +587,8 @@ Faz 135 adds inline object literals. See `examples/135-inline-objects`.
 ## Faz 136
 
 Faz 136 adds quoted object keys. See `examples/136-quoted-object-keys`.
+
+## Faz 137
+
+Faz 137 rejects duplicate object keys at compile time. See
+`examples/137-duplicate-object-keys`.
