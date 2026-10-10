@@ -617,3 +617,8 @@ Faz 142 lets key-value loops iterate host `Map` values. See
 
 Faz 143 adds null-safe property access with `?.`. See
 `examples/143-optional-properties`.
+
+## Faz 144
+
+Faz 144 adds null-safe indexed access with `?.[]`. See
+`examples/144-optional-indexing`.

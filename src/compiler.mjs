@@ -1064,7 +1064,7 @@ function expr(source, line, parser) {
       "LNG1115",
       "protected properties are not accessible outside a class",
     );
-  if (/^[A-Za-z_]\w*(?:(?:\.|\?\.)\$?[A-Za-z_]\w*)+$/.test(text))
+  if (/^[A-Za-z_]\w*(?:(?:\.|\?\.)\$?[A-Za-z_]\w*|(?:\?\.)?\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])+$/.test(text))
     return { type: "raw", value: text };
   if (/^[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(text))
     return { type: "raw", value: text };
