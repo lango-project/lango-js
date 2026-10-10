@@ -592,3 +592,8 @@ Faz 136 adds quoted object keys. See `examples/136-quoted-object-keys`.
 
 Faz 137 rejects duplicate object keys at compile time. See
 `examples/137-duplicate-object-keys`.
+
+## Faz 138
+
+Faz 138 infers Decimal function results through null coalescing. See
+`examples/138-decimal-null-coalescing`.

@@ -701,6 +701,7 @@ the documented division scale and rounding mode.
 When an expression contains a `$` Decimal value, its other numeric operands are
 Decimal values too. A Decimal result must be stored in a `$` binding. Use
 `to_js_number($decimal)` only when a JavaScript library needs a native Number.
+When `??` combines `null` with a Decimal value, its result is also Decimal.
 Decimal addition, subtraction, and multiplication are exact. Division is valid
 at the configured number of fractional digits, which defaults to six. It uses
 the configured rounding mode, which defaults to half-even.

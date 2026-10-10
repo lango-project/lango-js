@@ -1318,7 +1318,12 @@ function validate(program, imports = []) {
         isDecimalValue(value.value)) ||
       (value.type === "binary" &&
         ["+", "-", "*", "/", "%", "**"].includes(value.operator) &&
-        (isDecimalValue(value.left) || isDecimalValue(value.right))));
+        (isDecimalValue(value.left) || isDecimalValue(value.right))) ||
+      (value.type === "binary" &&
+        value.operator === "??" &&
+        ((value.left.type === "raw" && value.left.value === "null" && isDecimalValue(value.right)) ||
+          (value.right.type === "raw" && value.right.value === "null" && isDecimalValue(value.left)) ||
+          (isDecimalValue(value.left) && isDecimalValue(value.right)))));
   const returns = (body, result = []) => {
     for (const node of body) {
       if (node.type === "return") result.push(node.value);

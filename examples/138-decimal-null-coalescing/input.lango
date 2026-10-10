@@ -1,0 +1,6 @@
+total()
+    return null ?? ($9007199254740993 + $1)
+
+main(args)
+    $total = total()
+    return $total == $9007199254740994
