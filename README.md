@@ -574,3 +574,8 @@ Faz 132 adds array and string membership with `in`. See
 
 Faz 133 adds negated membership with `not in`. See
 `examples/133-not-membership`.
+
+## Faz 134
+
+Faz 134 extends membership to own object keys. See
+`examples/134-object-membership`.

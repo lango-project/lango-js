@@ -412,7 +412,8 @@ There should be space before and after an operator, except unary operators.
 `value ?? fallback` evaluates to `fallback` only when `value` is `null`; `false`,
 `0`, and empty strings are retained.
 Use `item in values` to test exact membership in an array, or substring
-membership when both operands are strings.
+membership when both operands are strings. With a string item and an object,
+it tests that object's own keys only.
 Use `item not in values` for the inverse test.
 
 ## Strings and localization

@@ -241,6 +241,9 @@ export function includes(value, collection) {
     if (typeof collection === "string" && typeof value === "string") {
         return collection.includes(value);
     }
+    if (collection !== null && typeof collection === "object" && typeof value === "string") {
+        return Object.hasOwn(collection, value);
+    }
     throw new Error("MembershipTarget");
 }
 

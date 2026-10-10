@@ -47,3 +47,4 @@ review order remain deterministic.
 `131-null-coalescing` covers fallback values for `null`.
 `132-membership` covers membership in arrays and strings.
 `133-not-membership` covers negated array and string membership.
+`134-object-membership` covers own-key membership in objects.

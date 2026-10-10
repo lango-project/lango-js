@@ -1,0 +1,5 @@
+main(args)
+    user = {
+        name: "Ada"
+    }
+    return "name" in user
