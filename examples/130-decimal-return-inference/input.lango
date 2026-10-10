@@ -1,0 +1,6 @@
+total()
+    return ($9007199254740993 + $1) * ($2 + $3)
+
+main(args)
+    $total = total()
+    return $total == $45035996273704970

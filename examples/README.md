@@ -43,3 +43,4 @@ review order remain deterministic.
 `127-remainder` covers native and Decimal remainder.
 `128-exponentiation` covers native and Decimal exponentiation.
 `129-compound-decimal-arithmetic` covers Decimal arithmetic with two compound operands.
+`130-decimal-return-inference` covers nested Decimal function-return inference.

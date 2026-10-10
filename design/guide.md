@@ -701,9 +701,10 @@ return paths must return Decimal values. The compiler infers this across Lango
 calls and closures; a Decimal-returning result must be kept in a `$` binding,
 passed to a `$` parameter, used in a Decimal expression, or discarded.
 Decimal has no `Math` function surface and no per-operation `round`, `floor`,
-`ceil`, `sqrt`, `pow`, or modulo operation. Advanced math goes through an
-imported JavaScript library after an explicit `to_js_number($decimal)` conversion;
-assigning its finite result to a `$` binding converts it back to Decimal.
+`ceil`, or `sqrt`. Use `**` for exponentiation and `%` for remainder. Advanced
+math goes through an imported JavaScript library after an explicit
+`to_js_number($decimal)` conversion; assigning its finite result to a `$`
+binding converts it back to Decimal.
 `NaN`, `Infinity`, and `-Infinity` are not Lango numbers; producing or receiving
 one is a runtime error.
 Numeric literals support decimal (`12`, `12.50`), scientific notation (`1.2e3`),

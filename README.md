@@ -555,3 +555,8 @@ numbers. See `examples/128-exponentiation`.
 Faz 129 evaluates arithmetic whose two operands are compound Decimal
 expressions through the Decimal backend. See
 `examples/129-compound-decimal-arithmetic`.
+
+## Faz 130
+
+Faz 130 infers Decimal returns through nested compound arithmetic, while
+keeping Decimal comparisons Boolean. See `examples/130-decimal-return-inference`.
