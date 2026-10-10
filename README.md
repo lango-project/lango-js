@@ -622,3 +622,8 @@ Faz 143 adds null-safe property access with `?.`. See
 
 Faz 144 adds null-safe indexed access with `?.[]`. See
 `examples/144-optional-indexing`.
+
+## Faz 145
+
+Faz 145 adds null-safe method calls with `?.`. See
+`examples/145-optional-methods`.

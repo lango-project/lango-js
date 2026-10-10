@@ -248,7 +248,8 @@ property are seen as `null` in Lango. Use `value == null` to test for absence.
 Use `value?.property` to access a property only when its receiver is present;
 the result is `null` when an optional receiver is `null`. Optional segments may
 be chained, for example `user?.profile?.name`. Use `value?.[index]` for
-null-safe indexed access.
+null-safe indexed access. `value?.method()` calls a method only when its
+receiver is present.
 
 It may be defined like this:
 ```lango

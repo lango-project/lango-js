@@ -1005,7 +1005,7 @@ function expr(source, line, parser) {
       line: line.number,
     };
   const methodCall =
-    /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\.([A-Za-z_]\w*)\((.*)\)$/.exec(
+    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*?)(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(
       text,
     );
   const namespaceMethodCall =
@@ -1026,9 +1026,10 @@ function expr(source, line, parser) {
     return {
       type: "methodCall",
       receiver: methodCall[1],
-      name: methodCall[2],
-      arguments: methodCall[3]
-        ? splitTopLevel(methodCall[3]).map((item) => expr(item, line, parser))
+      optional: methodCall[2] === "?.",
+      name: methodCall[3],
+      arguments: methodCall[4]
+        ? splitTopLevel(methodCall[4]).map((item) => expr(item, line, parser))
         : [],
       line: line.number,
     };
@@ -3010,7 +3011,8 @@ function emitExpr(node, flags) {
       node.name === "add" && flags.arrayBindings?.has(node.receiver)
         ? "push"
         : node.name;
-    const call = `${receiver}${visibility === false ? ".#" : "."}${method}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    const call = `${receiver}${visibility === false ? ".#" : node.optional ? "?." : "."}${method}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    if (node.optional) return normalize(call);
     if (
       visibility === undefined &&
       !(!namespace && node.name === "add" && flags.arrayBindings?.has(node.receiver))
