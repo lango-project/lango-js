@@ -316,6 +316,7 @@ a.add("Savaş") # instead of push()
 
 println(a[2])
 println(a[position + 1])
+println(matrix[row][column])
 
 a.length
 ```

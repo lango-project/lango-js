@@ -1004,6 +1004,17 @@ function expr(source, line, parser) {
         : [],
       line: line.number,
     };
+  const nestedIndex =
+    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*\[.+\])(\?\.)?\[(.+)\]$/.exec(
+      text,
+    );
+  if (nestedIndex)
+    return {
+      type: "index",
+      receiver: expr(nestedIndex[1], line, parser),
+      optional: nestedIndex[2] === "?.",
+      index: expr(nestedIndex[3], line, parser),
+    };
   const computedIndex =
     /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*)(\?\.)?\[(.+)\]$/.exec(
       text,
@@ -1787,7 +1798,9 @@ function validate(program, imports = []) {
       return;
     }
     if (node.type === "index") {
-      references.add(node.receiver.split(/[./]/)[0]);
+      if (typeof node.receiver === "string")
+        references.add(node.receiver.split(/[./]/)[0]);
+      else expressionReferences(node.receiver, references);
       expressionReferences(node.index, references);
       return;
     }
@@ -3012,7 +3025,7 @@ function emitExpr(node, flags) {
     return `super.${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "index")
     return normalize(
-      `${node.receiver}${node.optional ? "?." : ""}[${emitExpr(node.index, flags)}]`,
+      `${typeof node.receiver === "string" ? node.receiver : emitExpr(node.receiver, flags)}${node.optional ? "?." : ""}[${emitExpr(node.index, flags)}]`,
     );
   if (node.type === "methodCall" || node.type === "namespaceMethodCall") {
     const namespace = node.type === "namespaceMethodCall";

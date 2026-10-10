@@ -632,3 +632,7 @@ Faz 145 adds null-safe method calls with `?.`. See
 
 Faz 146 adds computed index expressions. See
 `examples/146-computed-indexing`.
+
+## Faz 147
+
+Faz 147 adds chained index access. See `examples/147-chained-indexing`.

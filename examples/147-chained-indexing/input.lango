@@ -1,0 +1,5 @@
+main(args)
+    matrix = args[0]
+    row = args[1]
+    column = args[2]
+    return matrix[row + 1][column + 1]
