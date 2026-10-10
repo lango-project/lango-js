@@ -583,3 +583,7 @@ Faz 134 extends membership to own object keys. See
 ## Faz 135
 
 Faz 135 adds inline object literals. See `examples/135-inline-objects`.
+
+## Faz 136
+
+Faz 136 adds quoted object keys. See `examples/136-quoted-object-keys`.

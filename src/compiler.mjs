@@ -759,7 +759,7 @@ class Parser {
           "expected an object field or closing brace",
         );
       const line = this.line();
-      const match = /^(\$?[A-Za-z_]\w*): (.+)$/.exec(line.text.slice(indent + 4));
+      const match = /^(\$?[A-Za-z_]\w*|['"][^'"]+['"]): (.+)$/.exec(line.text.slice(indent + 4));
       if (!match) this.fail(line, "LNG1111", "expected `key: value`");
       fields.push({
         key: match[1],
@@ -918,7 +918,7 @@ function expr(source, line, parser) {
     return {
       type: "object",
       fields: splitTopLevel(fields).map((field) => {
-        const match = /^(\$?[A-Za-z_]\w*): (.+)$/.exec(field);
+        const match = /^(\$?[A-Za-z_]\w*|['"][^'"]+['"]): (.+)$/.exec(field);
         if (!match) parser.fail(line, "LNG1111", "expected `key: value`");
         return { key: match[1], value: expr(match[2], line, parser) };
       }),

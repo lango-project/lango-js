@@ -1,0 +1,3 @@
+main(args)
+    user = { "display name": "Ada" }
+    return user["display name"]

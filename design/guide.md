@@ -290,6 +290,7 @@ objects, fields can be written inline and separated with comma-space:
 physical line and use newlines rather than commas. A field key may be a bare
 name (including `$price`) or quoted text. Computed keys and object spread are
 not supported; repeating a key is a compile-time error.
+Use bracket access for a quoted key, for example `user["display name"]`.
 
 An object field beginning with `$` is a Decimal field:
 ```lango
