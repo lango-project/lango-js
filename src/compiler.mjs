@@ -823,7 +823,7 @@ function collectSqlParameters(sql) {
   return [...new Set(names)];
 }
 
-function topLevelBinary(text, operators) {
+function topLevelBinary(text, operators, rightAssociative = false) {
   let quote = null;
   let depth = 0;
   let match = null;
@@ -840,7 +840,7 @@ function topLevelBinary(text, operators) {
     if (depth !== 0) continue;
     for (const operator of operators) {
       if (text.startsWith(` ${operator} `, index)) {
-        match = { index, operator };
+        if (match === null || !rightAssociative) match = { index, operator };
         index += operator.length + 1;
         break;
       }
@@ -929,6 +929,14 @@ function expr(source, line, parser) {
         right: expr(text.slice(match.index + match.operator.length + 2), line, parser),
       };
   }
+  const exponent = topLevelBinary(text, ["**"], true);
+  if (exponent !== null)
+    return {
+      type: "binary",
+      operator: exponent.operator,
+      left: expr(text.slice(0, exponent.index), line, parser),
+      right: expr(text.slice(exponent.index + exponent.operator.length + 2), line, parser),
+    };
   if (text.startsWith("not "))
     return {
       type: "unary",
@@ -1497,7 +1505,7 @@ function validate(program, imports = []) {
     findMethod(classNode, "constructor", false);
   const walk = (value, localCallables, classNode = null, staticMethod = false) => {
     if (!value || typeof value !== "object") return;
-    if (value.type === "binary" && ["+", "-", "*", "/", "%", ">", "<", ">=", "<="].includes(value.operator)) {
+    if (value.type === "binary" && ["+", "-", "*", "/", "%", "**", ">", "<", ">=", "<="].includes(value.operator)) {
       const string = (item) => item.type === "string";
       const number = (item) => item.type === "raw" && /^\d/.test(item.value);
       const boolean = (item) => item.type === "raw" && /^(true|false)$/.test(item.value);
@@ -2675,7 +2683,7 @@ function collectEmitLocals(body, names = new Set(), nested = false) {
 }
 function emitDecimalExpression(node, flags) {
   const operand = (value) => {
-    if (value.type === "binary" && ["+", "-", "*", "/", "%"].includes(value.operator))
+    if (value.type === "binary" && ["+", "-", "*", "/", "%", "**"].includes(value.operator))
       return emitDecimalExpression(value, flags);
     if (value.type === "raw" && /^\d+(?:\.\d+)?$/.test(value.value)) {
       flags.decimal = true;
@@ -2685,10 +2693,10 @@ function emitDecimalExpression(node, flags) {
     flags.decimal = true;
     return `__decimal(${emitExpr(value, flags)})`;
   };
-  if (node.type !== "binary" || !["+", "-", "*", "/", "%"].includes(node.operator))
+  if (node.type !== "binary" || !["+", "-", "*", "/", "%", "**"].includes(node.operator))
     return operand(node);
   flags.decimal = true;
-  const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod" };
+  const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod", "**": "pow" };
   return `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`;
 }
 function emitStatement(node, depth, declared, flags) {
@@ -3018,22 +3026,22 @@ function emitExpr(node, flags) {
         : `${operand(node.right)}.${reverse[node.operator]}(${operand(node.left)})`;
     }
     if (
-      ["+", "-", "*", "/", "%"].includes(node.operator) &&
+      ["+", "-", "*", "/", "%", "**"].includes(node.operator) &&
       decimalRaw(node.right)
     ) {
       flags.decimal = true;
       const left = node.left.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.left.value)
         ? `__decimal(${JSON.stringify(node.left.value)})`
         : emitExpr(node.left, flags);
-      const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod" };
+      const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod", "**": "pow" };
       return `${left}.${methods[node.operator]}(${emitExpr(node.right, flags)})`;
     }
     if (
-      ["+", "-", "*", "/", "%"].includes(node.operator) &&
+      ["+", "-", "*", "/", "%", "**"].includes(node.operator) &&
       decimalRaw(node.left)
     ) {
       flags.decimal = true;
-      const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod" };
+      const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod", "**": "pow" };
       const right =
         node.right.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.right.value)
           ? `__decimal(${JSON.stringify(node.right.value)})`
@@ -3041,7 +3049,7 @@ function emitExpr(node, flags) {
       return `${emitExpr(node.left, flags)}.${methods[node.operator]}(${right})`;
     }
     const value = `${emitExpr(node.left, flags)} ${operators[node.operator] ?? node.operator} ${emitExpr(node.right, flags)}`;
-    if (["+", "-", "*", "/", "%"].includes(node.operator)) {
+    if (["+", "-", "*", "/", "%", "**"].includes(node.operator)) {
       flags.finite = true;
       return `__finite(${value})`;
     }

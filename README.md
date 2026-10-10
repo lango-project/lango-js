@@ -43,7 +43,7 @@ npm run run -- examples/002-main-branch/input.lango Ada
 ## Faz 2
 
 Faz 2 adds same-module functions, `return`, calls with arity validation,
-Boolean/null literals, and numeric `+`, `-`, `*`, `/`, `%`, `>`, `==`, and `!=` expressions.
+Boolean/null literals, and numeric `+`, `-`, `*`, `/`, `%`, `**`, `>`, `==`, and `!=` expressions.
 See `examples/003-functions`.
 
 ## Faz 3
@@ -544,3 +544,8 @@ comparisons. See `examples/126-not-equal`.
 
 Faz 127 adds the remainder operator `%` for native and Decimal numbers. See
 `examples/127-remainder`.
+
+## Faz 128
+
+Faz 128 adds right-associative exponentiation with `**` for native and Decimal
+numbers. See `examples/128-exponentiation`.
