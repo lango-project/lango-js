@@ -235,6 +235,10 @@ Variables are defined when first assigned:
 Variables and properties are mutable. There is no `const`, `readonly`, or
 immutable-binding declaration.
 
+Numeric bindings and ordinary properties support compound updates:
+`+=`, `-=`, `*=`, `/=`, `%=`, and `**=`. `name--` subtracts one; `name++`
+increments by one.
+
 It is a compiler error to read it before defined.
 
 After an `if`, a variable is available only when every normally continuing
@@ -258,6 +262,9 @@ An indexed value can itself be followed by a property or method access:
 
 A function or method result can be accessed in the same way:
 `find_user(args)?.name` and `find_user(args)?.format()`.
+It can also be indexed: `find_items(args)?.[position]`.
+These accesses may be chained, for example
+`find_rows(args)?.[row]?.[column]?.name`.
 
 It may be defined like this:
 ```lango

@@ -591,6 +591,30 @@ class Parser {
         const [, type, rawLevel] = /^(break|continue)(?: ([1-9]\d*))?$/.exec(text);
         body.push({ type, level: Number(rawLevel ?? 1), line: line.number });
       }
+      else if (/^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*) (\+|-|\*|\/|%|\*\*)= (.+)$/.test(text)) {
+        const [, name, operator, source] = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*) (\+|-|\*|\/|%|\*\*)= (.+)$/.exec(text);
+        body.push({
+          type: "assign",
+          name,
+          value: {
+            type: "binary",
+            operator,
+            left: { type: "raw", value: name },
+            right: this.expression(source, line),
+          },
+        });
+      }
+      else if (/^[A-Za-z_]\w*--$/.test(text))
+        body.push({
+          type: "assign",
+          name: text.slice(0, -2),
+          value: {
+            type: "binary",
+            operator: "-",
+            left: { type: "raw", value: text.slice(0, -2) },
+            right: { type: "raw", value: "1" },
+          },
+        });
       else if (/^[A-Za-z_]\w*\+\+$/.test(text))
         body.push({ type: "increment", name: text.slice(0, -2) });
       else if (/^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.test(text)) {
@@ -1016,7 +1040,7 @@ function expr(source, line, parser) {
       index: expr(nestedIndex[3], line, parser),
     };
   const computedIndex =
-    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*)(\?\.)?\[(.+)\]$/.exec(
+    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*)(\?\.)?\[([^\]]+)\]$/.exec(
       text,
     );
   if (
@@ -1055,6 +1079,24 @@ function expr(source, line, parser) {
         ? splitTopLevel(indexedMethodCall[4]).map((item) => expr(item, line, parser))
         : [],
       line: line.number,
+    };
+  const nestedCallResultIndex =
+    /^([A-Za-z_]\w*.*\)\?\.\[.+\])(\?\.)?\[(.+)\]$/.exec(text);
+  if (nestedCallResultIndex)
+    return {
+      type: "index",
+      receiver: expr(nestedCallResultIndex[1], line, parser),
+      optional: nestedCallResultIndex[2] === "?.",
+      index: expr(nestedCallResultIndex[3], line, parser),
+    };
+  const callResultIndex =
+    /^([A-Za-z_]\w*.*\))(\?\.)?\[(.+)\]$/.exec(text);
+  if (callResultIndex)
+    return {
+      type: "index",
+      receiver: expr(callResultIndex[1], line, parser),
+      optional: callResultIndex[2] === "?.",
+      index: expr(callResultIndex[3], line, parser),
     };
   const callResultProperty =
     /^([A-Za-z_]\w*.*\))(\?\.|\.)(\$?[A-Za-z_]\w*)$/.exec(text);

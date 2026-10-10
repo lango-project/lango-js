@@ -1,0 +1,5 @@
+main(args)
+    return find_items(args[0])?.[args[1]] ?? "unknown"
+
+find_items(items)
+    return items

@@ -63,3 +63,6 @@ review order remain deterministic.
 `148-optional-chained-indexing` covers null-safe nested indexing.
 `149-indexed-members` covers properties and methods after indexed values.
 `150-call-result-members` covers properties and methods after call results.
+`151-call-result-indexing` covers indexing after function and method results.
+`152-chained-call-result-access` covers nested safe access after call results.
+`153-compound-assignment` covers compound numeric updates and decrement.

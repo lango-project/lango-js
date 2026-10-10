@@ -651,3 +651,18 @@ Faz 149 adds property access and method calls after indexed values. See
 
 Faz 150 adds property access and method calls after call results. See
 `examples/150-call-result-members`.
+
+## Faz 151
+
+Faz 151 adds index access after function and method results. See
+`examples/151-call-result-indexing`.
+
+## Faz 152
+
+Faz 152 adds chained safe access after call results. See
+`examples/152-chained-call-result-access`.
+
+## Faz 153
+
+Faz 153 adds compound numeric assignment and decrement. See
+`examples/153-compound-assignment`.
