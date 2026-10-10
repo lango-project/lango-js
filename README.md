@@ -549,3 +549,9 @@ Faz 127 adds the remainder operator `%` for native and Decimal numbers. See
 
 Faz 128 adds right-associative exponentiation with `**` for native and Decimal
 numbers. See `examples/128-exponentiation`.
+
+## Faz 129
+
+Faz 129 evaluates arithmetic whose two operands are compound Decimal
+expressions through the Decimal backend. See
+`examples/129-compound-decimal-arithmetic`.

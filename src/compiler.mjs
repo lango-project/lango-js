@@ -3025,28 +3025,17 @@ function emitExpr(node, flags) {
         ? `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`
         : `${operand(node.right)}.${reverse[node.operator]}(${operand(node.left)})`;
     }
-    if (
-      ["+", "-", "*", "/", "%", "**"].includes(node.operator) &&
-      decimalRaw(node.right)
-    ) {
-      flags.decimal = true;
-      const left = node.left.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.left.value)
-        ? `__decimal(${JSON.stringify(node.left.value)})`
-        : emitExpr(node.left, flags);
-      const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod", "**": "pow" };
-      return `${left}.${methods[node.operator]}(${emitExpr(node.right, flags)})`;
-    }
-    if (
-      ["+", "-", "*", "/", "%", "**"].includes(node.operator) &&
-      decimalRaw(node.left)
-    ) {
+    if (["+", "-", "*", "/", "%", "**"].includes(node.operator) &&
+        (decimalValue(node.left) || decimalValue(node.right))) {
       flags.decimal = true;
       const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod", "**": "pow" };
-      const right =
-        node.right.type === "raw" && /^\d+(?:\.\d+)?$/.test(node.right.value)
-          ? `__decimal(${JSON.stringify(node.right.value)})`
-          : emitExpr(node.right, flags);
-      return `${emitExpr(node.left, flags)}.${methods[node.operator]}(${right})`;
+      const operand = (value) =>
+        decimalValue(value)
+          ? emitExpr(value, flags)
+          : value.type === "raw" && /^\d+(?:\.\d+)?$/.test(value.value)
+            ? `__decimal(${JSON.stringify(value.value)})`
+            : emitExpr(value, flags);
+      return `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`;
     }
     const value = `${emitExpr(node.left, flags)} ${operators[node.operator] ?? node.operator} ${emitExpr(node.right, flags)}`;
     if (["+", "-", "*", "/", "%", "**"].includes(node.operator)) {

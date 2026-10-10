@@ -42,3 +42,4 @@ review order remain deterministic.
 `126-not-equal` covers strict and Decimal inequality.
 `127-remainder` covers native and Decimal remainder.
 `128-exponentiation` covers native and Decimal exponentiation.
+`129-compound-decimal-arithmetic` covers Decimal arithmetic with two compound operands.
