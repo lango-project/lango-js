@@ -569,3 +569,8 @@ Faz 131 adds null coalescing with `??`. See `examples/131-null-coalescing`.
 
 Faz 132 adds array and string membership with `in`. See
 `examples/132-membership`.
+
+## Faz 133
+
+Faz 133 adds negated membership with `not in`. See
+`examples/133-not-membership`.

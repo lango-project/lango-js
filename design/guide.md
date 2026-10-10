@@ -413,6 +413,7 @@ There should be space before and after an operator, except unary operators.
 `0`, and empty strings are retained.
 Use `item in values` to test exact membership in an array, or substring
 membership when both operands are strings.
+Use `item not in values` for the inverse test.
 
 ## Strings and localization
 

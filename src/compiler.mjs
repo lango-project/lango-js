@@ -917,7 +917,7 @@ function expr(source, line, parser) {
     ["or", "||"],
     ["and", "&&"],
     ["==", "!="],
-    [">=", "<=", ">", "<", "in"],
+    [">=", "<=", ">", "<", "not in", "in"],
     ["+", "-"],
     ["*", "/", "%"],
   ]) {
@@ -3030,9 +3030,10 @@ function emitExpr(node, flags) {
         ? `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`
         : `${operand(node.right)}.${reverse[node.operator]}(${operand(node.left)})`;
     }
-    if (node.operator === "in") {
+    if (["in", "not in"].includes(node.operator)) {
       flags.membership = true;
-      return `__includes(${emitExpr(node.left, flags)}, ${emitExpr(node.right, flags)})`;
+      const membership = `__includes(${emitExpr(node.left, flags)}, ${emitExpr(node.right, flags)})`;
+      return node.operator === "not in" ? `!${membership}` : membership;
     }
     if (["+", "-", "*", "/", "%", "**"].includes(node.operator) &&
         (decimalValue(node.left) || decimalValue(node.right))) {
