@@ -1046,9 +1046,12 @@ Calling a value that is not callable raises the Lango runtime error
 `NotCallable`. Native JavaScript values otherwise cross the boundary unchanged,
 subject to the existing Lango normalizations: JavaScript `undefined` becomes
 Lango `null`, D-040 rejects non-finite numbers, and a Decimal must use
-`to_js_number` before it enters an ordinary JavaScript numeric API. A JavaScript
-exception value propagates unchanged through Lango. JavaScript constructors and
-subclassing are outside this decision.
+`to_js_number` before it enters an ordinary JavaScript numeric API. The compiler
+enforces this for direct `args` host methods and for host callables reached by
+local aliases, copies, definite branch/try/finally assignments, and Lango
+functions that return a host callable (including transitive returns). A
+JavaScript exception value propagates unchanged through Lango. JavaScript
+constructors and subclassing are outside this decision.
 
 ## D-049: Decimal uses a pinned embedded `bignumber.js` runtime
 

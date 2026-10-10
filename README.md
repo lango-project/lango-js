@@ -776,3 +776,38 @@ Faz 174 adds `Array#remove_all(value)` for removing every matching value. See
 
 Faz 175 preserves null-safe optional access for array mutation helpers. See
 `examples/175-optional-array-mutations`.
+
+## Faz 176
+
+Faz 176 requires `to_js_number()` before a Decimal enters a direct host method
+through `args`. See `examples/176-host-method-decimal`.
+
+## Faz 177
+
+Faz 177 retains Decimal boundary checks when `fetch` is assigned to a local alias.
+See `examples/177-host-function-alias-decimal`.
+
+## Faz 178
+
+Faz 178 retains Decimal boundary checks when a host callable is read from `args`.
+See `examples/178-host-property-alias-decimal`.
+
+## Faz 179
+
+Faz 179 retains Decimal boundary checks through copied host callable aliases.
+See `examples/179-host-alias-copy-decimal`.
+
+## Faz 182
+
+Faz 182 retains Decimal boundary checks through host aliases assigned in `finally`.
+See `examples/182-host-alias-finally-decimal`.
+
+## Faz 183
+
+Faz 183 clears host-alias tracking after reassignment to a Lango callable.
+See `examples/183-host-alias-reassignment`.
+
+## Faz 184
+
+Faz 184 avoids treating mixed host and Lango callable branches as definitely host.
+See `examples/184-host-alias-mixed-branches`.

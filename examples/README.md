@@ -88,3 +88,10 @@ review order remain deterministic.
 `173-array-insert-at` covers inserting at a zero-based array position.
 `174-array-remove-all` covers removing every matching array value.
 `175-optional-array-mutations` covers null-safe optional array mutations.
+`176-host-method-decimal` covers explicit Decimal conversion for direct host methods.
+`177-host-function-alias-decimal` covers Decimal conversion through a host function alias.
+`178-host-property-alias-decimal` covers Decimal conversion through a host property alias.
+`179-host-alias-copy-decimal` covers Decimal conversion through copied host aliases.
+`182-host-alias-finally-decimal` covers Decimal conversion through a finally-assigned host alias.
+`183-host-alias-reassignment` covers clearing host tracking after reassignment.
+`184-host-alias-mixed-branches` covers mixed host and Lango callable branches.

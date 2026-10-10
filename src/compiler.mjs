@@ -1704,6 +1704,88 @@ function validate(program, imports = []) {
         `${label}: Decimal argument ${decimalIndex + 1} requires to_js_number(...) at a JavaScript boundary`,
       );
   };
+  const receiverRoot = (receiver) =>
+    typeof receiver === "string"
+      ? receiver.split(/[.[]/, 1)[0]
+      : receiver?.type === "raw"
+        ? receiver.value.split(/[.[]/, 1)[0]
+      : receiver?.receiver
+        ? receiverRoot(receiver.receiver)
+        : null;
+  const hostReturningFunctions = new Set(
+    program.functions
+      .filter((fn) => returns(fn.body).some(
+        (value) =>
+          (value?.type === "raw" && hostFunctions.has(value.value)) ||
+          (value?.type === "property" && receiverRoot(value.receiver) === "args"),
+      ))
+      .map((fn) => fn.name),
+  );
+  let hostReturningChanged = true;
+  while (hostReturningChanged) {
+    hostReturningChanged = false;
+    for (const fn of program.functions)
+      if (
+        !hostReturningFunctions.has(fn.name) &&
+        returns(fn.body).some(
+          (value) => value?.type === "call" && hostReturningFunctions.has(value.name),
+        )
+      ) {
+        hostReturningFunctions.add(fn.name);
+        hostReturningChanged = true;
+      }
+  }
+  const validateHostAliases = (body, aliases = new Set()) => {
+    const inspect = (value) => {
+      if (!value || typeof value !== "object") return;
+      if (value.type === "call" && aliases.has(value.name))
+        validateJavaScriptArguments(value, value.name);
+      Object.values(value).forEach((item) =>
+        Array.isArray(item) ? item.forEach(inspect) : inspect(item),
+      );
+    };
+    for (const node of body) {
+      if (node.type === "assign") inspect(node.value);
+      else if (node.value) inspect(node.value);
+      if (
+        node.type === "assign" &&
+        ((node.value.type === "raw" && hostFunctions.has(node.value.value)) ||
+          (node.value.type === "raw" && aliases.has(node.value.value)) ||
+          (node.value.type === "call" && hostReturningFunctions.has(node.value.name)) ||
+          (node.value.type === "property" && receiverRoot(node.value.receiver) === "args"))
+      )
+        aliases.add(node.name);
+      else if (node.type === "assign") aliases.delete(node.name);
+      if (node.thenBody) {
+        const thenAliases = validateHostAliases(node.thenBody, new Set(aliases));
+        const elseAliases = node.elseBody
+          ? validateHostAliases(node.elseBody, new Set(aliases))
+          : new Set();
+        for (const name of thenAliases)
+          if (elseAliases.has(name)) aliases.add(name);
+        continue;
+      }
+      if (node.tryBody) {
+        const tryAliases = validateHostAliases(node.tryBody, new Set(aliases));
+        const catchAliases = node.catchBody
+          ? validateHostAliases(node.catchBody, new Set(aliases))
+          : tryAliases;
+        const normalAliases = new Set(
+          [...tryAliases].filter((name) => catchAliases.has(name)),
+        );
+        const finalAliases = node.finallyBody
+          ? validateHostAliases(node.finallyBody, normalAliases)
+          : normalAliases;
+        aliases.clear();
+        finalAliases.forEach((name) => aliases.add(name));
+        continue;
+      }
+      [node.thenBody, node.elseBody, node.tryBody, node.catchBody, node.finallyBody, node.body]
+        .filter(Boolean)
+        .forEach((child) => validateHostAliases(child, new Set(aliases)));
+    }
+    return aliases;
+  };
   const findMethod = (classNode, name, staticMethod) => {
     let current = classNode;
     while (current) {
@@ -1872,6 +1954,8 @@ function validate(program, imports = []) {
           `${targetClass.name}${target.method.static ? "::" : ":"}${value.name}`,
         );
     }
+    if (value.type === "methodCall" && receiverRoot(value.receiver) === "args")
+      validateJavaScriptArguments(value, `args.${value.name}`);
     if (value.type === "namespaceMethodCall") {
       const root = value.receiver.split("/")[0];
       if (!jsImportNames.has(root))
@@ -1925,6 +2009,10 @@ function validate(program, imports = []) {
         ...(fn.parameters ?? []).map((parameter) => parameter.name),
       ]),
     ),
+  );
+  [...program.functions, ...program.tests].forEach((fn) => validateHostAliases(fn.body));
+  program.classes.forEach((classNode) =>
+    classNode.methods.forEach((method) => validateHostAliases(method.body)),
   );
   program.classes.forEach((classNode) =>
     classNode.methods.forEach((method) =>

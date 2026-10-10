@@ -1,0 +1,10 @@
+main(args)
+    if true
+        request = fetch
+      else
+          request = local_request
+    $amount = 12.50
+    return request($amount)
+
+local_request($amount)
+    return $amount

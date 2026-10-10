@@ -1,0 +1,4 @@
+main(args)
+    send = args[0].send
+    $amount = 12.50
+    send(to_js_number($amount))

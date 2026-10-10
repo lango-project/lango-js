@@ -1,0 +1,7 @@
+main(args)
+    try
+        request = fetch
+    finally
+        request = fetch
+    $amount = 12.50
+    request(to_js_number($amount))

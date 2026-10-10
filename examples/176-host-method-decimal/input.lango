@@ -1,0 +1,3 @@
+main(args)
+    $amount = 12.50
+    args[0].write(to_js_number($amount))
