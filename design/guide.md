@@ -409,6 +409,8 @@ remain ordinary JavaScript values; they have no special Lango syntax.
 Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be used alongside &&, || and !. Operators at the same precedence level associate from left to right; exponentiation (`**`) instead associates from right to left and binds more tightly than multiplication. Conditions require `true` or `false`; Lango does not use JavaScript truthiness or implicit conversion. Arithmetic operators, including remainder (`%`), work on numbers, and strings are composed with interpolation.
 
 There should be space before and after an operator, except unary operators.
+`value ?? fallback` evaluates to `fallback` only when `value` is `null`; `false`,
+`0`, and empty strings are retained.
 
 ## Strings and localization
 

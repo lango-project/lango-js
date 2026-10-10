@@ -1,0 +1,3 @@
+main(args)
+    configured = null
+    return configured ?? "default"

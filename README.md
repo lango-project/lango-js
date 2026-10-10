@@ -560,3 +560,7 @@ expressions through the Decimal backend. See
 
 Faz 130 infers Decimal returns through nested compound arithmetic, while
 keeping Decimal comparisons Boolean. See `examples/130-decimal-return-inference`.
+
+## Faz 131
+
+Faz 131 adds null coalescing with `??`. See `examples/131-null-coalescing`.

@@ -913,6 +913,7 @@ function expr(source, line, parser) {
           : splitTopLevel(text.slice(1, -1)).map((item) => expr(item, line, parser)),
     };
   for (const operators of [
+    ["??"],
     ["or", "||"],
     ["and", "&&"],
     ["==", "!="],
