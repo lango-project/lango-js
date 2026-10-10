@@ -912,6 +912,18 @@ function expr(source, line, parser) {
           ? []
           : splitTopLevel(text.slice(1, -1)).map((item) => expr(item, line, parser)),
     };
+  if (text.startsWith("{") && text.endsWith("}")) {
+    const fields = text.slice(1, -1).trim();
+    if (fields === "") return { type: "object", fields: [] };
+    return {
+      type: "object",
+      fields: splitTopLevel(fields).map((field) => {
+        const match = /^(\$?[A-Za-z_]\w*): (.+)$/.exec(field);
+        if (!match) parser.fail(line, "LNG1111", "expected `key: value`");
+        return { key: match[1], value: expr(match[2], line, parser) };
+      }),
+    };
+  }
   for (const operators of [
     ["??"],
     ["or", "||"],

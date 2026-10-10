@@ -579,3 +579,7 @@ Faz 133 adds negated membership with `not in`. See
 
 Faz 134 extends membership to own object keys. See
 `examples/134-object-membership`.
+
+## Faz 135
+
+Faz 135 adds inline object literals. See `examples/135-inline-objects`.
