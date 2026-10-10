@@ -1,0 +1,5 @@
+main(args)
+    total = 0
+    for args[0] as index: value
+        total += index * value
+    return total

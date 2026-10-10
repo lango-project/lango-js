@@ -1,0 +1,4 @@
+main(args)
+    state = { items: args[0] }
+    state.items.add("Ada")
+    return args[0].length

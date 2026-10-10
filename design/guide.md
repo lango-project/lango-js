@@ -340,6 +340,8 @@ println(matrix[row][column])
 
 a.length
 ```
+`add()` also works when the array comes from a property or host argument, such
+as `state.items.add(value)`.
 An array may use commas only when all of its members are on one physical line.
 A multiline array has one member per line and no commas:
 ```lango
@@ -432,6 +434,18 @@ for obj as name: value
 Arrays, strings, and other JavaScript iterables can be used with the
 single-value form. Plain objects use the `key: value` form. `Map` and `Set`
 remain ordinary JavaScript values; a `Map` may also use the `key: value` form.
+Arrays may also use `key: value`; their keys are numeric indexes.
+Strings may use it too; indexes count Unicode code points rather than UTF-16 units.
+`Set` may use it as well; both bindings receive the same set value, matching
+JavaScript `Set#entries()`.
+Other JavaScript iterables, including `range(...)`, may use `key: value`; their
+keys are numeric iteration indexes.
+
+`range(start, end)` produces integer values from `start` up to, but excluding,
+`end`; it is intended for use with `for`, such as `for range(0, 10) as index`.
+`range(end)` is shorthand for `range(0, end)`.
+An optional nonzero integer step supports intervals and descending ranges, for
+example `range(10, 0, -2)`.
 ### Return
 
 *return* returns a value (or not) from a function or method as expected.

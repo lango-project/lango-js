@@ -71,3 +71,11 @@ review order remain deterministic.
 `156-multidimensional-assignment` covers nested indexed updates.
 `157-property-indexed-assignment` covers updates through an object collection property.
 `158-iterable-expressions` covers `for` loops over properties, indexes, and call results.
+`159-array-key-value-iteration` covers numeric array indexes in `key: value` loops.
+`160-string-key-value-iteration` covers numeric string indexes in `key: value` loops.
+`161-set-key-value-iteration` covers matching key-value pairs from host `Set` values.
+`162-range` covers end-exclusive integer range iteration.
+`163-range-step` covers stepped and descending integer ranges.
+`164-range-end` covers the zero-based `range(end)` shorthand.
+`165-iterable-key-value-iteration` covers numeric indexes for generic iterables.
+`166-array-add-receivers` covers `Array#add()` on property and host array values.

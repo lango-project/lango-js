@@ -251,10 +251,40 @@ export function includes(value, collection) {
 
 export function entries(collection) {
     if (collection instanceof Map) return collection.entries();
+    if (collection instanceof Set) return collection.entries();
+    if (Array.isArray(collection)) return collection.entries();
+    if (typeof collection === "string") return Array.from(collection).entries();
+    if (collection !== null && typeof collection?.[Symbol.iterator] === "function") {
+        return Array.from(collection).entries();
+    }
     if (collection !== null && typeof collection === "object") {
         return Object.entries(collection);
     }
     throw new Error("EntriesTarget");
+}
+
+export function* range(start, end, step = 1) {
+    if (
+        !Number.isSafeInteger(start) ||
+        !Number.isSafeInteger(end) ||
+        !Number.isSafeInteger(step) ||
+        step === 0
+    ) {
+        throw new Error("RangeBounds");
+    }
+    for (
+        let value = start;
+        step > 0 ? value < end : value > end;
+        value += step
+    ) yield value;
+}
+
+export function add(value, ...items) {
+    if (Array.isArray(value)) return value.push(...items);
+    if (value !== null && typeof value?.add === "function") {
+        return normalize(value.add(...items));
+    }
+    throw new Error("NotAddable");
 }
 
 export function requireBoolean(value) {

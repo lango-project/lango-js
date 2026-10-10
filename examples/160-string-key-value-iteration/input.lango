@@ -1,0 +1,5 @@
+main(args)
+    result = ""
+    for args[0] as index: character
+        result = "${index}:${character};"
+    return result

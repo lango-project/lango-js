@@ -1,0 +1,6 @@
+main(args)
+    total = 0
+    for args[0] as key: value
+        if key == value
+            total += value
+    return total

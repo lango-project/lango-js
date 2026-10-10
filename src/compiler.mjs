@@ -663,7 +663,7 @@ class Parser {
           type: "println",
           value: expr(text.slice(8, -1), line, this),
         });
-      else if (/^[A-Za-z_]\w*\.[A-Za-z_]\w*\(.*\)$/.test(text))
+      else if (/^[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)+\(.*\)$/.test(text))
         body.push({ type: "expression", value: expr(text, line, this) });
       else if (/^[A-Za-z_]\w*(?:\/[A-Za-z_]\w*)+\(.*\)$/.test(text))
         body.push({ type: "expression", value: expr(text, line, this) });
@@ -1494,6 +1494,7 @@ function validate(program, imports = []) {
     ["is_bool", 1],
     ["is_object", 1],
     ["is_array", 1],
+    ["range", [1, 2, 3]],
     ["to_js_number", 1],
     ["start_trans", 0], ["commit_trans", 0], ["rollback_trans", 0], ["trans_state", 0],
   ]);
@@ -1769,14 +1770,15 @@ function validate(program, imports = []) {
             );
         });
       }
+      const arities = standardFunctions.get(value.name);
       if (
         standardFunctions.has(value.name) &&
-        value.arguments.length !== standardFunctions.get(value.name)
+        !(Array.isArray(arities) ? arities : [arities]).includes(value.arguments.length)
       )
         throw new LangoError(
           "LNG1219",
           value.line,
-          `${value.name} expects ${standardFunctions.get(value.name)} arguments, got ${value.arguments.length}`,
+          `${value.name} expects ${Array.isArray(arities) ? arities.join(" or ") : arities} arguments, got ${value.arguments.length}`,
         );
       if (hostFunctions.has(value.name)) validateJavaScriptArguments(value, value.name);
     }
@@ -2675,6 +2677,8 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.predicates && "isArray as __isArray",
     flags.membership && "includes as __includes",
     flags.entries && "entries as __entries",
+    flags.range && "range as __range",
+    flags.add && "add as __add",
     flags.toJsNumber && "toJsNumber as __toJsNumber",
     flags.boolean && "requireBoolean as __requireBoolean",
     flags.assert && "assert as __assert",
@@ -3241,7 +3245,12 @@ function emitExpr(node, flags) {
       flags.arrayBindings?.has(node.receiver)
         ? "push"
         : node.name;
-    const call = `${receiver}${visibility === false ? ".#" : node.optional ? "?." : "."}${method}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    const arguments_ = node.arguments.map((item) => emitExpr(item, flags)).join(", ");
+    if (!namespace && node.name === "add" && visibility === undefined && method !== "push") {
+      flags.add = true;
+      return `__add(${receiver}, ${arguments_})`;
+    }
+    const call = `${receiver}${visibility === false ? ".#" : node.optional ? "?." : "."}${method}(${arguments_})`;
     if (node.optional) return normalize(call);
     if (
       visibility === undefined &&
@@ -3318,6 +3327,12 @@ function emitExpr(node, flags) {
     }
     return value;
   }
+  if (node.type === "call")
+    if (node.name === "range") {
+      flags.range = true;
+      const arguments_ = node.arguments.map((item) => emitExpr(item, flags));
+      return `__range(${arguments_.length === 1 ? `0, ${arguments_[0]}` : arguments_.join(", ")})`;
+    }
   if (node.type === "call")
     if (node.name === "to_js_number") {
       flags.toJsNumber = true;

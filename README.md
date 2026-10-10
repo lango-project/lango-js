@@ -691,3 +691,43 @@ Faz 157 adds indexed updates for object-held collections. See
 
 Faz 158 lets `for` loops use iterable expressions. See
 `examples/158-iterable-expressions`.
+
+## Faz 159
+
+Faz 159 adds numeric indexes for array key-value iteration. See
+`examples/159-array-key-value-iteration`.
+
+## Faz 160
+
+Faz 160 adds numeric code-point indexes for string key-value iteration. See
+`examples/160-string-key-value-iteration`.
+
+## Faz 161
+
+Faz 161 adds `key: value` iteration for host `Set` values. See
+`examples/161-set-key-value-iteration`.
+
+## Faz 162
+
+Faz 162 adds end-exclusive integer `range(start, end)` iteration. See
+`examples/162-range`.
+
+## Faz 163
+
+Faz 163 adds optional stepped and descending ranges. See
+`examples/163-range-step`.
+
+## Faz 164
+
+Faz 164 adds the zero-based `range(end)` shorthand. See
+`examples/164-range-end`.
+
+## Faz 165
+
+Faz 165 adds numeric `key: value` indexes for generic iterables. See
+`examples/165-iterable-key-value-iteration`.
+
+## Faz 166
+
+Faz 166 lets `Array#add()` work through properties and host-provided arrays. See
+`examples/166-array-add-receivers`.

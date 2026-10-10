@@ -1,0 +1,5 @@
+main(args)
+    total = 0
+    for range(1, 5) as value
+        total += value
+    return total
