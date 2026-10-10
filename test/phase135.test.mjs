@@ -4,7 +4,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { buildFile, compile } from "../src/compiler.mjs";
+import { buildFile, compile, LangoError } from "../src/compiler.mjs";
 
 test("Faz 135 lowers inline object literals", () => {
     const output = compile(`main(args)
@@ -26,4 +26,13 @@ main(args)
     await buildFile(input, output);
     const program = await import(pathToFileURL(output).href);
     assert.equal(program.main([]), "Ada");
+});
+
+test("Faz 135 requires explicit values in object fields", () => {
+    assert.throws(
+        () => compile(`main(args)
+    return { name }
+`),
+        (error) => error instanceof LangoError && error.code === "LNG1111",
+    );
 });
