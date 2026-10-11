@@ -385,6 +385,11 @@ export function finite(value) {
     return value;
 }
 
+export function requireNumber(value) {
+    if (typeof value !== "number") throw new Error("NumberRequired");
+    return finite(value);
+}
+
 export function call(value, ...arguments_) {
     if (typeof value !== "function") throw new Error("NotCallable");
     return normalize(value(...arguments_));

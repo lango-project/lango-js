@@ -2947,6 +2947,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.assert && "assert as __assert",
     flags.normalize && "normalize as __normalize",
     flags.finite && "finite as __finite",
+    flags.number && "requireNumber as __requireNumber",
     flags.call && "call as __call",
     flags.boundary && "boundary as __boundary",
     flags.database && "startTrans as __startTrans",
@@ -3470,7 +3471,11 @@ function emitExpr(node, flags) {
       return `__decimal("0").minus(${emitExpr(node.value, flags)})`;
     }
     flags.finite = true;
-    return `__finite(-${emitExpr(node.value, flags)})`;
+    const numericLiteral =
+      node.value.type === "raw" &&
+      /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(node.value.value);
+    if (!numericLiteral) flags.number = true;
+    return `__finite(-${numericLiteral ? emitExpr(node.value, flags) : `__requireNumber(${emitExpr(node.value, flags)})`})`;
   }
   if (node.type === "new")
     return `new ${node.name.replaceAll("/", ".")}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
