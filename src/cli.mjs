@@ -6,12 +6,15 @@ import { pathToFileURL } from "node:url";
 import { buildFile, formatSource, LangoError } from "./compiler.mjs";
 
 const [command, inputPath, ...rest] = process.argv.slice(2);
+const displayError = (error) => error instanceof LangoError && error.diagnostics
+    ? error.diagnostics.map((item) => item.message).join("\n")
+    : error instanceof Error ? error.message : error;
 
 if (command === "build" && inputPath && rest.length === 2 && rest[0] === "--out") {
     try {
         await buildFile(path.resolve(inputPath), path.resolve(rest[1]));
     } catch (error) {
-        console.error(error instanceof Error ? error.message : error);
+        console.error(displayError(error));
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else if (command === "run" && inputPath) {
@@ -26,7 +29,7 @@ if (command === "build" && inputPath && rest.length === 2 && rest[0] === "--out"
         runtime.configure({ output: (value) => console.log(value) });
         await program.main(rest);
     } catch (error) {
-        console.error(error instanceof Error ? error.message : error);
+        console.error(displayError(error));
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else if (command === "test" && inputPath && rest.length === 0) {
@@ -49,12 +52,12 @@ if (command === "build" && inputPath && rest.length === 2 && rest[0] === "--out"
                 console.log(`PASS ${test.name}`);
             } catch (error) {
                 failures += 1;
-                console.error(`FAIL ${test.name}: ${error instanceof Error ? error.message : error}`);
+                console.error(`FAIL ${test.name}: ${displayError(error)}`);
             }
         }
         if (failures) process.exitCode = 1;
     } catch (error) {
-        console.error(error instanceof Error ? error.message : error);
+        console.error(displayError(error));
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else if (command === "format" && inputPath && rest.length === 0) {
@@ -63,7 +66,7 @@ if (command === "build" && inputPath && rest.length === 2 && rest[0] === "--out"
         const source = await readFile(input, "utf8");
         await writeFile(input, formatSource(source, input), "utf8");
     } catch (error) {
-        console.error(error instanceof Error ? error.message : error);
+        console.error(displayError(error));
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else {

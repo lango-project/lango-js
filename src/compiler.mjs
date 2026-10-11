@@ -1655,12 +1655,19 @@ function validate(program, imports = []) {
   program.classes.forEach((classNode) =>
     classNode.methods.forEach((method) => validateSqlParameters(method.body)),
   );
-  if (names.size !== program.functions.length)
-    throw new LangoError("LNG1201", 1, "duplicate function name");
-  if (globals.size !== program.globals.length)
-    throw new LangoError("LNG1216", 1, "duplicate global name");
-  if (imported.size !== importNames.length)
-    throw new LangoError("LNG1228", 1, "duplicate imported local name");
+  const nameDiagnostics = [];
+  const duplicateDiagnostics = (items, code, label) => {
+    const seen = new Set();
+    for (const item of items) {
+      const name = typeof item === "string" ? item : item.name;
+      if (seen.has(name))
+        nameDiagnostics.push(new LangoError(code, item.line ?? 1, `duplicate ${label} ${name}`));
+      seen.add(name);
+    }
+  };
+  duplicateDiagnostics(program.functions, "LNG1201", "function name");
+  duplicateDiagnostics(program.globals, "LNG1216", "global name");
+  duplicateDiagnostics(importNames, "LNG1228", "imported local name");
   const declarationNames = new Set([
     ...program.functions.map((item) => item.name),
     ...program.classes.map((item) => item.name),
@@ -1668,14 +1675,18 @@ function validate(program, imports = []) {
   ]);
   for (const name of imported)
     if (declarationNames.has(name))
-      throw new LangoError(
+      nameDiagnostics.push(new LangoError(
         "LNG1229",
         1,
         `imported local name ${name} conflicts with a Lango declaration`,
-      );
+      ));
   const classes = new Map(program.classes.map((item) => [item.name, item]));
-  if (classes.size !== program.classes.length)
-    throw new LangoError("LNG1205", 1, "duplicate class name");
+  duplicateDiagnostics(program.classes, "LNG1205", "class name");
+  if (nameDiagnostics.length) {
+    const [primary] = nameDiagnostics;
+    primary.diagnostics = nameDiagnostics;
+    throw primary;
+  }
   const ancestorState = new Map();
   const visitAncestor = (classNode) => {
     const state = ancestorState.get(classNode.name);

@@ -39,11 +39,12 @@ contextual default connection and join-only nested transactions (D-054).
 
 ### Diagnostic model and recovery
 
-Replace line-only, fail-fast `LangoError` reporting with structured diagnostics:
-stable code, severity, source file, one-based start/end line and column, and
-optional related locations. Parser and semantic analysis should recover where
-safe and return independent diagnostics together; an error must still prevent
-emission.
+`LangoError` now carries severity and parser source spans, and independent
+top-level declaration-name failures are grouped in its `diagnostics` array.
+Extend this to semantic analysis and parser recovery: diagnostics need stable
+code, source file, one-based start/end line and column, optional related
+locations, and safe recovery that returns further independent errors while still
+preventing emission.
 
 ### Host integration and distributable CLI
 
