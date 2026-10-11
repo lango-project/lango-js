@@ -1079,12 +1079,13 @@ choice to source programs.
 
 **Status:** Accepted
 
-Decimal contexts support the four arithmetic operators `+`, `-`, `*`, and `/`,
-unary sign, ordering, and numeric equality as defined by D-038 and D-039.
-Decimal modulo and a core Decimal `Math` surface are not part of Lango:
-there is no Decimal `pow`, `sqrt`, trigonometry, `floor`, `ceil`, or source-
-level `round` operation. In particular, D-039's compiler-profile division
-rounding remains the language's only built-in Decimal rounding point.
+Decimal contexts support the arithmetic operators `+`, `-`, `*`, `/`, `%`, and
+`**`, unary sign, ordering, and numeric equality as defined by D-038 and
+D-039. There is no separate Decimal `Math` function surface: source programs
+use `**` for exponentiation, and there are no Decimal `sqrt`, trigonometry,
+`floor`, `ceil`, or source-level `round` operations. In particular, D-039's
+compiler-profile division rounding remains the language's only built-in Decimal
+rounding point.
 
 Advanced numerical work uses an imported JavaScript library with an explicit
 `to_js_number($value)` boundary. Assigning that finite Number result to a `$`
