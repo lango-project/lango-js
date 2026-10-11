@@ -2356,7 +2356,8 @@ function validate(program, imports = []) {
               new Set([...expiredCatchBindings, node.catchName].filter(Boolean)),
             )
           : certain;
-        afterFinally.forEach((name) => available.add(name));
+        if (!node.finallyBody || reachesEnd(node.finallyBody))
+          afterFinally.forEach((name) => available.add(name));
         if (node.catchName && !catchWasAvailable) expiredCatchBindings.add(node.catchName);
         continue;
       }
@@ -2546,7 +2547,8 @@ function validate(program, imports = []) {
           if (node.catchName) certain.delete(node.catchName);
           if (node.finallyBody) {
             const afterFinally = visit(node.finallyBody, certain);
-            afterFinally.forEach((name) => current.add(name));
+            if (reachesEnd(node.finallyBody))
+              afterFinally.forEach((name) => current.add(name));
           } else certain.forEach((name) => current.add(name));
           continue;
         }
