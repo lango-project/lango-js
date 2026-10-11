@@ -2091,6 +2091,33 @@ function validate(program, imports = []) {
     ...(node.cases?.map((item) => item.body) ?? []),
   ].filter(Boolean);
 
+  const reachesEnd = (nodes) => {
+    for (const node of nodes) {
+      if (node.type === "return" || node.type === "throw") return false;
+      if (
+        node.type === "if" &&
+        node.elseBody &&
+        !reachesEnd(node.thenBody) &&
+        !reachesEnd(node.elseBody)
+      )
+        return false;
+      if (
+        node.type === "switch" &&
+        node.elseBody &&
+        node.cases.every((item) => !reachesEnd(item.body)) &&
+        !reachesEnd(node.elseBody)
+      )
+        return false;
+      if (node.type === "try") {
+        if (node.finallyBody && !reachesEnd(node.finallyBody)) return false;
+        if (node.catchBody)
+          return reachesEnd(node.tryBody) || reachesEnd(node.catchBody);
+        return reachesEnd(node.tryBody);
+      }
+    }
+    return true;
+  };
+
   const contextDeclarations = (body, names = new Set()) => {
     for (const node of body) {
       if (node.type === "contextDeclare") names.add(node.name);
@@ -2150,28 +2177,128 @@ function validate(program, imports = []) {
     return references;
   };
 
-  const validateClosures = (body, outerBindings, classScope = null) => {
+  const validateClosures = (
+    body,
+    outerBindings,
+    classScope = null,
+    inheritedExpiredCatchBindings = new Set(),
+  ) => {
     const available = new Set(outerBindings);
+    const expiredCatchBindings = new Set(inheritedExpiredCatchBindings);
     for (const node of body) {
+      const references = new Set();
+      [node.value, node.condition, node.collection, node.arguments, node.tests].forEach((value) => {
+        if (Array.isArray(value)) value.forEach((item) => expressionReferences(item, references));
+        else expressionReferences(value, references);
+      });
+      for (const name of references)
+        if (expiredCatchBindings.has(name))
+          throw new LangoError(
+            "LNG1261",
+            node.line ?? 1,
+            `${name} is only available inside its catch block`,
+          );
       if (node.type === "if") {
-        const left = validateClosures(node.thenBody, new Set(available), classScope);
+        const left = validateClosures(
+          node.thenBody,
+          new Set(available),
+          classScope,
+          expiredCatchBindings,
+        );
         const right = node.elseBody
-          ? validateClosures(node.elseBody, new Set(available), classScope)
+          ? validateClosures(
+              node.elseBody,
+              new Set(available),
+              classScope,
+              expiredCatchBindings,
+            )
           : available;
-        for (const name of left) if (right.has(name)) available.add(name);
+        const exits = [];
+        if (reachesEnd(node.thenBody)) exits.push(left);
+        if (!node.elseBody || reachesEnd(node.elseBody)) exits.push(right);
+        for (const name of exits[0] ?? [])
+          if (exits.every((exit) => exit.has(name))) available.add(name);
+        continue;
+      }
+      if (node.type === "switch") {
+        const exits = node.cases
+          .filter((item) => reachesEnd(item.body))
+          .map((item) =>
+            validateClosures(
+            item.body,
+            new Set(available),
+            classScope,
+            expiredCatchBindings,
+            ),
+          );
+        if (!node.elseBody || reachesEnd(node.elseBody))
+          exits.push(
+            node.elseBody
+              ? validateClosures(
+                node.elseBody,
+                new Set(available),
+                classScope,
+                expiredCatchBindings,
+                )
+              : new Set(available),
+          );
+        for (const name of exits[0] ?? [])
+          if (exits.every((exit) => exit.has(name))) available.add(name);
         continue;
       }
       if (node.type === "try") {
-        const exits = [validateClosures(node.tryBody, new Set(available), classScope)];
-        if (node.catchBody)
-          exits.push(validateClosures(node.catchBody, new Set(available), classScope));
-        const certain = new Set(exits[0]);
+        const catchWasAvailable = node.catchName && available.has(node.catchName);
+        const exits = [];
+        const tryExit = validateClosures(
+          node.tryBody,
+          new Set(available),
+          classScope,
+          expiredCatchBindings,
+        );
+        if (reachesEnd(node.tryBody)) exits.push(tryExit);
+        if (node.catchBody) {
+          const catchExit = validateClosures(
+              node.catchBody,
+              new Set([...available, node.catchName]),
+              classScope,
+              new Set(
+                [...expiredCatchBindings].filter((name) => name !== node.catchName),
+              ),
+          );
+          if (reachesEnd(node.catchBody)) exits.push(catchExit);
+        }
+        const certain = new Set(exits[0] ?? available);
         for (const name of certain)
           if (!exits.every((exit) => exit.has(name))) certain.delete(name);
+        if (node.catchName && !catchWasAvailable) certain.delete(node.catchName);
         const afterFinally = node.finallyBody
-          ? validateClosures(node.finallyBody, certain, classScope)
+          ? validateClosures(
+              node.finallyBody,
+              certain,
+              classScope,
+              new Set([...expiredCatchBindings, node.catchName].filter(Boolean)),
+            )
           : certain;
         afterFinally.forEach((name) => available.add(name));
+        if (node.catchName && !catchWasAvailable) expiredCatchBindings.add(node.catchName);
+        continue;
+      }
+      if (node.type === "for") {
+        validateClosures(
+          node.body,
+          new Set([...available, node.item]),
+          classScope,
+          expiredCatchBindings,
+        );
+        continue;
+      }
+      if (node.type === "forObject") {
+        validateClosures(
+          node.body,
+          new Set([...available, node.key, node.value]),
+          classScope,
+          expiredCatchBindings,
+        );
         continue;
       }
       const chain = node.type === "chain"
@@ -2185,6 +2312,7 @@ function validate(program, imports = []) {
             [{ type: "return", value: { type: "closure", ...step } }],
             new Set(available),
             classScope,
+            expiredCatchBindings,
           );
         continue;
       }
@@ -2263,17 +2391,13 @@ function validate(program, imports = []) {
           closure.body,
           new Set([...available, ...localBindings]),
           classScope,
+          expiredCatchBindings,
         );
       if (node.type === "closureAssign") available.add(node.name);
         continue;
       }
       if (node.type === "assign" && !node.name.startsWith("@"))
         available.add(node.name);
-      if (node.type === "for") available.add(node.item);
-      if (node.type === "forObject") {
-        available.add(node.key);
-        available.add(node.value);
-      }
     }
     return available;
   };
@@ -2289,25 +2413,60 @@ function validate(program, imports = []) {
             expressionReferences(index, references),
           );
         }
-        [node.value, node.condition, node.arguments, node.tests].forEach((value) => {
+        if (node.type === "increment" || node.type === "add")
+          references.add(node.name ?? node.target);
+        if (
+          node.type === "call" ||
+          node.type === "methodCall" ||
+          node.type === "namespaceMethodCall"
+        )
+          expressionReferences(node, references);
+        [node.value, node.condition, node.collection, node.arguments, node.tests].forEach((value) => {
           if (Array.isArray(value)) value.forEach((item) => expressionReferences(item, references));
           else expressionReferences(value, references);
         });
+        if (node.type === "switch")
+          node.cases.forEach((item) =>
+            item.tests.forEach((value) => expressionReferences(value, references)),
+          );
         for (const name of references)
           if (candidates.has(name) && !current.has(name))
             throw new LangoError("LNG1246", node.line ?? 1, `${name} is not assigned on every path`);
         if (node.type === "if") {
           const left = visit(node.thenBody, current);
           const right = node.elseBody ? visit(node.elseBody, current) : current;
-          for (const name of left) if (right.has(name)) current.add(name);
+          const exits = [];
+          if (reachesEnd(node.thenBody)) exits.push(left);
+          if (!node.elseBody || reachesEnd(node.elseBody)) exits.push(right);
+          for (const name of exits[0] ?? [])
+            if (exits.every((exit) => exit.has(name))) current.add(name);
+          continue;
+        }
+        if (node.type === "switch") {
+          const exits = node.cases
+            .filter((item) => reachesEnd(item.body))
+            .map((item) => visit(item.body, current));
+          if (!node.elseBody || reachesEnd(node.elseBody))
+            exits.push(node.elseBody ? visit(node.elseBody, current) : new Set(current));
+          for (const name of exits[0] ?? [])
+            if (exits.every((exit) => exit.has(name))) current.add(name);
           continue;
         }
         if (node.type === "try") {
-          const normalExits = [visit(node.tryBody, current)];
-          if (node.catchBody) normalExits.push(visit(node.catchBody, current));
-          const certain = new Set(normalExits[0]);
+          const normalExits = [];
+          const tryExit = visit(node.tryBody, current);
+          if (reachesEnd(node.tryBody)) normalExits.push(tryExit);
+          if (node.catchBody) {
+            const catchExit = visit(
+              node.catchBody,
+              new Set([...current, node.catchName]),
+            );
+            if (reachesEnd(node.catchBody)) normalExits.push(catchExit);
+          }
+          const certain = new Set(normalExits[0] ?? current);
           for (const name of certain)
             if (!normalExits.every((exit) => exit.has(name))) certain.delete(name);
+          if (node.catchName) certain.delete(node.catchName);
           if (node.finallyBody) {
             const afterFinally = visit(node.finallyBody, certain);
             afterFinally.forEach((name) => current.add(name));
@@ -2335,6 +2494,9 @@ function validate(program, imports = []) {
       fn.body,
       new Set([...fn.parameters.map((item) => item.name), ...globals]),
     ),
+  );
+  program.tests.forEach((test) =>
+    validateDefiniteAssignments(test.body, new Set([...globals, ...imported])),
   );
 
   program.functions.forEach((fn) =>
@@ -2670,6 +2832,10 @@ function validate(program, imports = []) {
       });
     };
     classNode.methods.forEach((method) => {
+      validateDefiniteAssignments(
+        method.body,
+        new Set([...method.parameters.map((parameter) => parameter.name), ...globals]),
+      );
       validateClosures(
         method.body,
         new Set([
