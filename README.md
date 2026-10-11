@@ -23,6 +23,12 @@ Build a source file with:
 npm run build -- examples/002-main-branch/input.lango --out /tmp/lango/main.mjs
 ```
 
+Decimal division can be configured per build with enum-style rounding names:
+
+```sh
+npm run build -- input.lango --out main.mjs --decimal-division-scale 2 --decimal-division-rounding HalfUp
+```
+
 The build writes the generated module, an external source-map file, and its
 private `.lango/runtime.mjs` beside the output. Run the current checks with:
 
@@ -38,6 +44,18 @@ Run a program directly with its Lango arguments after `--`:
 
 ```sh
 npm run run -- examples/002-main-branch/input.lango Ada
+```
+
+For the built-in SQLite adapter, opt in with a database file:
+
+```sh
+npm run run -- input.lango --database app.sqlite -- Ada
+```
+
+An optional JSON translation catalog is passed to the runtime with `--catalog`:
+
+```sh
+npm run run -- input.lango --catalog tr.json
 ```
 
 ## Faz 2

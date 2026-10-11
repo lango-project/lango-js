@@ -1,7 +1,16 @@
 {
   "name": "lango",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "lango": "./src/cli.mjs"
+  },
+  "exports": {
+    ".": "./src/compiler.mjs",
+    "./runtime": "./src/runtime.mjs",
+    "./database": "./src/database.mjs"
+  },
   "scripts": {
     "build": "node src/cli.mjs build",
     "run": "node src/cli.mjs run",
