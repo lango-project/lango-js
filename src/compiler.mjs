@@ -3,9 +3,15 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { RUNTIME_SOURCE } from "./runtime.mjs";
 
 export class LangoError extends Error {
-  constructor(code, line, message) {
+  constructor(code, line, message, sourceName = null, column = 1, endColumn = column) {
     super(`${code} at line ${line}: ${message}`);
     this.code = code;
+    this.severity = "error";
+    this.sourceName = sourceName;
+    this.span = {
+      start: { line, column },
+      end: { line, column: endColumn },
+    };
   }
 }
 
@@ -63,7 +69,8 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
     }
   }
 
-  const output = compile(source, inputPath, imports, includeTests).javascript.replace(
+  const compiled = compile(source, inputPath, imports, includeTests);
+  const output = compiled.javascript.replace(
     "//# sourceMappingURL=main.mjs.map",
     `//# sourceMappingURL=${path.basename(outputPath)}.map`,
   );
@@ -77,8 +84,9 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
       version: 3,
       file: path.basename(outputPath),
       sources: [path.basename(inputPath)],
+      sourcesContent: [source],
       names: [],
-      mappings: "",
+      mappings: sourceMapMappings(compiled.program, output),
     }) + "\n",
   );
   await writeFile(path.join(directory, ".lango/runtime.mjs"), RUNTIME_SOURCE);
@@ -95,7 +103,45 @@ export function compile(source, sourceName = "<source>", imports = [], includeTe
   const parser = new Parser(source, sourceName);
   const program = parser.parse();
   validate(program, imports);
-  return { javascript: emit(program, imports, includeTests) };
+  return { javascript: emit(program, imports, includeTests), program };
+}
+
+const BASE64_VLQ = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function encodeVlq(value) {
+  let remaining = value < 0 ? ((-value) << 1) | 1 : value << 1;
+  let result = "";
+  do {
+    let digit = remaining & 31;
+    remaining >>>= 5;
+    if (remaining) digit |= 32;
+    result += BASE64_VLQ[digit];
+  } while (remaining);
+  return result;
+}
+
+function sourceMapMappings(program, javascript) {
+  const sourceLines = new Map([
+    ...program.functions.map((item) => [`function:${item.name}`, item.line]),
+    ...program.classes.map((item) => [`class:${item.name}`, item.line]),
+    ...program.globals.map((item) => [`global:${item.name}`, item.line]),
+  ]);
+  let priorSourceLine = 0;
+  return javascript.split("\n").map((line) => {
+    const functionMatch = /^(?:export )?function ([A-Za-z_]\w*)\(/.exec(line);
+    const classMatch = /^(?:export )?class ([A-Za-z_]\w*)\b/.exec(line);
+    const globalMatch = /^(?:export )?let (\$?[A-Za-z_]\w*)\b/.exec(line);
+    const sourceLine = sourceLines.get(
+      functionMatch ? `function:${functionMatch[1]}`
+        : classMatch ? `class:${classMatch[1]}`
+          : globalMatch ? `global:${globalMatch[1]}`
+            : "",
+    );
+    if (!sourceLine) return "";
+    const segment = `${encodeVlq(0)}${encodeVlq(0)}${encodeVlq(sourceLine - 1 - priorSourceLine)}${encodeVlq(0)}`;
+    priorSourceLine = sourceLine - 1;
+    return segment;
+  }).join(";");
 }
 
 export function formatSource(source, sourceName = "<source>") {
@@ -888,7 +934,15 @@ class Parser {
   }
 
   fail(line, code, message) {
-    throw new LangoError(code, line.number, `${this.name}: ${message}`);
+    const column = (line.text.search(/\S/) >= 0 ? line.text.search(/\S/) : 0) + 1;
+    throw new LangoError(
+      code,
+      line.number,
+      `${this.name}: ${message}`,
+      this.name,
+      column,
+      Math.max(column, line.text.length + 1),
+    );
   }
 }
 
@@ -2910,10 +2964,21 @@ function emit(program, moduleImports = [], includeTests = false) {
   const functions = program.functions
     .map((fn) => emitFunction(fn, flags))
     .join("\n");
+  const testImports = includeTests
+    ? moduleImports
+        .map(
+          (item, index) =>
+            `import { __langoTests as __langoImportedTests${index} } from ${JSON.stringify(item.specifier)};\n`,
+        )
+        .join("")
+    : "";
   const tests = includeTests
-    ? `export const __langoTests = [\n${program.tests
+    ? `const __langoOwnTests = [\n${program.tests
         .map((test) => emitTest(test, flags))
-        .join(",\n")}\n];\n`
+        .join(",\n")}\n];\nexport const __langoTests = [${moduleImports
+        .map((_, index) => `...__langoImportedTests${index}`)
+        .concat("...__langoOwnTests")
+        .join(", ")}];\n`
     : "";
   const helpers = [
     flags.decimal && "decimal as __decimal",
@@ -2995,7 +3060,7 @@ function emit(program, moduleImports = [], includeTests = false) {
         )
         .join("")}}\n`
     : "";
-  return `${modules}${jsModules}${imports}${globals}${classes}${functions}${testReset}${tests}//# sourceMappingURL=main.mjs.map\n`;
+  return `${modules}${testImports}${jsModules}${imports}${globals}${classes}${functions}${testReset}${tests}//# sourceMappingURL=main.mjs.map\n`;
 }
 function emitTest(test, flags) {
   const priorGlobalNames = flags.globalNames;

@@ -797,6 +797,15 @@ See `examples/178-host-property-alias-decimal`.
 Faz 179 retains Decimal boundary checks through copied host callable aliases.
 See `examples/179-host-alias-copy-decimal`.
 
+## Faz 180
+
+Faz 180 retains Decimal boundary checks through definitely assigned host aliases.
+
+## Faz 181
+
+Faz 181 retains Decimal boundary checks through host aliases assigned in `try`
+and `catch` paths.
+
 ## Faz 182
 
 Faz 182 retains Decimal boundary checks through host aliases assigned in `finally`.
@@ -811,3 +820,24 @@ See `examples/183-host-alias-reassignment`.
 
 Faz 184 avoids treating mixed host and Lango callable branches as definitely host.
 See `examples/184-host-alias-mixed-branches`.
+
+## Faz 185–187
+
+These phases retain Decimal boundary checks when a Lango function returns a
+host callable, including transitive returns and host callables obtained from
+`args`.
+
+## Faz 188–206
+
+These phases extend path-sensitive definite-assignment analysis across
+`switch`, loops, `try`/`catch`/`finally`, captures, update targets, callable
+statements, methods, and Lango test bodies.
+
+## Faz 208
+
+Faz 208 rejects dynamic JavaScript values in unary numeric negation unless they
+are native finite numbers.
+
+## Faz 209
+
+Faz 209 rejects dynamic non-numeric range bounds.

@@ -108,7 +108,7 @@ use.
 
 ## D-004: Function and class declaration forms are distinct
 
-**Status:** Draft
+**Status:** Accepted
 
 At declaration position, `name(parameters)` starts a function declaration.
 Within an expression, `(parameters)` followed by an indented block is an
@@ -193,7 +193,7 @@ alias: `items?.remove(value)` returns `null` without invoking a method when
 
 ## D-008: Loop forms lower to structured JavaScript control flow
 
-**Status:** Draft
+**Status:** Accepted
 
 `loop while condition`, `loop until condition`, and unqualified `loop` lower
 to JavaScript `while` loops. `until condition` negates its condition.
@@ -206,7 +206,7 @@ depth.
 
 ## D-009: Switch cases do not fall through implicitly
 
-**Status:** Draft
+**Status:** Accepted
 
 In `switch expression`, a sequence of consecutive `case` labels with no body
 shares the next body. Once a case body completes, control leaves the switch.
@@ -352,7 +352,7 @@ D-037. D-040's `NonFiniteNumber` error applies before JSON could substitute
 
 ## D-015: Embedded SQL separates bound parameters from raw interpolation
 
-**Status:** Draft
+**Status:** Accepted
 
 An `SQL` literal is a structured query template. A `:name` occurrence in the
 template denotes a named parameter, not a textual substitution. Assigning
@@ -527,7 +527,7 @@ or silently normalize syntactically invalid source.
 
 ## D-021: Relaxed JSON is an ordinary positional object argument
 
-**Status:** Draft
+**Status:** Accepted
 
 Lango has no named-parameter call syntax and no destructuring. A relaxed JSON
 object supplied in a call is one ordinary positional argument. For example,
@@ -833,8 +833,9 @@ as a separate Lango value. At a JavaScript interoperability boundary, an
 `undefined` result is normalized to `null`; reading a missing object property
 also produces `null`.
 
-Optional chaining is not part of the language. D-010's strict `==` equality
-means `value == null` is the explicit and sufficient absence test, so the
+Optional chaining is available for property, index, and method access. It
+returns `null` without evaluating the remaining access when its receiver is
+nullish. D-010's strict `==` equality remains the explicit absence test; the
 standard library provides no `is_null()` helper.
 
 ## D-038: `$` marks explicit Decimal bindings and contexts
@@ -1290,7 +1291,7 @@ The core language has no XML document value, parser, selector/query API, or
 mutation API. Programs that need dynamic XML structure or XML manipulation use
 an explicit library after the string boundary.
 
-## D-060: SQLite is the initial core database adapter
+## D-062: SQLite is the initial core database adapter
 
 **Status:** Accepted
 

@@ -38,7 +38,10 @@ if (command === "build" && inputPath && rest.length === 2 && rest[0] === "--out"
         const program = await import(pathToFileURL(outputPath).href);
         runtime.configure({ output: (value) => console.log(value) });
         let failures = 0;
+        const seenTests = new Set();
         for (const test of program.__langoTests ?? []) {
+            if (seenTests.has(test.run)) continue;
+            seenTests.add(test.run);
             try {
                 program.__langoResetTests?.();
                 runtime.configure({ output: (value) => console.log(value) });

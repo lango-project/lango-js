@@ -5,11 +5,14 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 
 ## Language semantics
 
-### Decimal runtime and lowering
+### Configurable Decimal runtime and lowering
 
-Implement dollar-marked bindings, properties, parameters, object/JSON fields,
-Decimal operation lowering, the pinned embedded backend, configured division,
-and explicit JavaScript/SQL boundary conversion.
+Dollar-marked bindings, properties, parameters, object/JSON fields, operation
+lowering, the pinned embedded backend, and the baseline JavaScript/SQL boundary
+conversion exist. Complete the compiler-profile surface for Decimal division
+scale and rounding, propagate that profile into the emitted isolated runtime,
+and extend boundary analysis and conformance tests whenever a new host callable
+path is introduced.
 
 ### Definite assignment and non-coercive operations
 
@@ -33,6 +36,28 @@ pooling, SQL savepoints, and independent transactions. The core library has one
 contextual default connection and join-only nested transactions (D-054).
 
 ## Tooling
+
+### Diagnostic model and recovery
+
+Replace line-only, fail-fast `LangoError` reporting with structured diagnostics:
+stable code, severity, source file, one-based start/end line and column, and
+optional related locations. Parser and semantic analysis should recover where
+safe and return independent diagnostics together; an error must still prevent
+emission.
+
+### Host integration and distributable CLI
+
+Define and document the public host bootstrap API for output, catalog, and the
+default database adapter. Make the command-line tool usable as a package
+(package entry/bin metadata, supported Node-version checks, and CI smoke
+coverage) without hard-coding a deployment-specific database choice.
+
+### Documentation and decision consistency
+
+Keep `README.md`, `guide.md`, and `decisions.md` synchronized with implemented
+phases. In particular, record phases 185 onward, resolve implemented decisions
+left in Draft state, remove stale claims that optional chaining is unsupported,
+and give distinct decision identifiers to distinct decisions.
 
 ### Expand executable conformance examples
 
