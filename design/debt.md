@@ -15,8 +15,10 @@ conformance tests whenever a new host callable path is introduced.
 ### Definite assignment and non-coercive operations
 
 Complete path-sensitive local definite-assignment analysis across branches,
-loops, and try/catch/finally. Enforce the accepted non-coercive operation model
-without regressing explicit interpolation or JavaScript interop boundaries.
+loops, and try/catch/finally. Non-normal exits follow D-003; extend coverage
+to further nested control-flow combinations across every loop form. Enforce the
+accepted non-coercive operation model without regressing explicit interpolation
+or JavaScript interop boundaries.
 
 ## JavaScript interoperability
 
@@ -64,19 +66,13 @@ directory or organization changes.
 
 ### Diagnostic model and recovery
 
-`LangoError` now carries severity and parser source spans, and independent
-top-level declaration-name failures are grouped in its `diagnostics` array.
-Extend this to semantic analysis and parser recovery: diagnostics need stable
+`LangoError` now carries severity and parser source spans. Independent
+top-level, class-declaration, and loop-level semantic failures are grouped in
+its `diagnostics` array. Extend this to the remaining semantic analysis and
+parser recovery: diagnostics need stable
 code, source file, one-based start/end line and column, optional related
 locations, and safe recovery that returns further independent errors while still
 preventing emission.
-
-### Host integration and distributable CLI
-
-Define and document the public host bootstrap API for output, catalog, and the
-default database adapter. Make the command-line tool usable as a package
-(package entry/bin metadata, supported Node-version checks, and CI smoke
-coverage) without hard-coding a deployment-specific database choice.
 
 ### Documentation and decision consistency
 

@@ -1763,6 +1763,81 @@ function validate(program, imports = []) {
     primary.diagnostics = nameDiagnostics;
     throw primary;
   }
+  const classDeclarationDiagnostics = [];
+  for (const classNode of program.classes) {
+    if (classNode.ancestor && !classes.has(classNode.ancestor))
+      classDeclarationDiagnostics.push(new LangoError(
+        "LNG1206",
+        classNode.line,
+        `${classNode.name}: unknown ancestor ${classNode.ancestor}`,
+      ));
+    const publicInstanceNames = new Set();
+    for (const name of [
+      ...classNode.publicProperties,
+      ...classNode.publicMethods
+        .filter((item) => !item.static)
+        .map((item) => item.name),
+    ]) {
+      if (publicInstanceNames.has(name))
+        classDeclarationDiagnostics.push(new LangoError(
+          "LNG1225",
+          classNode.line,
+          `${classNode.name}: duplicate public instance member ${name}`,
+        ));
+      publicInstanceNames.add(name);
+    }
+    const staticNames = new Set();
+    for (const name of [
+      ...classNode.staticValues.map((item) => item.name),
+      ...classNode.enumValues.map((item) => item.name),
+      ...classNode.publicMethods
+        .filter((item) => item.static)
+        .map((item) => item.name),
+    ]) {
+      if (staticNames.has(name))
+        classDeclarationDiagnostics.push(new LangoError(
+          "LNG1224",
+          classNode.line,
+          `${classNode.name}: duplicate static member ${name}`,
+        ));
+      staticNames.add(name);
+    }
+    const implementations = new Set();
+    for (const method of classNode.methods) {
+      const key = `${method.static ? "static" : "instance"}:${method.name}`;
+      if (implementations.has(key))
+        classDeclarationDiagnostics.push(new LangoError(
+          "LNG1226",
+          method.line,
+          `${classNode.name}: duplicate ${method.static ? "static" : "instance"} method ${method.name}`,
+        ));
+      implementations.add(key);
+    }
+    for (const method of classNode.publicMethods) {
+      const implementation = classNode.methods.find(
+        (item) => item.name === method.name && item.static === method.static,
+      );
+      if (!implementation) {
+        classDeclarationDiagnostics.push(new LangoError(
+          "LNG1209",
+          classNode.line,
+          `${classNode.name}: public method ${method.static ? "::" : ""}${method.name} has no implementation`,
+        ));
+        continue;
+      }
+      if (JSON.stringify(method.parameters) !== JSON.stringify(implementation.parameters))
+        classDeclarationDiagnostics.push(new LangoError(
+          "LNG1223",
+          implementation.line,
+          `${classNode.name}: public method ${method.name} signature does not match its declaration`,
+        ));
+    }
+  }
+  if (classDeclarationDiagnostics.length) {
+    const [primary] = classDeclarationDiagnostics;
+    primary.diagnostics = classDeclarationDiagnostics;
+    throw primary;
+  }
   const ancestorState = new Map();
   const visitAncestor = (classNode) => {
     const state = ancestorState.get(classNode.name);
@@ -2234,7 +2309,12 @@ function validate(program, imports = []) {
 
   const reachesEnd = (nodes) => {
     for (const node of nodes) {
-      if (node.type === "return" || node.type === "throw") return false;
+      if (
+        node.type === "return" ||
+        node.type === "throw" ||
+        node.type === "break" ||
+        node.type === "continue"
+      ) return false;
       if (
         node.type === "if" &&
         node.elseBody &&
@@ -2540,6 +2620,7 @@ function validate(program, imports = []) {
       }
       if (node.type === "assign" && !node.name.startsWith("@"))
         available.add(node.name);
+      if (!reachesEnd([node])) return available;
     }
     return available;
   };
@@ -2720,18 +2801,21 @@ function validate(program, imports = []) {
   );
   program.functions.forEach((fn) => validateGlobalAccess(fn.body));
   program.tests.forEach((test) => validateGlobalAccess(test.body));
+  const loopLevelDiagnostics = [];
   const validateLoopLevels = (body, depth = 0) => {
     for (const node of body) {
       if (
         (node.type === "break" || node.type === "continue") &&
         node.level > depth
       )
-        throw new LangoError(
+        loopLevelDiagnostics.push(new LangoError(
           "LNG1220",
           node.line,
           `${node.type} ${node.level} exceeds enclosing loop depth ${depth}`,
-        );
-      const childDepth = node.type === "loop" ? depth + 1 : depth;
+        ));
+      const childDepth = ["loop", "for", "forObject"].includes(node.type)
+        ? depth + 1
+        : depth;
       nestedBodies(node).forEach((child) => validateLoopLevels(child, childDepth));
     }
   };
@@ -3029,6 +3113,11 @@ function validate(program, imports = []) {
           `${classNode.name}: super.method(...) requires an ancestor`,
         );
     });
+  }
+  if (loopLevelDiagnostics.length) {
+    const [primary] = loopLevelDiagnostics;
+    primary.diagnostics = loopLevelDiagnostics;
+    throw primary;
   }
 }
 
@@ -3369,6 +3458,30 @@ function emitDecimalExpression(node, flags) {
   const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod", "**": "pow" };
   return `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`;
 }
+function needsLoopLabel(body, nestedLoopDepth = 0) {
+  for (const node of body) {
+    if (
+      (node.type === "break" || node.type === "continue") &&
+      node.level === nestedLoopDepth + 1 &&
+      node.level > 1
+    ) return true;
+    const childLoopDepth = ["loop", "for", "forObject"].includes(node.type)
+      ? nestedLoopDepth + 1
+      : nestedLoopDepth;
+    const childBodies = [
+      node.thenBody,
+      node.elseBody,
+      node.tryBody,
+      node.catchBody,
+      node.finallyBody,
+      node.body,
+      ...(node.cases?.map((item) => item.body) ?? []),
+    ].filter(Boolean);
+    if (childBodies.some((child) => needsLoopLabel(child, childLoopDepth))) return true;
+  }
+  return false;
+}
+
 function emitStatement(node, depth, declared, flags) {
   const pad = "    ".repeat(depth);
   if (node.type === "globalDeclare") return "";
@@ -3465,11 +3578,24 @@ function emitStatement(node, depth, declared, flags) {
     flags.loopStack.pop();
     return `${pad}${label}: while (${node.condition === null ? "true" : `${node.until ? "!" : ""}${emitBoolean(node.condition, flags)}`}) {\n${body}${pad}}\n`;
   }
-  if (node.type === "for")
-    return `${pad}for (const ${node.item} of ${emitExpr(node.collection, flags)}) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+  if (node.type === "for") {
+    const label = needsLoopLabel(node.body) ? `__loop${++flags.loopCounter}` : null;
+    flags.loopStack.push(label);
+    const body = node.body
+      .map((item) => emitStatement(item, depth + 1, declared, flags))
+      .join("");
+    flags.loopStack.pop();
+    return `${pad}${label ? `${label}: ` : ""}for (const ${node.item} of ${emitExpr(node.collection, flags)}) {\n${body}${pad}}\n`;
+  }
   if (node.type === "forObject") {
     flags.entries = true;
-    return `${pad}for (const [${node.key}, ${node.value}] of __entries(${emitExpr(node.collection, flags)})) {\n${node.body.map((item) => emitStatement(item, depth + 1, declared, flags)).join("")}${pad}}\n`;
+    const label = needsLoopLabel(node.body) ? `__loop${++flags.loopCounter}` : null;
+    flags.loopStack.push(label);
+    const body = node.body
+      .map((item) => emitStatement(item, depth + 1, declared, flags))
+      .join("");
+    flags.loopStack.pop();
+    return `${pad}${label ? `${label}: ` : ""}for (const [${node.key}, ${node.value}] of __entries(${emitExpr(node.collection, flags)})) {\n${body}${pad}}\n`;
   }
   if (node.type === "switch") {
     const conditions = node.cases.map((item) =>

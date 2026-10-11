@@ -49,12 +49,31 @@ let failedTransaction = false;
 export const DB = Object.freeze({ Active: "active", RollbackOnly: "rollback_only", Failed: "failed" });
 const contexts = new Map();
 
+export class RuntimeConfigurationError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "RuntimeConfigurationError";
+    }
+}
+
 export function configure(options = {}) {
-    catalog = options.catalog ?? {};
-    output = options.output ?? null;
-    database = options.database_adapter ?? null;
+    if (options === null || typeof options !== "object" || Array.isArray(options))
+        throw new RuntimeConfigurationError("runtime configuration must be an object");
+    const nextCatalog = options.catalog ?? {};
+    const nextOutput = options.output ?? null;
+    const nextDatabase = options.database_adapter ?? null;
+    if (nextCatalog === null || typeof nextCatalog !== "object" || Array.isArray(nextCatalog))
+        throw new RuntimeConfigurationError("runtime catalog must be an object");
+    if (nextOutput !== null && typeof nextOutput !== "function")
+        throw new RuntimeConfigurationError("runtime output must be a function or null");
+    if (nextDatabase !== null && (typeof nextDatabase !== "object" && typeof nextDatabase !== "function"))
+        throw new RuntimeConfigurationError("runtime database_adapter must be an object or null");
+    catalog = nextCatalog;
+    output = nextOutput;
+    database = nextDatabase;
     failedTransaction = false;
     contexts.clear();
+    return null;
 }
 
 function requireDatabase() {

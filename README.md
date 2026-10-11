@@ -61,6 +61,31 @@ npm run run -- input.lango --catalog tr.json
 The same `--database` and `--catalog` options are available to `npm run
 test:lango -- input.lango` when Lango test blocks need host services.
 
+### Embedding a generated program
+
+`buildFile()` writes a matched private runtime next to the generated module.
+Before calling exported Lango entry points, import that runtime and configure
+it. `configure()` accepts an object with optional `output`, `catalog`, and
+`database_adapter` values; it returns `null`, resets dynamic context and
+transaction-failure state, and rejects an invalid configuration with
+`RuntimeConfigurationError`. `output` is a function (or `null`), `catalog` is
+a non-array object, and `database_adapter` is an object (or `null`).
+
+```js
+const runtime = await import("./.lango/runtime.mjs");
+const program = await import("./main.mjs");
+
+runtime.configure({
+  output: (value) => console.log(value),
+  catalog: { Hello: "Merhaba" },
+  database_adapter: null,
+});
+await program.main(["Ada"]);
+```
+
+The emitted runtime is tied to that build output; hosts must configure this
+private sibling module, not a separately installed runtime package.
+
 ## Faz 2
 
 Faz 2 adds same-module functions, `return`, calls with arity validation,
