@@ -15,6 +15,21 @@ export class LangoError extends Error {
   }
 }
 
+export function formatDiagnostics(error) {
+  const diagnostics = error instanceof LangoError
+    ? error.diagnostics ?? [error]
+    : [error];
+  return diagnostics.map((diagnostic) => {
+    if (!(diagnostic instanceof LangoError)) return String(diagnostic);
+    const source = diagnostic.sourceName ?? "<source>";
+    const { line, column } = diagnostic.span.start;
+    const related = (diagnostic.related ?? []).map((item) =>
+      `\n  related ${source}:${item.span.start.line}:${item.span.start.column}: ${item.message}`,
+    ).join("");
+    return `${source}:${line}:${column}: ${diagnostic.severity} ${diagnostic.code}: ${diagnostic.message}${related}`;
+  }).join("\n");
+}
+
 export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false, profile = {}) {
   const decimalProfile = validateDecimalProfile(profile);
   if (seen.size === 0)
@@ -100,12 +115,50 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
 
 export function compile(source, sourceName = "<source>", imports = [], includeTests = false, profile = {}) {
   validateDecimalProfile(profile);
-  if (source.includes("\t"))
-    throw new LangoError("LNG1001", 1, "TAB characters are not allowed");
+  const tabs = tabDiagnostics(source, sourceName);
+  if (tabs.length) throw tabs[0];
   const parser = new Parser(source, sourceName);
   const program = parser.parse();
-  validate(program, imports);
+  try {
+    validate(program, imports);
+  } catch (error) {
+    if (error instanceof LangoError && error.sourceName === null)
+      error.sourceName = sourceName;
+    if (error instanceof LangoError && error.diagnostics)
+      error.diagnostics.forEach((diagnostic) => {
+        if (diagnostic.sourceName === null) diagnostic.sourceName = sourceName;
+      });
+    throw error;
+  }
   return { javascript: emit(program, imports, includeTests), program };
+}
+
+export function diagnose(source, sourceName = "<source>", imports = [], includeTests = false, profile = {}) {
+  const tabs = tabDiagnostics(source, sourceName);
+  if (tabs.length) return tabs;
+  try {
+    compile(source, sourceName, imports, includeTests, profile);
+    return [];
+  } catch (error) {
+    if (error instanceof LangoError) return error.diagnostics ?? [error];
+    throw error;
+  }
+}
+
+function tabDiagnostics(source, sourceName) {
+  const diagnostics = [];
+  source.split(/\r?\n/).forEach((line, index) => {
+    for (let column = line.indexOf("\t"); column !== -1; column = line.indexOf("\t", column + 1))
+      diagnostics.push(new LangoError(
+        "LNG1001",
+        index + 1,
+        "TAB characters are not allowed",
+        sourceName,
+        column + 1,
+        column + 2,
+      ));
+  });
+  return diagnostics;
 }
 
 function validateDecimalProfile(profile) {
@@ -157,8 +210,8 @@ function sourceMapMappings(program, javascript) {
 }
 
 export function formatSource(source, sourceName = "<source>") {
-  if (source.includes("\t"))
-    throw new LangoError("LNG1001", 1, "TAB characters are not allowed");
+  const tabs = tabDiagnostics(source, sourceName);
+  if (tabs.length) throw tabs[0];
   new Parser(source, sourceName).parse();
   const lines = source.split(/\r?\n/).map((line) => formatLine(line));
   while (lines[0] === "") lines.shift();
@@ -1669,12 +1722,23 @@ function validate(program, imports = []) {
   );
   const nameDiagnostics = [];
   const duplicateDiagnostics = (items, code, label) => {
-    const seen = new Set();
+    const seen = new Map();
     for (const item of items) {
       const name = typeof item === "string" ? item : item.name;
-      if (seen.has(name))
-        nameDiagnostics.push(new LangoError(code, item.line ?? 1, `duplicate ${label} ${name}`));
-      seen.add(name);
+      if (seen.has(name)) {
+        const diagnostic = new LangoError(code, item.line ?? 1, `duplicate ${label} ${name}`);
+        const first = seen.get(name);
+        diagnostic.related = [{
+          message: `first ${label} ${name} declaration`,
+          span: {
+            start: { line: first.line ?? 1, column: 1 },
+            end: { line: first.line ?? 1, column: 1 },
+          },
+        }];
+        nameDiagnostics.push(diagnostic);
+      } else {
+        seen.set(name, item);
+      }
     }
   };
   duplicateDiagnostics(program.functions, "LNG1201", "function name");

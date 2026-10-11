@@ -58,6 +58,9 @@ An optional JSON translation catalog is passed to the runtime with `--catalog`:
 npm run run -- input.lango --catalog tr.json
 ```
 
+The same `--database` and `--catalog` options are available to `npm run
+test:lango -- input.lango` when Lango test blocks need host services.
+
 ## Faz 2
 
 Faz 2 adds same-module functions, `return`, calls with arity validation,

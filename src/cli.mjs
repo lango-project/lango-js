@@ -4,13 +4,13 @@ import os from "node:os";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
-import { buildFile, formatSource, LangoError } from "./compiler.mjs";
+import { buildFile, formatDiagnostics, formatSource, LangoError } from "./compiler.mjs";
 import { createSqliteAdapter } from "./database.mjs";
 import { Decimal } from "./runtime.mjs";
 
 const [command, inputPath, ...rest] = process.argv.slice(2);
-const displayError = (error) => error instanceof LangoError && error.diagnostics
-    ? error.diagnostics.map((item) => item.message).join("\n")
+const displayError = (error) => error instanceof LangoError
+    ? formatDiagnostics(error)
     : error instanceof Error ? error.message : error;
 const buildOptions = (arguments_) => {
     if (arguments_[0] !== "--out" || !arguments_[1]) return null;
@@ -42,6 +42,7 @@ const runOptions = (arguments_) => {
     if (arguments_[index] === "--") index += 1;
     return { ...options, args: arguments_.slice(index) };
 };
+const testOptions = command === "test" && inputPath ? runOptions(rest) : null;
 
 if (build) {
     try {
@@ -76,14 +77,23 @@ if (build) {
     } finally {
         database?.close();
     }
-} else if (command === "test" && inputPath && rest.length === 0) {
+} else if (testOptions) {
+    let database = null;
     try {
+        if (testOptions.args.length)
+            throw new Error("Lango test does not accept program arguments");
         const directory = await mkdtemp(path.join(os.tmpdir(), "lango-test-"));
         const outputPath = path.join(directory, "main.mjs");
         await buildFile(path.resolve(inputPath), outputPath, new Set(), true);
         const runtime = await import(pathToFileURL(path.join(directory, ".lango/runtime.mjs")).href);
         const program = await import(pathToFileURL(outputPath).href);
-        runtime.configure({ output: (value) => console.log(value) });
+        if (testOptions.database) database = createSqliteAdapter(path.resolve(testOptions.database));
+        const catalog = testOptions.catalog
+            ? JSON.parse(await readFile(path.resolve(testOptions.catalog), "utf8"))
+            : {};
+        if (!catalog || Array.isArray(catalog) || typeof catalog !== "object")
+            throw new Error("Lango test catalog must be a JSON object");
+        runtime.configure({ output: (value) => console.log(value), catalog, database_adapter: database });
         let failures = 0;
         const seenTests = new Set();
         for (const test of program.__langoTests ?? []) {
@@ -91,7 +101,7 @@ if (build) {
             seenTests.add(test.run);
             try {
                 program.__langoResetTests?.();
-                runtime.configure({ output: (value) => console.log(value) });
+                runtime.configure({ output: (value) => console.log(value), catalog, database_adapter: database });
                 test.run();
                 console.log(`PASS ${test.name}`);
             } catch (error) {
@@ -103,6 +113,8 @@ if (build) {
     } catch (error) {
         console.error(displayError(error));
         process.exitCode = error instanceof LangoError ? 1 : 2;
+    } finally {
+        database?.close();
     }
 } else if (command === "format" && inputPath && rest.length === 0) {
     try {
@@ -114,6 +126,6 @@ if (build) {
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else {
-    console.error("Usage: node src/cli.mjs build <input.lango> --out <output.mjs> [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango>\n       node src/cli.mjs format <input.lango>");
+    console.error("Usage: node src/cli.mjs build <input.lango> --out <output.mjs> [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
     process.exitCode = 2;
 }

@@ -35,6 +35,33 @@ contextual default connection and join-only nested transactions (D-054).
 
 ## Tooling
 
+### Repository and package roadmap
+
+Keep the current compiler implementation in the `lango-project/lango-js`
+repository. Before publishing, rename its package to `@lango-project/lango-js`
+while retaining the `lango` CLI command. The implementation, private emitted
+runtime, core SQLite adapter, and phase tests remain together until their public
+contracts stabilize.
+
+Create these repositories only at their extraction thresholds:
+
+* `lango-spec` when an implementation-independent, versioned language contract
+  and conformance suite are ready; until then, decisions and examples remain
+  alongside the implementation.
+* `lango-vscode` when diagnostics and formatting expose a stable editor-facing
+  API.
+* `lango-db-node` when database adapters beyond the core contextual SQLite
+  adapter, explicit connection selection, or pool configuration are introduced.
+* `lango-website` when the public package/API and introductory documentation are
+  ready to publish.
+* `lango-playground` after browser-targeted compilation and host configuration
+  are supported.
+
+Do not split a general `lango-stdlib` or `lango-conformance` repository before
+the runtime API stabilizes or a second compiler implementation exists. Notify
+the repository owner before any of these extraction thresholds requires
+directory or organization changes.
+
 ### Diagnostic model and recovery
 
 `LangoError` now carries severity and parser source spans, and independent
