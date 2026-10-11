@@ -1,6 +1,6 @@
 import path from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { RUNTIME_SOURCE } from "./runtime.mjs";
+import { Decimal, runtimeSource } from "./runtime.mjs";
 
 export class LangoError extends Error {
   constructor(code, line, message, sourceName = null, column = 1, endColumn = column) {
@@ -15,7 +15,8 @@ export class LangoError extends Error {
   }
 }
 
-export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false) {
+export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false, profile = {}) {
+  const decimalProfile = validateDecimalProfile(profile);
   if (seen.size === 0)
     await validateModuleInitializerCycles(inputPath, outputPath);
   if (seen.has(inputPath)) return;
@@ -24,7 +25,7 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
   const source = await readFile(inputPath, "utf8");
   const imports = collectImports(source, inputPath, outputPath);
   for (const item of imports)
-    await buildFile(item.sourcePath, item.outputPath, seen, includeTests);
+    await buildFile(item.sourcePath, item.outputPath, seen, includeTests, decimalProfile);
   for (const item of imports) {
     const importedProgram = new Parser(
       await readFile(item.sourcePath, "utf8"),
@@ -69,7 +70,7 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
     }
   }
 
-  const compiled = compile(source, inputPath, imports, includeTests);
+  const compiled = compile(source, inputPath, imports, includeTests, decimalProfile);
   const output = compiled.javascript.replace(
     "//# sourceMappingURL=main.mjs.map",
     `//# sourceMappingURL=${path.basename(outputPath)}.map`,
@@ -89,7 +90,7 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
       mappings: sourceMapMappings(compiled.program, output),
     }) + "\n",
   );
-  await writeFile(path.join(directory, ".lango/runtime.mjs"), RUNTIME_SOURCE);
+  await writeFile(path.join(directory, ".lango/runtime.mjs"), runtimeSource(decimalProfile));
   await writeFile(
     path.join(directory, ".lango/bignumber.mjs"),
     await readFile(new URL("./vendor/bignumber.mjs", import.meta.url), "utf8"),
@@ -97,13 +98,24 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
   );
 }
 
-export function compile(source, sourceName = "<source>", imports = [], includeTests = false) {
+export function compile(source, sourceName = "<source>", imports = [], includeTests = false, profile = {}) {
+  validateDecimalProfile(profile);
   if (source.includes("\t"))
     throw new LangoError("LNG1001", 1, "TAB characters are not allowed");
   const parser = new Parser(source, sourceName);
   const program = parser.parse();
   validate(program, imports);
   return { javascript: emit(program, imports, includeTests), program };
+}
+
+function validateDecimalProfile(profile) {
+  const decimal_division_scale = profile.decimal_division_scale ?? 6;
+  const decimal_division_rounding = profile.decimal_division_rounding ?? Decimal.Rounding.HalfEven;
+  if (!Number.isInteger(decimal_division_scale) || decimal_division_scale < 0)
+    throw new LangoError("LNG1262", 1, "decimal_division_scale must be a non-negative integer");
+  if (!Object.values(Decimal.Rounding).includes(decimal_division_rounding))
+    throw new LangoError("LNG1263", 1, `unknown decimal_division_rounding ${decimal_division_rounding}`);
+  return { decimal_division_scale, decimal_division_rounding };
 }
 
 const BASE64_VLQ = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

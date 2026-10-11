@@ -1,9 +1,34 @@
-export const RUNTIME_SOURCE = `import BigNumber from "./bignumber.mjs";
+export const Decimal = Object.freeze({
+    Rounding: Object.freeze({
+        Up: "up", Down: "down", Ceil: "ceil", Floor: "floor",
+        HalfUp: "half_up", HalfDown: "half_down", HalfEven: "half_even",
+        HalfCeil: "half_ceil", HalfFloor: "half_floor",
+    }),
+});
+
+const ROUNDING_MODES = Object.freeze({
+    [Decimal.Rounding.Up]: "ROUND_UP", [Decimal.Rounding.Down]: "ROUND_DOWN",
+    [Decimal.Rounding.Ceil]: "ROUND_CEIL", [Decimal.Rounding.Floor]: "ROUND_FLOOR",
+    [Decimal.Rounding.HalfUp]: "ROUND_HALF_UP", [Decimal.Rounding.HalfDown]: "ROUND_HALF_DOWN",
+    [Decimal.Rounding.HalfEven]: "ROUND_HALF_EVEN", [Decimal.Rounding.HalfCeil]: "ROUND_HALF_CEIL",
+    [Decimal.Rounding.HalfFloor]: "ROUND_HALF_FLOOR",
+});
+
+export function runtimeSource(profile = {}) {
+    const scale = profile.decimal_division_scale ?? 6;
+    const rounding = profile.decimal_division_rounding ?? Decimal.Rounding.HalfEven;
+    if (!Number.isInteger(scale) || scale < 0)
+        throw new Error("decimal_division_scale must be a non-negative integer");
+    if (!(rounding in ROUNDING_MODES))
+        throw new Error(`unknown decimal_division_rounding ${rounding}`);
+    return `import BigNumber from "./bignumber.mjs";
 
 const Decimal = BigNumber.clone({
-    DECIMAL_PLACES: 6,
-    ROUNDING_MODE: BigNumber.ROUND_HALF_EVEN,
+    DECIMAL_PLACES: ${scale},
+    ROUNDING_MODE: BigNumber.${ROUNDING_MODES[rounding]},
 });
+Decimal.Rounding = Object.freeze(${JSON.stringify(Decimal.Rounding)});
+export { Decimal };
 
 export function decimal(value) {
     return new Decimal(value);
@@ -438,3 +463,6 @@ export function contextRestore(names) {
     }
 }
 `;
+}
+
+export const RUNTIME_SOURCE = runtimeSource();

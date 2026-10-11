@@ -8,11 +8,9 @@ Items belong here until an explicit decision moves them to `decisions.md`.
 ### Configurable Decimal runtime and lowering
 
 Dollar-marked bindings, properties, parameters, object/JSON fields, operation
-lowering, the pinned embedded backend, and the baseline JavaScript/SQL boundary
-conversion exist. Complete the compiler-profile surface for Decimal division
-scale and rounding, propagate that profile into the emitted isolated runtime,
-and extend boundary analysis and conformance tests whenever a new host callable
-path is introduced.
+lowering, the pinned embedded backend, configurable division, and the baseline
+JavaScript/SQL boundary conversion exist. Extend boundary analysis and
+conformance tests whenever a new host callable path is introduced.
 
 ### Definite assignment and non-coercive operations
 
