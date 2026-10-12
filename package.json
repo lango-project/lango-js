@@ -1,10 +1,13 @@
 {
   "name": "@lango-project/lango-js",
   "version": "0.1.0",
-  "private": true,
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
-    "lango": "./src/cli.mjs"
+    "lango": "src/cli.mjs"
   },
   "exports": {
     ".": "./src/compiler.mjs",
@@ -15,7 +18,8 @@
     "src/*.mjs",
     "src/template/**",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "node src/cli.mjs build",
