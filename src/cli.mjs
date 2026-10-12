@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import os from "node:os";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import { buildFile, formatDiagnostics, formatSource, LangoError } from "./compiler.mjs";
@@ -44,7 +44,47 @@ const runOptions = (arguments_) => {
 };
 const testOptions = command === "test" && inputPath ? runOptions(rest) : null;
 
-if (build) {
+async function initProject(directory) {
+    const target = path.resolve(directory);
+    await mkdir(target, { recursive: true });
+    if ((await readdir(target)).length)
+        throw new Error(`Lango init requires an empty directory: ${target}`);
+    const packageJson = JSON.parse(
+        await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    const files = [
+        ".gitignore",
+        "README.md",
+        "package.json",
+        "src/main.lango",
+        "test/main.lango",
+        ".vscode/extensions.json",
+        ".vscode/settings.json",
+    ];
+    for (const file of files) {
+        const template = await readFile(
+            new URL(`./template/${file}`, import.meta.url),
+            "utf8",
+        );
+        const output = path.join(target, file);
+        await mkdir(path.dirname(output), { recursive: true });
+        await writeFile(
+            output,
+            template.replaceAll("{{LANGO_VERSION}}", `^${packageJson.version}`),
+            "utf8",
+        );
+    }
+}
+
+if (command === "init" && inputPath && rest.length === 0) {
+    try {
+        await initProject(inputPath);
+        console.log(`Created Lango project in ${path.resolve(inputPath)}`);
+    } catch (error) {
+        console.error(displayError(error));
+        process.exitCode = 2;
+    }
+} else if (build) {
     try {
         await buildFile(path.resolve(inputPath), path.resolve(build.outputPath), new Set(), false, build.profile);
     } catch (error) {
@@ -126,6 +166,6 @@ if (build) {
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else {
-    console.error("Usage: node src/cli.mjs build <input.lango> --out <output.mjs> [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
+    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
     process.exitCode = 2;
 }

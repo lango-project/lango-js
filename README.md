@@ -36,6 +36,18 @@ private `.lango/runtime.mjs` beside the output. Run the current checks with:
 npm test
 ```
 
+Create a new application project with:
+
+```sh
+npx @lango-project/lango-js init hello-lango
+cd hello-lango
+npm install
+npm run run
+```
+
+The generated project includes source and test files, npm scripts, and VS Code
+settings that recommend the Lango extension when it becomes available.
+
 Faz 1 deliberately rejects all syntax outside this vertical slice. It is the
 base for progressively implementing the accepted language decisions rather than
 a claim of full-language support.

@@ -40,10 +40,10 @@ contextual default connection and join-only nested transactions (D-054).
 ### Repository and package roadmap
 
 Keep the current compiler implementation in the `lango-project/lango-js`
-repository. Before publishing, rename its package to `@lango-project/lango-js`
-while retaining the `lango` CLI command. The implementation, private emitted
-runtime, core SQLite adapter, and phase tests remain together until their public
-contracts stabilize.
+repository. Its package is named `@lango-project/lango-js` and retains the
+`lango` CLI command. It remains private until the repository owner explicitly
+approves publishing. The implementation, private emitted runtime, core SQLite
+adapter, and phase tests remain together until their public contracts stabilize.
 
 Create these repositories only at their extraction thresholds:
 
