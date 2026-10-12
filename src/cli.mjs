@@ -53,7 +53,7 @@ async function initProject(directory) {
         await readFile(new URL("../package.json", import.meta.url), "utf8"),
     );
     const files = [
-        ".gitignore",
+        ["gitignore", ".gitignore"],
         "README.md",
         "package.json",
         "src/main.lango",
@@ -61,12 +61,13 @@ async function initProject(directory) {
         ".vscode/extensions.json",
         ".vscode/settings.json",
     ];
-    for (const file of files) {
+    for (const entry of files) {
+        const [templateFile, outputFile] = Array.isArray(entry) ? entry : [entry, entry];
         const template = await readFile(
-            new URL(`./template/${file}`, import.meta.url),
+            new URL(`./template/${templateFile}`, import.meta.url),
             "utf8",
         );
-        const output = path.join(target, file);
+        const output = path.join(target, outputFile);
         await mkdir(path.dirname(output), { recursive: true });
         await writeFile(
             output,

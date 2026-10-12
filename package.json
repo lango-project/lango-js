@@ -11,6 +11,12 @@
     "./runtime": "./src/runtime.mjs",
     "./database": "./src/database.mjs"
   },
+  "files": [
+    "src/*.mjs",
+    "src/template/**",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "node src/cli.mjs build",
     "run": "node src/cli.mjs run",
