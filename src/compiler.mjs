@@ -519,6 +519,12 @@ class Parser {
         );
       const line = this.line();
       const text = line.text.slice(indent);
+      if (text === "else")
+        this.fail(
+          line,
+          "LNG1110",
+          "else must be indented 2 spaces more than its if",
+        );
       if (text.startsWith("assert ")) {
         body.push({
           type: "assert",

@@ -5,7 +5,7 @@ import test from "node:test";
 test("Faz 218 exposes package CLI and host integration entrypoints", async () => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8"));
     assert.equal(packageJson.name, "@lango-project/lango-js");
-    assert.equal(packageJson.version, "0.1.1");
+    assert.equal(packageJson.version, "0.1.2");
     assert.equal(packageJson.bin.lango, "src/cli.mjs");
     assert.deepEqual(packageJson.exports, {
         ".": "./src/compiler.mjs",
