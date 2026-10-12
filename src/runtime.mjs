@@ -31,7 +31,15 @@ Decimal.Rounding = Object.freeze(${JSON.stringify(Decimal.Rounding)});
 export { Decimal };
 
 export function decimal(value) {
-    return new Decimal(value);
+    let result;
+    try {
+        result = new Decimal(value);
+    } catch {
+        throw new TypeError("Decimal value must be finite");
+    }
+    if (!result.isFinite())
+        throw new TypeError("Decimal value must be finite");
+    return result;
 }
 
 export function isDecimal(value) {

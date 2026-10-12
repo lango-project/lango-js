@@ -1215,6 +1215,13 @@ function expr(source, line, parser) {
   const localize = /^_\((.*)\)$/.exec(text);
   if (localize)
     return { type: "translate", literal: literal(localize[1], line, parser) };
+  const decimal = /^\$\((.*)\)$/.exec(text);
+  if (decimal) {
+    const arguments_ = decimal[1] === "" ? [] : splitTopLevel(decimal[1]);
+    if (arguments_.length !== 1)
+      parser.fail(line, "LNG1261", "$() requires exactly one value");
+    return { type: "decimal", value: expr(arguments_[0], line, parser) };
+  }
   const construct =
     /^new ([A-Za-z_]\w*(?:[./][A-Za-z_]\w*)*)\((.*)\)$/.exec(text);
   if (construct)
@@ -1638,7 +1645,8 @@ function validate(program, imports = []) {
   const hostFunctions = new Set(["fetch"]);
   const isDecimalValue = (value) =>
     value &&
-    ((value.type === "raw" && (value.value.startsWith("$") || value.value.includes(".$"))) ||
+    (value.type === "decimal" ||
+      (value.type === "raw" && (value.value.startsWith("$") || value.value.includes(".$"))) ||
       (value.type === "unary" &&
         value.operator === "negate" &&
         isDecimalValue(value.value)) ||
@@ -3457,6 +3465,7 @@ function collectEmitLocals(body, names = new Set(), nested = false) {
 }
 function emitDecimalExpression(node, flags) {
   const operand = (value) => {
+    if (value.type === "decimal") return emitExpr(value, flags);
     if (value.type === "binary" && ["+", "-", "*", "/", "%", "**"].includes(value.operator))
       return emitDecimalExpression(value, flags);
     if (value.type === "raw" && /^\d+(?:\.\d+)?$/.test(value.value)) {
@@ -3715,6 +3724,7 @@ function emitExpr(node, flags) {
     value?.type === "raw" &&
     (value.value.startsWith("$") || value.value.includes(".$"));
   const decimalValue = (value) =>
+    value?.type === "decimal" ||
     decimalRaw(value) ||
     (value?.type === "binary" && (decimalValue(value.left) || decimalValue(value.right))) ||
     (value?.type === "unary" && decimalValue(value.value));
@@ -3749,6 +3759,10 @@ function emitExpr(node, flags) {
           : (node.value.includes("?.") || /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value))
             ? normalize(node.value)
             : node.value;
+  if (node.type === "decimal") {
+    flags.decimal = true;
+    return `__decimal(${emitExpr(node.value, flags)})`;
+  }
   if (node.type === "sql") {
     flags.sql = true;
     const text = node.parts
