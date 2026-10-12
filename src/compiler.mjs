@@ -522,7 +522,7 @@ class Parser {
       if (text === "else")
         this.fail(
           line,
-          "LNG1110",
+          "LNG1259",
           "else must be indented 2 spaces more than its if",
         );
       if (text.startsWith("assert ")) {
@@ -546,7 +546,16 @@ class Parser {
         this.blank();
         let elseBody = null;
         if (this.peek() === `${" ".repeat(indent + 2)}else`) {
+          const elseLine = { text: this.peek(), number: this.i + 1 };
           this.i += 1;
+          this.blank();
+          const elseStart = this.peek();
+          if (!elseStart || spaces(elseStart) !== indent + 6)
+            this.fail(
+              elseStart ? { text: elseStart, number: this.i + 1 } : elseLine,
+              "LNG1260",
+              "else body must be indented 4 spaces more than else",
+            );
           elseBody = this.block(indent + 6);
         }
         body.push({
