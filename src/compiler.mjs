@@ -1658,6 +1658,21 @@ function validate(program, imports = []) {
         ((value.left.type === "raw" && value.left.value === "null" && isDecimalValue(value.right)) ||
           (value.right.type === "raw" && value.right.value === "null" && isDecimalValue(value.left)) ||
           (isDecimalValue(value.left) && isDecimalValue(value.right)))));
+  const decimalParameters = (fn) => {
+    const parameterNames = new Set(fn.parameters.map((parameter) => parameter.name));
+    const accepted = new Set();
+    const visit = (node) => {
+      if (!node || typeof node !== "object") return;
+      if (node.type === "decimal" && node.value?.type === "raw" && parameterNames.has(node.value.value))
+        accepted.add(node.value.value);
+      Object.values(node).forEach((child) => {
+        if (Array.isArray(child)) child.forEach(visit);
+        else visit(child);
+      });
+    };
+    visit(fn.body);
+    return accepted;
+  };
   const returns = (body, result = []) => {
     for (const node of body) {
       if (node.type === "return") result.push(node.value);
@@ -2080,11 +2095,13 @@ function validate(program, imports = []) {
         );
       if (target) {
         validateRequiredArguments(target, value, value.name);
+        const decimalArguments = decimalParameters(target);
         value.arguments.forEach((argument, index) => {
           const parameter = target.parameters[index];
           if (
             parameter &&
             !parameter.name.startsWith("$") &&
+            !decimalArguments.has(parameter.name) &&
             isDecimalValue(argument)
           )
             throw new LangoError(

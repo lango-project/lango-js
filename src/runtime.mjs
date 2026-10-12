@@ -31,6 +31,7 @@ Decimal.Rounding = Object.freeze(${JSON.stringify(Decimal.Rounding)});
 export { Decimal };
 
 export function decimal(value) {
+    if (value instanceof Decimal) return value;
     let result;
     try {
         result = new Decimal(value);

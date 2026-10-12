@@ -43,6 +43,23 @@ main(args)
     assert.equal(program.main([]).toFixed(), "9007199254740994");
 });
 
+test("Faz 233 accepts a Decimal argument explicitly converted by $()", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase233-"));
+    const input = path.join(directory, "input.lango");
+    const output = path.join(directory, "main.mjs");
+    await writeFile(input, `export main(args)
+
+topla(a, $b)
+    return $(a) + $b
+
+main(args)
+    return topla($10, $2)
+`);
+    await buildFile(input, output);
+    const program = await import(pathToFileURL(output).href);
+    assert.equal(program.main([]).toFixed(), "12");
+});
+
 test("Faz 233 requires one $() argument", () => {
     for (const source of ["$()", "$(1, 2)"])
         assert.throws(
