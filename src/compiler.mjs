@@ -518,7 +518,10 @@ class Parser {
           `expected ${indent} spaces`,
         );
       const line = this.line();
-      const text = line.text.slice(indent);
+      const initialText = line.text.slice(indent);
+      const text = /^([A-Za-z_]\w*) = \{$/.test(initialText)
+        ? initialText
+        : this.continuedStatement(initialText, line, indent);
       if (text === "else")
         this.fail(
           line,
@@ -754,6 +757,52 @@ class Parser {
         });
       else if (/^[A-Za-z_]\w*\+\+$/.test(text))
         body.push({ type: "increment", name: text.slice(0, -2) });
+      else if (/^(\$?[A-Za-z_]\w*) = new ([A-Za-z_]\w*(?:[./][A-Za-z_]\w*)*)\(\(([^)]*)\)$/.test(text)) {
+        const [, name, constructor, parameters] =
+          /^(\$?[A-Za-z_]\w*) = new ([A-Za-z_]\w*(?:[./][A-Za-z_]\w*)*)\(\(([^)]*)\)$/.exec(text);
+        const closure = {
+          type: "closure",
+          parameters: this.parameters(parameters, line),
+          captures: this.captures(),
+          line: line.number,
+          body: this.block(indent + 4),
+        };
+        this.blank();
+        if (this.peek() !== `${" ".repeat(indent)})`)
+          this.fail(line, "LNG1263", "constructor callback requires a closing parenthesis");
+        this.i += 1;
+        body.push({
+          type: "assign",
+          name,
+          value: { type: "new", name: constructor, arguments: [closure], line: line.number },
+        });
+      }
+      else if (/^(.+)\.([A-Za-z_]\w*)\((.*), \(([^)]*)\)$/.test(text)) {
+        const [, receiver, name, argumentsText, parameters] =
+          /^(.+)\.([A-Za-z_]\w*)\((.*), \(([^)]*)\)$/.exec(text);
+        const closure = {
+          type: "closure",
+          parameters: this.parameters(parameters, line),
+          captures: this.captures(),
+          line: line.number,
+          body: this.block(indent + 4),
+        };
+        this.blank();
+        if (this.peek() !== `${" ".repeat(indent)})`)
+          this.fail(line, "LNG1264", "method callback requires a closing parenthesis");
+        this.i += 1;
+        body.push({
+          type: "expression",
+          value: {
+            type: "methodCall",
+            receiver,
+            optional: false,
+            name,
+            arguments: [...splitTopLevel(argumentsText).map((item) => expr(item, line, this)), closure],
+            line: line.number,
+          },
+        });
+      }
       else if (/^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.test(text)) {
         const [, first, name, parameters] = /^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.exec(text);
         const steps = [];
@@ -952,6 +1001,17 @@ class Parser {
       xml += `\n${this.lines[this.i++]}`;
     }
   }
+  continuedStatement(source, line, indent) {
+    let depth = curlyDelimiterDepth(source);
+    while (depth > 0) {
+      const next = this.peek();
+      if (next === undefined || spaces(next) < indent)
+        this.fail(line, "LNG1262", "unterminated multi-line expression");
+      source += ` ${this.line().text.trim()}`;
+      depth = curlyDelimiterDepth(source);
+    }
+    return source;
+  }
   captures() {
     if (!(this.peek() ?? "").trimStart().startsWith("capture ")) return [];
     const line = this.line();
@@ -1085,6 +1145,23 @@ function topLevelBinary(text, operators, rightAssociative = false) {
     }
   }
   return match;
+}
+
+function curlyDelimiterDepth(text) {
+  let quote = null;
+  let depth = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (quote !== null) {
+      if (character === "\\") { index += 1; continue; }
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') { quote = character; continue; }
+    if (character === "{") depth += 1;
+    if (character === "}") depth -= 1;
+  }
+  return depth;
 }
 
 function splitTopLevel(text, separator = ", ") {
@@ -2583,6 +2660,10 @@ function validate(program, imports = []) {
           ? node
           : node.type === "return" && node.value?.type === "closure"
             ? node.value
+            : node.type === "assign" && node.value?.type === "new" && node.value.arguments.length === 1 && node.value.arguments[0].type === "closure"
+              ? node.value.arguments[0]
+              : node.type === "expression" && node.value?.type === "methodCall" && node.value.arguments.at(-1)?.type === "closure"
+                ? node.value.arguments.at(-1)
             : null;
       if (closure) {
         const localBindings = new Set([
@@ -2655,7 +2736,7 @@ function validate(program, imports = []) {
           classScope,
           expiredCatchBindings,
         );
-      if (node.type === "closureAssign") available.add(node.name);
+      if (node.type === "closureAssign" || node.type === "assign") available.add(node.name);
         continue;
       }
       if (node.type === "assign" && !node.name.startsWith("@"))
@@ -3804,7 +3885,9 @@ function emitExpr(node, flags) {
     return `__finite(-${numericLiteral ? emitExpr(node.value, flags) : `__requireNumber(${emitExpr(node.value, flags)})`})`;
   }
   if (node.type === "new")
-    return `new ${node.name.replaceAll("/", ".")}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    return `new ${node.name.replaceAll("/", ".")}(${node.arguments.map((item) =>
+      item.type === "closure" ? emitClosure(item, 0, flags) : emitExpr(item, flags),
+    ).join(", ")})`;
   if (node.type === "superMethodCall")
     return `super.${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "index")
@@ -3839,7 +3922,9 @@ function emitExpr(node, flags) {
       flags.arrayBindings?.has(node.receiver)
         ? "push"
         : node.name;
-    const arguments_ = node.arguments.map((item) => emitExpr(item, flags)).join(", ");
+    const arguments_ = node.arguments.map((item) =>
+      item.type === "closure" ? emitClosure(item, 0, flags) : emitExpr(item, flags),
+    ).join(", ");
     const helperCall = (helper) => {
       const call = `${helper}(${receiver}${arguments_ ? `, ${arguments_}` : ""})`;
       if (!node.optional) return call;
