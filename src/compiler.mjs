@@ -231,7 +231,7 @@ function formatLine(line) {
 
 class Parser {
   constructor(source, name) {
-    this.lines = source.split(/\r?\n/).map((line) => stripComment(line).trimEnd());
+    this.lines = normalizeKebabIdentifiers(source).split(/\r?\n/).map((line) => stripComment(line).trimEnd());
     this.name = name;
     this.i = 0;
   }
@@ -1162,6 +1162,49 @@ function curlyDelimiterDepth(text) {
     if (character === "}") depth -= 1;
   }
   return depth;
+}
+
+const KEBAB_MARKER = "__lango_dash__";
+
+function normalizeKebabIdentifiers(source) {
+  let result = "";
+  let quote = null;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote !== null) {
+      result += character;
+      if (character === "\\") result += source[++index] ?? "";
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') { quote = character; result += character; continue; }
+    const match = /^[A-Za-z_]\w*(?:-[A-Za-z_]\w*)+/.exec(source.slice(index));
+    if (match) {
+      result += match[0].replaceAll("-", KEBAB_MARKER);
+      index += match[0].length - 1;
+      continue;
+    }
+    result += character;
+  }
+  return result;
+}
+
+function kebabName(name) {
+  return name.replaceAll(KEBAB_MARKER, "-");
+}
+
+function emitKebabMember(receiver, operator, name) {
+  return name.includes(KEBAB_MARKER)
+    ? `${receiver}${operator === "?." ? "?." : ""}[${JSON.stringify(kebabName(name))}]`
+    : `${receiver}${operator}${name}`;
+}
+
+function emitKebabPath(value) {
+  return value.replace(/(\?\.|\.)([A-Za-z_]\w*)/g, (all, operator, name) =>
+    name.includes(KEBAB_MARKER)
+      ? emitKebabMember("", operator, name)
+      : all,
+  );
 }
 
 function splitTopLevel(text, separator = ", ") {
@@ -3854,9 +3897,9 @@ function emitExpr(node, flags) {
           : normalize(`this.#${node.value.slice(1)}`)
         : flags.className && node.value.startsWith("_")
           ? normalize(`this.${node.value}`)
-          : (node.value.includes("?.") || /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value))
-            ? normalize(node.value)
-            : node.value;
+          : (node.value.includes("?.") || node.value.includes(KEBAB_MARKER) || /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value))
+            ? normalize(emitKebabPath(node.value))
+            : emitKebabPath(node.value);
   if (node.type === "decimal") {
     flags.decimal = true;
     return `__decimal(${emitExpr(node.value, flags)})`;
@@ -3896,7 +3939,7 @@ function emitExpr(node, flags) {
     );
   if (node.type === "property")
     return normalize(
-      `${emitExpr(node.receiver, flags)}${node.optional ? "?." : "."}${node.name}`,
+      emitKebabMember(emitExpr(node.receiver, flags), node.optional ? "?." : ".", node.name),
     );
   if (node.type === "methodCall" || node.type === "namespaceMethodCall") {
     const namespace = node.type === "namespaceMethodCall";
@@ -3955,7 +3998,9 @@ function emitExpr(node, flags) {
       flags.insertAt = true;
       return helperCall("__insertAt");
     }
-    const call = `${receiver}${visibility === false ? ".#" : node.optional ? "?." : "."}${method}(${arguments_})`;
+    const call = visibility === false
+      ? `${receiver}.#${method}(${arguments_})`
+      : emitKebabMember(receiver, node.optional ? "?." : ".", method) + `(${arguments_})`;
     if (node.optional) return normalize(call);
     if (
       visibility === undefined &&
@@ -3971,7 +4016,8 @@ function emitExpr(node, flags) {
   if (node.type === "object")
     return `{ ${node.fields.map((item) => {
       const value = emitExpr(item.value, flags);
-      if (!item.key.startsWith("$")) return `${item.key}: ${value}`;
+      if (!item.key.startsWith("$"))
+        return `${item.key.includes(KEBAB_MARKER) ? JSON.stringify(kebabName(item.key)) : item.key}: ${value}`;
       flags.decimal = true;
       return `${JSON.stringify(item.key)}: __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value})`;
     }).join(", ")} }`;
