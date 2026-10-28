@@ -15,8 +15,13 @@ const displayError = (error) => error instanceof LangoError
 const buildOptions = (arguments_) => {
     if (arguments_[0] !== "--out" || !arguments_[1]) return null;
     const profile = {};
-    for (let index = 2; index < arguments_.length; index += 2) {
+    for (let index = 2; index < arguments_.length;) {
         const option = arguments_[index];
+        if (option === "--executable") {
+            profile.executable = true;
+            index += 1;
+            continue;
+        }
         const value = arguments_[index + 1];
         if (!value) return null;
         if (option === "--decimal-division-scale")
@@ -24,6 +29,7 @@ const buildOptions = (arguments_) => {
         else if (option === "--decimal-division-rounding")
             profile.decimal_division_rounding = Decimal.Rounding[value] ?? value;
         else return null;
+        index += 2;
     }
     return { outputPath: arguments_[1], profile };
 };
@@ -167,6 +173,6 @@ if (command === "init" && inputPath && rest.length === 0) {
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else {
-    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
+    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--executable] [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
     process.exitCode = 2;
 }

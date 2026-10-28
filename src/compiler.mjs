@@ -32,7 +32,8 @@ export function formatDiagnostics(error) {
 
 export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false, profile = {}) {
   const decimalProfile = validateDecimalProfile(profile);
-  if (seen.size === 0)
+  const isEntryPoint = seen.size === 0;
+  if (isEntryPoint)
     await validateModuleInitializerCycles(inputPath, outputPath);
   if (seen.has(inputPath)) return;
   seen.add(inputPath);
@@ -86,10 +87,19 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
   }
 
   const compiled = compile(source, inputPath, imports, includeTests, decimalProfile);
-  const output = compiled.javascript.replace(
+  let output = compiled.javascript.replace(
     "//# sourceMappingURL=main.mjs.map",
     `//# sourceMappingURL=${path.basename(outputPath)}.map`,
   );
+  if (isEntryPoint && profile.executable) {
+    const main = compiled.program.functions.find((item) => item.name === "main" && item.exported);
+    if (!main)
+      throw new LangoError("LNG1265", 1, "an executable build requires export main(args)", inputPath);
+    output = output.replace(
+      `//# sourceMappingURL=${path.basename(outputPath)}.map`,
+      `const { configure } = await import("./.lango/runtime.mjs");\nconfigure({ output: (value) => console.log(value) });\nawait main(process.argv.slice(2));\n//# sourceMappingURL=${path.basename(outputPath)}.map`,
+    );
+  }
   const directory = path.dirname(outputPath);
 
   await mkdir(path.join(directory, ".lango"), { recursive: true });
