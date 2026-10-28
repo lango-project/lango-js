@@ -787,7 +787,7 @@ class Parser {
           value: { type: "new", name: constructor, arguments: [closure], line: line.number },
         });
       }
-      else if (/^(.+)\.([A-Za-z_]\w*)\((.*), \(([^)]*)\)$/.test(text)) {
+      else if (!text.includes(" = ") && /^(.+)\.([A-Za-z_]\w*)\((.*), \(([^)]*)\)$/.test(text)) {
         const [, receiver, name, argumentsText, parameters] =
           /^(.+)\.([A-Za-z_]\w*)\((.*), \(([^)]*)\)$/.exec(text);
         const closure = {
@@ -813,7 +813,34 @@ class Parser {
           },
         });
       }
-      else if (/^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.test(text)) {
+      else if (/^(\$?[A-Za-z_]\w*) = (.+)\.([A-Za-z_]\w*)\((?:(.*), )?\(([^)]*)\)$/.test(text)) {
+        const [, name, receiver, method, argumentsText, parameters] =
+          /^(\$?[A-Za-z_]\w*) = (.+)\.([A-Za-z_]\w*)\((?:(.*), )?\(([^)]*)\)$/.exec(text);
+        const closure = {
+          type: "closure",
+          parameters: this.parameters(parameters, line),
+          captures: this.captures(),
+          line: line.number,
+          body: this.block(indent + 4),
+        };
+        this.blank();
+        if (this.peek() !== `${" ".repeat(indent)})`)
+          this.fail(line, "LNG1266", "assigned method callback requires a closing parenthesis");
+        this.i += 1;
+        body.push({
+          type: "assign",
+          name,
+          value: {
+            type: "methodCall",
+            receiver,
+            optional: false,
+            name: method,
+            arguments: [...(argumentsText ? splitTopLevel(argumentsText).map((item) => expr(item, line, this)) : []), closure],
+            line: line.number,
+          },
+        });
+      }
+      else if (!text.includes(" = ") && /^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.test(text)) {
         const [, first, name, parameters] = /^(.+)\.([A-Za-z_]\w*)\(\(([^)]*)\)$/.exec(text);
         const steps = [];
         let step = { name, parameters: this.parameters(parameters, line), captures: this.captures(), line: line.number, body: this.block(indent + 4) };
