@@ -1492,6 +1492,17 @@ function expr(source, line, parser) {
         : [],
       line: line.number,
     };
+  const indexedCall = /^(.+)\[(.+)\]\((.*)\)$/.exec(text);
+  if (indexedCall)
+    return {
+      type: "indexedCall",
+      receiver: expr(indexedCall[1], line, parser),
+      index: expr(indexedCall[2], line, parser),
+      arguments: indexedCall[3]
+        ? splitTopLevel(indexedCall[3]).map((item) => expr(item, line, parser))
+        : [],
+      line: line.number,
+    };
   const methodCall =
     /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*?)(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(
       text,
@@ -1797,6 +1808,7 @@ function validate(program, imports = []) {
     ["is_array", 1],
     ["range", [1, 2, 3]],
     ["to_js_number", 1],
+    ["import_module", 1],
     ["start_trans", 0], ["commit_trans", 0], ["rollback_trans", 0], ["trans_state", 0],
   ]);
   const hostFunctions = new Set(["fetch"]);
@@ -2763,7 +2775,9 @@ function validate(program, imports = []) {
           (name) =>
             !localBindings.has(name) &&
             !contextNames.has(name) &&
-            !globalNames.has(name),
+            !globalNames.has(name) &&
+            !standardFunctions.has(name) &&
+            !hostFunctions.has(name),
         );
         const captures = new Set(closure.captures);
         for (const name of needed)
@@ -4127,6 +4141,9 @@ function emitExpr(node, flags) {
       return `__toJsNumber(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
     }
   if (node.type === "call")
+    if (node.name === "import_module")
+      return `import(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+  if (node.type === "call")
     if (node.name === "from_json" || node.name === "to_json") {
       flags.json = true;
       const helper = node.name === "from_json" ? "__fromJson" : "__toJson";
@@ -4165,6 +4182,10 @@ function emitExpr(node, flags) {
       return `__call(${node.name}, ${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
     } else
       return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+  if (node.type === "indexedCall") {
+    flags.call = true;
+    return `__call(${emitExpr(node.receiver, flags)}[${emitExpr(node.index, flags)}], ${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+  }
   if (node.type === "string") return emitString(node.literal, flags);
   if (node.type === "xml") {
     flags.xml = true;
