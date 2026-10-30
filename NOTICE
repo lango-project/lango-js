@@ -1,2 +1,7 @@
 Lango
 Copyright 2026 Savas Alparslan
+
+This product includes @xmldom/xmldom 0.9.12.
+Copyright 2019-present Christopher J. Brody and other contributors.
+Copyright 2012-2017 @jindw <jindw@xidea.org> and other contributors.
+Licensed under the MIT License; see src/vendor/xmldom.LICENSE.md.

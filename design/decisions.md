@@ -1287,9 +1287,19 @@ It cannot supply a tag name, attribute name, raw markup, or another syntactic
 XML fragment. This makes the literal a safe XML-generation convenience rather
 than a dynamic XML templating language.
 
-The core language has no XML document value, parser, selector/query API, or
-mutation API. Programs that need dynamic XML structure or XML manipulation use
-an explicit library after the string boundary.
+`xml2obj(xml)` parses XML through the compiler-embedded, pinned
+`@xmldom/xmldom` backend and returns the root `Tag`. Malformed input raises
+`XmlParseError`. This keeps application source independent of a JavaScript XML
+dependency while preserving a single well-defined XML parser across builds.
+
+A `Tag` exposes `tag()`, `innerText()`, `children()`, and `attribute(name)`.
+`innerText()` joins direct text nodes only. Attributes are exposed as properties;
+a direct child is also exposed as a property when it is the only child with that
+name. Attributes take precedence, and the method names are reserved. Repeated
+children are traversed through `children()` in document order.
+
+The core intentionally has no XML selector/query API or mutation API. Programs
+that need those capabilities use a dedicated library after the `Tag` boundary.
 
 ## D-062: SQLite is the initial core database adapter
 

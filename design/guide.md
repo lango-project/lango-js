@@ -720,8 +720,7 @@ preserved.
 
 `${expression}` is allowed only in text nodes and quoted attribute values. It
 is XML-escaped for that position, so it cannot introduce markup, a tag name, or
-an attribute name. Dynamic XML structure and XML parsing/manipulation use a
-separate library.
+an attribute name.
 
 ```lango
 xml_name = "<Savaş & Co>"
@@ -744,7 +743,31 @@ xml = <records>
 call(333, <item/>)
 ```
 
-TODO should it be closed properly? Or just relax and accept any chunk?
+`xml2obj(xml)` parses an XML string and returns its root `Tag`. Invalid XML
+raises `XmlParseError`.
+
+```lango
+conf = xml2obj(xml)
+
+host = conf.http.host
+port = conf.http.port
+
+for conf.children() as child
+    println(child.tag())
+
+message = conf.message.innerText()
+```
+
+`tag()` returns the tag name. `innerText()` returns only the tag's direct text
+nodes; it does not include text nested inside child tags. `children()` returns
+the direct child tags in document order. `attribute(name)` provides explicit
+attribute access when needed.
+
+Attributes are available as properties. A direct child tag is also available
+as a property when it is the only direct child with that name. Attributes take
+precedence. The method names `tag`, `innerText`, `children`, and `attribute`
+are reserved, so colliding names must use `attribute(name)` or `children()`.
+Repeated child tags are traversed through `children()`.
 
 ## Numbers
 

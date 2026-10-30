@@ -121,6 +121,19 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
     await readFile(new URL("./vendor/bignumber.mjs", import.meta.url), "utf8"),
     "utf8",
   );
+  const xmlVendor = new URL("./vendor/xmldom/", import.meta.url);
+  await mkdir(path.join(directory, ".lango/xmldom"), { recursive: true });
+  for (const name of ["conventions.js", "dom-parser.js", "dom.js", "entities.js", "errors.js", "grammar.js", "index.js", "sax.js"])
+    await writeFile(
+      path.join(directory, ".lango/xmldom", name),
+      await readFile(new URL(name, xmlVendor), "utf8"),
+      "utf8",
+    );
+  await writeFile(
+    path.join(directory, ".lango/xmldom.LICENSE.md"),
+    await readFile(new URL("./vendor/xmldom.LICENSE.md", import.meta.url), "utf8"),
+    "utf8",
+  );
 }
 
 export function compile(source, sourceName = "<source>", imports = [], includeTests = false, profile = {}) {
@@ -1809,6 +1822,7 @@ function validate(program, imports = []) {
     ["range", [1, 2, 3]],
     ["to_js_number", 1],
     ["import_module", 1],
+    ["xml2obj", 1],
     ["start_trans", 0], ["commit_trans", 0], ["rollback_trans", 0], ["trans_state", 0],
   ]);
   const hostFunctions = new Set(["fetch"]);
@@ -3378,6 +3392,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.print && "println as __println",
     flags.translate && "translate as __translate",
     flags.xml && "xmlEscape as __xmlEscape",
+    flags.xmlObject && "xml2obj as __xml2obj",
     flags.context && "contextGet as __contextGet",
     flags.context && "contextSet as __contextSet",
     flags.context && "contextRestore as __contextRestore",
@@ -4143,6 +4158,11 @@ function emitExpr(node, flags) {
   if (node.type === "call")
     if (node.name === "import_module")
       return `import(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+  if (node.type === "call")
+    if (node.name === "xml2obj") {
+      flags.xmlObject = true;
+      return `__xml2obj(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    }
   if (node.type === "call")
     if (node.name === "from_json" || node.name === "to_json") {
       flags.json = true;

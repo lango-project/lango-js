@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { buildFile } from "../src/compiler.mjs";
 
-test("Faz 95 copies the pinned Decimal backend beside the generated runtime", async () => {
+test("Faz 95 copies pinned runtime backends beside generated code", async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase95-"));
     const input = path.join(directory, "input.lango");
     const output = path.join(directory, "main.mjs");
@@ -22,5 +22,9 @@ main(args)
     assert.match(
         await readFile(path.join(directory, ".lango/bignumber.mjs"), "utf8"),
         /bignumber\.js v11\.1\.5/,
+    );
+    assert.match(
+        await readFile(path.join(directory, ".lango/xmldom.LICENSE.md"), "utf8"),
+        /Permission is hereby granted, free of charge/,
     );
 });

@@ -22,6 +22,9 @@ export function runtimeSource(profile = {}) {
     if (!(rounding in ROUNDING_MODES))
         throw new Error(`unknown decimal_division_rounding ${rounding}`);
     return `import BigNumber from "./bignumber.mjs";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const { DOMParser } = require("./xmldom/index.js");
 
 const Decimal = BigNumber.clone({
     DECIMAL_PLACES: ${scale},
@@ -186,6 +189,67 @@ export function xmlEscape(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&apos;");
+}
+
+export function xml2obj(xml) {
+    if (typeof xml !== "string") throw new Error("XmlParseError: XML input must be a string");
+    const errors = [];
+    let document;
+    try {
+        document = new DOMParser({
+            onError(level, message) {
+                if (level !== "warning") errors.push(message);
+            },
+        }).parseFromString(xml, "application/xml");
+    } catch (error) {
+        throw new Error(\`XmlParseError: \${error.message}\`);
+    }
+    if (errors.length) throw new Error(\`XmlParseError: \${errors[0]}\`);
+    if (!document.documentElement)
+        throw new Error("XmlParseError: XML must contain one root tag");
+    return new Tag(document.documentElement);
+}
+
+export class Tag {
+    constructor(element) {
+        this.element = element;
+        return new Proxy(this, {
+            get: (target, name, receiver) => target.#property(name, receiver),
+        });
+    }
+
+    tag() {
+        return this.element.tagName;
+    }
+
+    innerText() {
+        let text = "";
+        for (const child of this.element.childNodes) {
+            if (child.nodeType === 3 || child.nodeType === 4) text += child.data;
+        }
+        return text;
+    }
+
+    children() {
+        return Array.from(this.element.childNodes)
+            .filter((child) => child.nodeType === 1)
+            .map((child) => new Tag(child));
+    }
+
+    attribute(name) {
+        const value = this.element.getAttribute(String(name));
+        return value === null ? null : value;
+    }
+
+    #property(name, receiver) {
+        if (typeof name !== "string") return Reflect.get(this, name, receiver);
+        if (name === "tag" || name === "innerText" || name === "children" || name === "attribute" || name === "element")
+            return Reflect.get(this, name, receiver);
+        if (this.element.hasAttribute(name)) return this.element.getAttribute(name);
+        const matching = Array.from(this.element.childNodes)
+            .filter((child) => child.nodeType === 1 && child.tagName === name);
+        return matching.length === 1 ? new Tag(matching[0]) : undefined;
+    }
 }
 
 export function println(value) {
