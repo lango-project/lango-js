@@ -9,6 +9,10 @@
     "test": "lango test test/main.lango",
     "format": "lango format src/main.lango"
   },
+  "lango": {
+    "source": "src/main.lango",
+    "output": "dist/main.mjs"
+  },
   "devDependencies": {
     "@lango-project/lango-js": "{{LANGO_VERSION}}"
   },
