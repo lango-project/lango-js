@@ -2571,6 +2571,15 @@ function validate(program, imports = []) {
     return names;
   };
 
+  const contextBindings = (body, names = new Set()) => {
+    for (const node of body) {
+      if (node.type === "contextDeclare" || node.type === "contextSet") names.add(node.name);
+      if (node.type !== "closureAssign")
+        nestedBodies(node).forEach((child) => contextBindings(child, names));
+    }
+    return names;
+  };
+
   const globalDeclarations = (body, names = new Set()) => {
     for (const node of body) {
       if (node.type === "globalDeclare") names.add(node.name);
@@ -2626,9 +2635,14 @@ function validate(program, imports = []) {
     outerBindings,
     classScope = null,
     inheritedExpiredCatchBindings = new Set(),
+    outerContextBindings = new Set(),
   ) => {
     const available = new Set(outerBindings);
     const expiredCatchBindings = new Set(inheritedExpiredCatchBindings);
+    const availableContexts = new Set([
+      ...outerContextBindings,
+      ...contextBindings(body),
+    ]);
     for (const node of body) {
       const references = new Set();
       [node.value, node.condition, node.collection, node.arguments, node.tests].forEach((value) => {
@@ -2648,6 +2662,7 @@ function validate(program, imports = []) {
           new Set(available),
           classScope,
           expiredCatchBindings,
+          availableContexts,
         );
         const right = node.elseBody
           ? validateClosures(
@@ -2655,6 +2670,7 @@ function validate(program, imports = []) {
               new Set(available),
               classScope,
               expiredCatchBindings,
+              availableContexts,
             )
           : available;
         const exits = [];
@@ -2673,6 +2689,7 @@ function validate(program, imports = []) {
             new Set(available),
             classScope,
             expiredCatchBindings,
+            availableContexts,
             ),
           );
         if (!node.elseBody || reachesEnd(node.elseBody))
@@ -2683,6 +2700,7 @@ function validate(program, imports = []) {
                 new Set(available),
                 classScope,
                 expiredCatchBindings,
+                availableContexts,
                 )
               : new Set(available),
           );
@@ -2698,6 +2716,7 @@ function validate(program, imports = []) {
           new Set(available),
           classScope,
           expiredCatchBindings,
+          availableContexts,
         );
         if (reachesEnd(node.tryBody)) exits.push(tryExit);
         if (node.catchBody) {
@@ -2708,6 +2727,7 @@ function validate(program, imports = []) {
               new Set(
                 [...expiredCatchBindings].filter((name) => name !== node.catchName),
               ),
+              availableContexts,
           );
           if (reachesEnd(node.catchBody)) exits.push(catchExit);
         }
@@ -2721,6 +2741,7 @@ function validate(program, imports = []) {
               certain,
               classScope,
               new Set([...expiredCatchBindings, node.catchName].filter(Boolean)),
+              availableContexts,
             )
           : certain;
         if (!node.finallyBody || reachesEnd(node.finallyBody))
@@ -2734,6 +2755,7 @@ function validate(program, imports = []) {
           new Set([...available, node.item]),
           classScope,
           expiredCatchBindings,
+          availableContexts,
         );
         continue;
       }
@@ -2743,6 +2765,7 @@ function validate(program, imports = []) {
           new Set([...available, node.key, node.value]),
           classScope,
           expiredCatchBindings,
+          availableContexts,
         );
         continue;
       }
@@ -2758,6 +2781,7 @@ function validate(program, imports = []) {
             new Set(available),
             classScope,
             expiredCatchBindings,
+            availableContexts,
           );
         continue;
       }
@@ -2794,6 +2818,9 @@ function validate(program, imports = []) {
             !hostFunctions.has(name),
         );
         const captures = new Set(closure.captures);
+        const contextCaptures = new Set(
+          closure.captures.filter((name) => availableContexts.has(name)),
+        );
         for (const name of needed)
           if (!captures.has(name))
             throw new LangoError(
@@ -2802,7 +2829,7 @@ function validate(program, imports = []) {
               `MissingCapture: ${name}; add capture ${name}`,
             );
         for (const name of captures) {
-          if (!needed.includes(name))
+          if (!needed.includes(name) && !contextCaptures.has(name))
             throw new LangoError(
               "LNG1211",
               closure.line,
@@ -2810,7 +2837,7 @@ function validate(program, imports = []) {
             );
           const protectedMember = Boolean(classScope && name.startsWith("_"));
           const propertyCapture = name.startsWith("@") || protectedMember;
-          if (!propertyCapture && !available.has(name))
+          if (!propertyCapture && !contextCaptures.has(name) && !available.has(name))
             throw new LangoError(
               "LNG1212",
               closure.line,
@@ -2843,6 +2870,7 @@ function validate(program, imports = []) {
           new Set([...available, ...localBindings]),
           classScope,
           expiredCatchBindings,
+          new Set([...availableContexts, ...contextCaptures]),
         );
       if (node.type === "closureAssign" || node.type === "assign") available.add(node.name);
         continue;
@@ -3874,7 +3902,11 @@ function emitClosure(node, depth, flags) {
   const priorContextNames = flags.contextNames;
   const priorGlobalNames = flags.globalNames;
   const priorArrayBindings = flags.arrayBindings;
-  const contextNames = collectContextNames(node.body);
+  const contextCaptures = node.captures.filter((name) => priorContextNames?.has(name));
+  const contextNames = new Set([
+    ...collectContextNames(node.body),
+    ...contextCaptures,
+  ]);
   flags.contextNames = contextNames;
   flags.globalNames = collectGlobalNames(node.body);
   flags.arrayBindings = new Set();
@@ -3902,7 +3934,16 @@ function emitClosure(node, depth, flags) {
   if (!contextNames.size)
     return wrap(`(${parameters}) => {\n${boundary}${body}${pad}    return null;\n${pad}}`);
   flags.context = true;
-  return wrap(`(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${boundary}${body}${pad}        return null;\n${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`);
+  const capturedParameters = contextCaptures.map((_, index) => `__capturedContext${index}`);
+  const capturedValues = contextCaptures.map((name) => `__contextGet(${JSON.stringify(name)})`);
+  const capturedSetup = contextCaptures
+    .map((name, index) => `${pad}        __contextScope.push(__contextSet(${JSON.stringify(name)}, __capturedContext${index}));\n`)
+    .join("");
+  const callback = `(${parameters}) => {\n${pad}    const __contextScope = [];\n${pad}    try {\n${capturedSetup}${boundary}${body}${pad}        return null;\n${pad}    } finally {\n${pad}        __contextRestore(__contextScope);\n${pad}    }\n${pad}}`;
+  const wrappedCallback = contextCaptures.length
+    ? `((${capturedParameters.join(", ")}) => ${callback})(${capturedValues.join(", ")})`
+    : callback;
+  return wrap(wrappedCallback);
 }
 function emitArityGuard(parameters, actual, name, depth, flags) {
   const positions = parameters

@@ -576,8 +576,8 @@ serve()
     log.info("Listening")
 ```
 
-Like every context, a custom log binding is synchronous and dynamic. It is not
-automatically available in a later Promise, timer, or event callback.
+Like every context, a custom log binding is synchronous and dynamic. A later
+Promise, timer, or event callback carries it explicitly with `capture log`.
 `get_class(null)` is `null`. Primitive values report `Number`, `String`, or
 `Boolean`; objects report their prototype constructor. `is_kindof` follows
 inheritance for objects and is false for `null`. These checks use native
@@ -884,8 +884,7 @@ Context is a synchronous dynamic stack. A nested `context name = value` shadows
 the previous value until its current function activation returns or throws;
 recursive and re-entrant calls get their own layer. A JavaScript API that calls
 a Lango callback synchronously can see the active context. Promise, timer, and
-event callbacks cannot: copy a needed context value to a local binding and
-`capture` it before registering the callback.
+event callbacks require an explicit capture of the needed context value.
 
 You can only assign it inside the *context* statement. This creates a scoped
 value: all calls below the current stack frame use it, and leaving that frame
@@ -944,16 +943,16 @@ program outcome, while a detached Promise follows the host's normal unhandled-
 rejection behavior. Lango adds no cancellation or concurrency model beyond the
 JavaScript library in use.
 
-`context` does not automatically cross into a Promise callback. Copy a needed
-context value into a local binding and capture that binding explicitly:
+`context` does not automatically cross into a Promise callback. Capture a
+needed context value explicitly; the callback restores that captured value as
+an active context while it runs:
 ```lango
 load()
     context tenant
-    saved_tenant = tenant
 
     fetch("/data").then((response)
-        capture saved_tenant
-        audit(saved_tenant, response)
+        capture tenant
+        audit(tenant, response)
     )
 ```
 

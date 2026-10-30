@@ -330,11 +330,18 @@ re-entrant calls therefore create independent nested layers. A JavaScript API
 which invokes a Lango callback synchronously before the current call stack
 unwinds sees the active context. A callback invoked later by a Promise, timer,
 event, or another asynchronous mechanism sees no context from its registration
-site; it must receive needed values through an explicit local `capture`.
+site unless it explicitly captures one.
+
+`capture name` has special behavior when `name` is an active context binding.
+The closure snapshots that binding when it is created, then temporarily restores
+it as an active context every time the closure runs. Its nested ordinary Lango
+calls can therefore declare `context name` normally. A later nested callback
+must capture the context again at its own asynchronous boundary. Capturing a
+context solely for a downstream Lango call is valid; it is not an unused capture.
 
 This model needs neither Node `AsyncLocalStorage` nor a browser-specific
 propagation mechanism. It is the same on every JavaScript host and does not
-attempt to retain context through uninstrumented asynchronous JavaScript code.
+implicitly retain context through uninstrumented asynchronous JavaScript code.
 
 ## D-014: JSON helpers use explicit conversion boundaries
 
