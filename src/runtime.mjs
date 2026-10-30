@@ -261,6 +261,18 @@ export function println(value) {
     return null;
 }
 
+const defaultLog = Object.freeze({
+    debug(value) { return writeLog(process.stdout, "DEBUG", value); },
+    info(value) { return writeLog(process.stdout, "INFO", value); },
+    warn(value) { return writeLog(process.stderr, "WARN", value); },
+    err(value) { return writeLog(process.stderr, "ERROR", value); },
+});
+
+function writeLog(stream, level, value) {
+    stream.write(\`[\${level}] \${String(value)}\\n\`);
+    return null;
+}
+
 export function fromJson(text) {
     try {
         return decimalJson(JSON.parse(text));
@@ -533,6 +545,7 @@ export function withArity(callback, requiredPositions, name) {
 
 export function contextGet(name) {
     const stack = contexts.get(name);
+    if ((!stack || stack.length === 0) && name === "log") return defaultLog;
     if (!stack || stack.length === 0) {
         throw new Error(\`Lango context is unavailable: \${name}\`);
     }

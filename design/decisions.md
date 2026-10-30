@@ -316,6 +316,13 @@ unavailable context binding is a runtime error with the requested context name.
 The binding itself is immutable, although an object held as its value may still
 be mutated through that object.
 
+`log` is the one built-in context name. `context log` reads the default logger
+when no dynamic `log` binding exists. Its `debug(value)` and `info(value)`
+methods write level-prefixed lines to stdout; `warn(value)` and `err(value)`
+write them to stderr. `context log = value` replaces that logger for the normal
+dynamic scope. The replacement is an ordinary object and must provide the log
+methods the scoped code invokes.
+
 The context runtime is a synchronous dynamic binding stack. Each Lango function
 activation pushes its context changes and restores them with generated
 `try`/`finally` cleanup when that activation returns or throws. Recursive and

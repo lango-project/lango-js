@@ -3926,6 +3926,12 @@ function emitBoundaryChecks(parameters, depth, flags) {
     })
     .join("");
 }
+function emitReceiverName(name, flags) {
+  if (!flags.contextNames?.has(name)) return name;
+  flags.context = true;
+  return `__contextGet(${JSON.stringify(name)})`;
+}
+
 function emitExpr(node, flags) {
   const decimalRaw = (value) =>
     value?.type === "raw" &&
@@ -4001,7 +4007,7 @@ function emitExpr(node, flags) {
     return `super.${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "index")
     return normalize(
-      `${typeof node.receiver === "string" ? node.receiver : emitExpr(node.receiver, flags)}${node.optional ? "?." : ""}[${emitExpr(node.index, flags)}]`,
+      `${typeof node.receiver === "string" ? emitReceiverName(node.receiver, flags) : emitExpr(node.receiver, flags)}${node.optional ? "?." : ""}[${emitExpr(node.index, flags)}]`,
     );
   if (node.type === "property")
     return normalize(
@@ -4012,7 +4018,7 @@ function emitExpr(node, flags) {
     const sourceReceiver = namespace
       ? node.receiver.replaceAll("/", ".")
       : typeof node.receiver === "string"
-        ? node.receiver
+        ? emitReceiverName(node.receiver, flags)
         : emitExpr(node.receiver, flags);
     const type =
       sourceReceiver === flags.className ||

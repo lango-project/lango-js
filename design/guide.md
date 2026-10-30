@@ -545,6 +545,39 @@ is_kindof(value, Class)
 `println(value)` writes the host's display form of one value followed by a line
 break and returns `null`. It is the portable Lango output function; source code
 does not use a host `console` global.
+
+## Logging
+
+`log` is a built-in context object. Declare it where it is read, then use its
+level methods:
+
+```lango
+reportStartup()
+    context log
+    log.debug("Checking configuration")
+    log.info("Application started")
+    log.warn("Cache is empty")
+    log.err("Application cannot continue")
+```
+
+The default logger writes `debug()` and `info()` lines to stdout, and `warn()`
+and `err()` lines to stderr. Each line is prefixed by its level.
+
+An application can install a scoped logger with ordinary context syntax. The
+replacement object provides whichever logging methods the scoped code uses.
+
+```lango
+run(logger)
+    context log = logger
+    serve()
+
+serve()
+    context log
+    log.info("Listening")
+```
+
+Like every context, a custom log binding is synchronous and dynamic. It is not
+automatically available in a later Promise, timer, or event callback.
 `get_class(null)` is `null`. Primitive values report `Number`, `String`, or
 `Boolean`; objects report their prototype constructor. `is_kindof` follows
 inheritance for objects and is false for `null`. These checks use native
