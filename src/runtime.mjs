@@ -59,7 +59,9 @@ let output = null;
 let database = null;
 let failedTransaction = false;
 export const DB = Object.freeze({ Active: "active", RollbackOnly: "rollback_only", Failed: "failed" });
-const contexts = new Map();
+const contextStore = Symbol.for("lango.contexts");
+const contexts = globalThis[contextStore] ?? new Map();
+globalThis[contextStore] = contexts;
 
 export class RuntimeConfigurationError extends Error {
     constructor(message) {

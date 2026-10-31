@@ -77,7 +77,9 @@ test:lango -- input.lango` when Lango test blocks need host services.
 
 `buildFile()` writes a matched private runtime next to the generated module.
 Before calling exported Lango entry points, import that runtime and configure
-it. `configure()` accepts an object with optional `output`, `catalog`, and
+it. Runtimes generated into separate packages share dynamic Lango contexts
+within one JavaScript process, so an application host can provide a context to
+an exported function in a compiled dependency. `configure()` accepts an object with optional `output`, `catalog`, and
 `database_adapter` values; it returns `null`, resets dynamic context and
 transaction-failure state, and rejects an invalid configuration with
 `RuntimeConfigurationError`. `output` is a function (or `null`), `catalog` is
