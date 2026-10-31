@@ -524,6 +524,12 @@ export function call(value, ...arguments_) {
     return normalize(value(...arguments_));
 }
 
+export function callMethod(receiver, name, ...arguments_) {
+    const value = receiver?.[name];
+    if (typeof value !== "function") throw new Error("NotCallable");
+    return normalize(value.call(receiver, ...arguments_));
+}
+
 export function boundary(value) {
     return finite(normalize(value));
 }

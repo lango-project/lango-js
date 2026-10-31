@@ -31,11 +31,13 @@ main(args)
     assert.match(output, /new Counter\(10\)/);
 });
 
-test("Faz 9 allows one inline exported class per source file", () => {
-    assert.throws(() => compile(`export class First
+test("Faz 9 allows multiple exported classes per source file", () => {
+    const output = compile(`export class First
 
 export class Second
-`), (error) => error.code === "LNG1114");
+`).javascript;
+    assert.match(output, /export class First/);
+    assert.match(output, /export class Second/);
 });
 
 test("Faz 9 class fixture runs", async () => {

@@ -266,7 +266,6 @@ class Parser {
     const tests = [];
     const jsImports = [];
     let declarationSeen = false;
-    let exportedClassSeen = false;
     this.blank();
     while (this.i < this.lines.length) {
       const line = this.line();
@@ -316,9 +315,6 @@ class Parser {
         );
       if (classHeader) {
         declarationSeen = true;
-        if (classHeader[1] && exportedClassSeen)
-          this.fail(line, "LNG1114", "a file may export one class");
-        exportedClassSeen ||= Boolean(classHeader[1]);
         const classNode = {
           name: classHeader[2],
           ancestor: classHeader[3] ?? null,
@@ -3450,6 +3446,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.finite && "finite as __finite",
     flags.number && "requireNumber as __requireNumber",
     flags.call && "call as __call",
+    flags.callMethod && "callMethod as __callMethod",
     flags.boundary && "boundary as __boundary",
     flags.database && "startTrans as __startTrans",
     flags.database && "commitTrans as __commitTrans",
@@ -4250,8 +4247,8 @@ function emitExpr(node, flags) {
     } else
       return `${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "indexedCall") {
-    flags.call = true;
-    return `__call(${emitExpr(node.receiver, flags)}[${emitExpr(node.index, flags)}], ${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    flags.callMethod = true;
+    return `__callMethod(${emitExpr(node.receiver, flags)}, ${emitExpr(node.index, flags)}, ${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   }
   if (node.type === "string") return emitString(node.literal, flags);
   if (node.type === "xml") {
