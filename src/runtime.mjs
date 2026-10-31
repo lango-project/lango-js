@@ -243,9 +243,15 @@ export class Tag {
         return value === null ? null : value;
     }
 
+    attributes() {
+        const values = {};
+        for (const attribute of Array.from(this.element.attributes)) values[attribute.name] = attribute.value;
+        return values;
+    }
+
     #property(name, receiver) {
         if (typeof name !== "string") return Reflect.get(this, name, receiver);
-        if (name === "tag" || name === "innerText" || name === "children" || name === "attribute" || name === "element")
+        if (name === "tag" || name === "innerText" || name === "children" || name === "attribute" || name === "attributes" || name === "element")
             return Reflect.get(this, name, receiver);
         if (this.element.hasAttribute(name)) return this.element.getAttribute(name);
         const matching = Array.from(this.element.childNodes)
