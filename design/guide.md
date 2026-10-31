@@ -470,6 +470,24 @@ example `range(10, 0, -2)`.
 
 Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be used alongside &&, || and !. Operators at the same precedence level associate from left to right; exponentiation (`**`) instead associates from right to left and binds more tightly than multiplication. Conditions require `true` or `false`; Lango does not use JavaScript truthiness or implicit conversion. Arithmetic operators, including remainder (`%`), work on numbers, and strings are composed with interpolation.
 
+Word logical operators bind more loosely than symbolic logical operators. From
+the tighter to the looser binary logical operators, the order is `&&`, `||`,
+`and`, then `or`. A leading `not` negates the expression that follows it up to
+the enclosing expression boundary; `!` binds tightly to its operand. These
+spellings therefore cannot always be exchanged without adding parentheses:
+
+```lango
+not !a && b         # Equivalent to !(!a && b)
+a or b && c        # Equivalent to a or (b && c)
+a || b and c       # Equivalent to (a || b) and c
+not a and b        # Equivalent to !(a and b)
+(not a) and b      # Negates only a before applying and
+```
+
+Use parentheses to limit the scope of `not` explicitly when mixing logical
+operators. This replaces the earlier contract in which word and symbolic
+binary operators shared precedence levels.
+
 There should be space before and after an operator, except unary operators.
 `value ?? fallback` evaluates to `fallback` only when `value` is `null`; `false`,
 `0`, and empty strings are retained.

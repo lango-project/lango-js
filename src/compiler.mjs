@@ -1005,7 +1005,7 @@ class Parser {
           operator: suffix === "++" ? "+" : "-",
         });
       } else {
-        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*\.\$?[A-Za-z_]\w*) = (.+)$/.exec(text);
+        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)+) = (.+)$/.exec(text);
         if (!assignment)
           this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
         body.push({
@@ -1334,10 +1334,18 @@ function expr(source, line, parser) {
       }),
     };
   }
+  if (text.startsWith("not "))
+    return {
+      type: "unary",
+      operator: "not",
+      value: expr(text.slice(4), line, parser),
+    };
   for (const operators of [
     ["??"],
-    ["or", "||"],
-    ["and", "&&"],
+    ["or"],
+    ["and"],
+    ["||"],
+    ["&&"],
     ["==", "!="],
     [">=", "<=", ">", "<", "not in", "in"],
     ["+", "-"],
@@ -1359,12 +1367,6 @@ function expr(source, line, parser) {
       operator: exponent.operator,
       left: expr(text.slice(0, exponent.index), line, parser),
       right: expr(text.slice(exponent.index + exponent.operator.length + 2), line, parser),
-    };
-  if (text.startsWith("not "))
-    return {
-      type: "unary",
-      operator: "not",
-      value: expr(text.slice(4), line, parser),
     };
   if (/^-[^\s]/.test(text))
     return {
@@ -3753,7 +3755,7 @@ function emitStatement(node, depth, declared, flags) {
   if (node.type === "assign") {
     const decimalBinding = node.name.startsWith("$") || /^@{1,2}\$/.test(node.name);
     const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
-    const target = /^[A-Za-z_]\w*\.\$?[A-Za-z_]\w*$/.test(node.name)
+    const target = /^[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)+$/.test(node.name)
       ? node.name
       : node.name.startsWith("@@")
       ? `${flags.className}.${property}`
@@ -3765,7 +3767,7 @@ function emitStatement(node, depth, declared, flags) {
           ? `this.${node.name}`
           : node.name;
     const prefix =
-      /^[A-Za-z_]\w*\.\$?[A-Za-z_]\w*$/.test(node.name)
+      /^[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)+$/.test(node.name)
         ? ""
         : node.name.startsWith("@") ||
       (flags.className && node.name.startsWith("_")) ||

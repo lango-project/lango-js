@@ -609,6 +609,16 @@ rather than string concatenation. `and`, `or`, and `not` require Boolean
 operands; `and` and `or` short-circuit and produce a Boolean result. D-010
 continues to define `==` as non-coercive equality.
 
+Word logical operators have lower precedence than symbolic logical operators.
+Binary logical precedence, from highest to lowest, is `&&`, `||`, `and`, `or`.
+The prefix `!` binds tightly to its operand. A leading `not` instead consumes
+the following expression within its enclosing expression boundary, including
+logical operations: `not !a && b` means `!(!a && b)`, and `not a and b` means
+`!(a and b)`. Write `(not a) and b` to restrict the negation to `a`.
+Parentheses override these rules. Binary logical operators remain
+left-associative at each level. This supersedes the former shared precedence
+of `and`/`&&` and `or`/`||`; changing the spelling may change grouping.
+
 When a dynamically obtained or imported JavaScript value is used where a
 Boolean or number is required, the transpiled program raises a Lango runtime
 type error instead of applying JavaScript coercion.
