@@ -4306,9 +4306,9 @@ function emitBoolean(node, flags) {
   flags.boolean = true;
   return `__requireBoolean(${emitExpr(node, flags)})`;
 }
-function emitString(parts) {
+function emitString(parts, flags) {
   if (parts.length === 1) return JSON.stringify(parts[0].text);
-  return `\`${parts.map((item) => `${item.text.replaceAll("`", "\\`")}${item.value === null ? "" : `\${${item.value}}`}`).join("")}\``;
+  return `\`${parts.map((item) => `${item.text.replaceAll("`", "\\`")}${item.value === null ? "" : `\${${emitReceiverName(item.value, flags)}}`}`).join("")}\``;
 }
 function spaces(line) {
   return line.length - line.trimStart().length;
