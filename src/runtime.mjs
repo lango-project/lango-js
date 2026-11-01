@@ -15,6 +15,7 @@ const ROUNDING_MODES = Object.freeze({
 });
 
 export function runtimeSource(profile = {}) {
+    const browser = profile.target === "browser";
     const scale = profile.decimal_division_scale ?? 6;
     const rounding = profile.decimal_division_rounding ?? Decimal.Rounding.HalfEven;
     if (!Number.isInteger(scale) || scale < 0)
@@ -22,9 +23,9 @@ export function runtimeSource(profile = {}) {
     if (!(rounding in ROUNDING_MODES))
         throw new Error(`unknown decimal_division_rounding ${rounding}`);
     return `import BigNumber from "./bignumber.mjs";
-import { createRequire } from "node:module";
+${browser ? 'const DOMParser = globalThis.DOMParser;' : `import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
-const { DOMParser } = require("./xmldom/index.js");
+const { DOMParser } = require("./xmldom/index.js");`}
 
 const Decimal = BigNumber.clone({
     DECIMAL_PLACES: ${scale},
@@ -207,6 +208,8 @@ export function xml2obj(xml) {
         throw new Error(\`XmlParseError: \${error.message}\`);
     }
     if (errors.length) throw new Error(\`XmlParseError: \${errors[0]}\`);
+    if (${browser} && document.getElementsByTagName("parsererror").length)
+        throw new Error("XmlParseError: invalid XML document");
     if (!document.documentElement)
         throw new Error("XmlParseError: XML must contain one root tag");
     return new Tag(document.documentElement);
@@ -270,10 +273,10 @@ export function println(value) {
 }
 
 const defaultLog = Object.freeze({
-    debug(value) { return writeLog(process.stdout, "DEBUG", value); },
-    info(value) { return writeLog(process.stdout, "INFO", value); },
-    warn(value) { return writeLog(process.stderr, "WARN", value); },
-    err(value) { return writeLog(process.stderr, "ERROR", value); },
+    debug(value) { ${browser ? 'console.debug(String(value)); return null;' : 'return writeLog(process.stdout, "DEBUG", value);'} },
+    info(value) { ${browser ? 'console.info(String(value)); return null;' : 'return writeLog(process.stdout, "INFO", value);'} },
+    warn(value) { ${browser ? 'console.warn(String(value)); return null;' : 'return writeLog(process.stderr, "WARN", value);'} },
+    err(value) { ${browser ? 'console.error(String(value)); return null;' : 'return writeLog(process.stderr, "ERROR", value);'} },
 });
 
 function writeLog(stream, level, value) {

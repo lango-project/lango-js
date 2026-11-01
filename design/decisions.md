@@ -22,6 +22,13 @@ uses only ESM; CommonJS output is not produced. The Node host baseline is Node
 24 or later. Browser output targets modern browsers with native ESM support;
 bundling is the host or build tool's responsibility rather than Lango source.
 
+Build profiles select `target: "node"` (default) or `target: "browser"`, exposed
+by CLI `--target`. The selection propagates through the Lango module graph.
+Browser runtime helpers use the browser's native DOMParser and console and do
+not import Node modules. Browser builds reject `node:` imports and Node
+executable bootstrapping. Other JavaScript package specifiers still require
+resolution by the browser host or bundler.
+
 The compiler emits an external source map for every generated `.mjs` file,
 including source content, and adds its `sourceMappingURL` reference. Compiler
 runtime helpers, including the embedded Decimal runtime, are private sibling ESM

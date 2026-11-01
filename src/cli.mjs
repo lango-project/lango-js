@@ -24,7 +24,9 @@ const buildOptions = (arguments_) => {
         }
         const value = arguments_[index + 1];
         if (!value) return null;
-        if (option === "--decimal-division-scale")
+        if (option === "--target")
+            profile.target = value;
+        else if (option === "--decimal-division-scale")
             profile.decimal_division_scale = Number(value);
         else if (option === "--decimal-division-rounding")
             profile.decimal_division_rounding = Decimal.Rounding[value] ?? value;
@@ -173,6 +175,6 @@ if (command === "init" && inputPath && rest.length === 0) {
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else {
-    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--executable] [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
+    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--target node|browser] [--executable] [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
     process.exitCode = 2;
 }

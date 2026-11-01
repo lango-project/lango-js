@@ -32,6 +32,8 @@ export function formatDiagnostics(error) {
 
 export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false, profile = {}) {
   const decimalProfile = validateDecimalProfile(profile);
+  if (decimalProfile.target === "browser" && profile.executable)
+    throw new LangoError("LNG1266", 1, "browser builds cannot use --executable", inputPath);
   const isEntryPoint = seen.size === 0;
   if (isEntryPoint)
     await validateModuleInitializerCycles(inputPath, outputPath);
@@ -87,6 +89,8 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
   }
 
   const compiled = compile(source, inputPath, imports, includeTests, decimalProfile);
+  if (decimalProfile.target === "browser" && compiled.program.jsImports.some((item) => item.specifier?.startsWith("node:")))
+    throw new LangoError("LNG1266", 1, "browser builds cannot import node: modules", inputPath);
   let output = compiled.javascript.replace(
     "//# sourceMappingURL=main.mjs.map",
     `//# sourceMappingURL=${path.basename(outputPath)}.map`,
@@ -122,6 +126,7 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
     "utf8",
   );
   const xmlVendor = new URL("./vendor/xmldom/", import.meta.url);
+  if (decimalProfile.target === "browser") return;
   await mkdir(path.join(directory, ".lango/xmldom"), { recursive: true });
   for (const name of ["conventions.js", "dom-parser.js", "dom.js", "entities.js", "errors.js", "grammar.js", "index.js", "sax.js"])
     await writeFile(
@@ -185,13 +190,16 @@ function tabDiagnostics(source, sourceName) {
 }
 
 function validateDecimalProfile(profile) {
+  const target = profile.target ?? "node";
+  if (target !== "node" && target !== "browser")
+    throw new LangoError("LNG1266", 1, `unknown build target ${target}`);
   const decimal_division_scale = profile.decimal_division_scale ?? 6;
   const decimal_division_rounding = profile.decimal_division_rounding ?? Decimal.Rounding.HalfEven;
   if (!Number.isInteger(decimal_division_scale) || decimal_division_scale < 0)
     throw new LangoError("LNG1262", 1, "decimal_division_scale must be a non-negative integer");
   if (!Object.values(Decimal.Rounding).includes(decimal_division_rounding))
     throw new LangoError("LNG1263", 1, `unknown decimal_division_rounding ${decimal_division_rounding}`);
-  return { decimal_division_scale, decimal_division_rounding };
+  return { decimal_division_scale, decimal_division_rounding, target };
 }
 
 const BASE64_VLQ = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

@@ -2,6 +2,13 @@
 
 ## Code Structure
 
+Build browser modules with `lango build src/main.lango --out dist/main.mjs
+--target browser` (one shell command). The default target is `node`.
+The browser runtime uses native `DOMParser` and console logging, includes the
+Decimal helper, and has no Node imports. The target applies to imported Lango
+modules too. `node:` imports and `--executable` are rejected for browser builds;
+load the generated entry through an HTML module script instead.
+
   * A file has imports and then standalone exports at the start, followed by
     declarations. A function export precedes every class and function
     declaration; a class is exported inline as `export class Name`.
