@@ -36,21 +36,22 @@ const buildOptions = (arguments_) => {
     return { outputPath: arguments_[1], profile };
 };
 const build = command === "build" && inputPath ? buildOptions(rest) : null;
-const runOptions = (arguments_) => {
-    const options = { database: null, catalog: null };
+const runOptions = (arguments_, allowBuildDir = false) => {
+    const options = { database: null, catalog: null, buildDir: null };
     let index = 0;
-    while (arguments_[index] === "--database" || arguments_[index] === "--catalog") {
+    while (arguments_[index] === "--database" || arguments_[index] === "--catalog" || (allowBuildDir && arguments_[index] === "--build-dir")) {
         const option = arguments_[index];
         const value = arguments_[index + 1];
         if (!value) return null;
         if (option === "--database") options.database = value;
-        else options.catalog = value;
+        else if (option === "--catalog") options.catalog = value;
+        else options.buildDir = value;
         index += 2;
     }
     if (arguments_[index] === "--") index += 1;
     return { ...options, args: arguments_.slice(index) };
 };
-const testOptions = command === "test" && inputPath ? runOptions(rest) : null;
+const testOptions = command === "test" && inputPath ? runOptions(rest, true) : null;
 
 async function initProject(directory) {
     const target = path.resolve(directory);
@@ -131,7 +132,9 @@ if (command === "init" && inputPath && rest.length === 0) {
     try {
         if (testOptions.args.length)
             throw new Error("Lango test does not accept program arguments");
-        const directory = await mkdtemp(path.join(os.tmpdir(), "lango-test-"));
+        const directory = testOptions.buildDir
+            ? path.resolve(testOptions.buildDir)
+            : await mkdtemp(path.join(os.tmpdir(), "lango-test-"));
         const outputPath = path.join(directory, "main.mjs");
         await buildFile(path.resolve(inputPath), outputPath, new Set(), true);
         const runtime = await import(pathToFileURL(path.join(directory, ".lango/runtime.mjs")).href);
@@ -175,6 +178,6 @@ if (command === "init" && inputPath && rest.length === 0) {
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else {
-    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--target node|browser] [--executable] [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
+    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--target node|browser] [--executable] [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [-- args...]\n       node src/cli.mjs test <input.lango> [--build-dir <directory>] [--database <sqlite-file>] [--catalog <catalog.json>]\n       node src/cli.mjs format <input.lango>");
     process.exitCode = 2;
 }

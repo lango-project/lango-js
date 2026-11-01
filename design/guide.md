@@ -2,6 +2,11 @@
 
 ## Code Structure
 
+`lango test file.lango --build-dir .test-output` places generated test modules
+inside the project so their npm imports can resolve through its `node_modules`.
+Use a dedicated generated directory; without this option tests build in a
+temporary directory as before.
+
 Build browser modules with `lango build src/main.lango --out dist/main.mjs
 --target browser` (one shell command). The default target is `node`.
 The browser runtime uses native `DOMParser` and console logging, includes the

@@ -1,6 +1,6 @@
 {
   "name": "@lango-project/lango-js",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
