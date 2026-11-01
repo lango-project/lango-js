@@ -128,6 +128,7 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
   const xmlVendor = new URL("./vendor/xmldom/", import.meta.url);
   if (decimalProfile.target === "browser") return;
   await mkdir(path.join(directory, ".lango/xmldom"), { recursive: true });
+  await writeFile(path.join(directory, ".lango/xmldom/package.json"), '{"type":"commonjs"}\n', "utf8");
   for (const name of ["conventions.js", "dom-parser.js", "dom.js", "entities.js", "errors.js", "grammar.js", "index.js", "sax.js"])
     await writeFile(
       path.join(directory, ".lango/xmldom", name),
