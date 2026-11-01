@@ -3756,7 +3756,7 @@ function emitStatement(node, depth, declared, flags) {
     const decimalBinding = node.name.startsWith("$") || /^@{1,2}\$/.test(node.name);
     const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
     const target = /^[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)+$/.test(node.name)
-      ? node.name
+      ? emitReceiverName(node.name, flags)
       : node.name.startsWith("@@")
       ? `${flags.className}.${property}`
       : node.name.startsWith("@")
@@ -3967,6 +3967,11 @@ function emitBoundaryChecks(parameters, depth, flags) {
     .join("");
 }
 function emitReceiverName(name, flags) {
+  const base = /^([A-Za-z_]\w*)([.\[].*)$/.exec(name);
+  if (base && flags.contextNames?.has(base[1])) {
+    flags.context = true;
+    return `__contextGet(${JSON.stringify(base[1])})${base[2]}`;
+  }
   if (!flags.contextNames?.has(name)) return name;
   flags.context = true;
   return `__contextGet(${JSON.stringify(name)})`;
@@ -3989,6 +3994,10 @@ function emitExpr(node, flags) {
     if (flags.contextNames?.has(node.value)) {
       flags.context = true;
       return `__contextGet(${JSON.stringify(node.value)})`;
+    }
+  if (node.type === "raw")
+    if (/^[A-Za-z_]\w*[.\[]/.test(node.value) && flags.contextNames?.has(node.value.split(/[.\[]/)[0])) {
+      return normalize(emitReceiverName(node.value, flags));
     }
   if (node.type === "raw")
     if (/^DB\.(Active|RollbackOnly|Failed)$/.test(node.value)) {

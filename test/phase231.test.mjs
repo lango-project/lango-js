@@ -15,7 +15,8 @@ test("Faz 231 creates a runnable Lango project template", async () => {
         cwd: path.resolve("."),
     });
     const packageJson = JSON.parse(await readFile(path.join(project, "package.json"), "utf8"));
-    assert.equal(packageJson.devDependencies["@lango-project/lango-js"], "^0.1.2");
+    const compilerPackage = JSON.parse(await readFile("package.json", "utf8"));
+    assert.equal(packageJson.devDependencies["@lango-project/lango-js"], `^${compilerPackage.version}`);
     assert.equal(packageJson.scripts.build, "lango build src/main.lango --out dist/main.mjs");
     assert.match(await readFile(path.join(project, ".gitignore"), "utf8"), /node_modules\//);
     assert.match(await readFile(path.join(project, "src/main.lango"), "utf8"), /export main\(args\)/);
