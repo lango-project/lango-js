@@ -139,6 +139,18 @@ Variables starting with @ are instance properties. They are private.
 
 Variables starting with @@ are static properties.
 
+Member collections can be used directly without an intermediate variable:
+
+```lango
+@children[name] = child
+if name in @children
+    return @children[name]
+```
+
+Direct member access also supports method calls (`@commands.add(command)`),
+computed and nested indexes, and indexed updates (`@counts[name] += 1`).
+The same access forms apply to public instance fields and `@@` static fields.
+
 Variables starting with _ (underscore) are protected instance properties.
 
 There are no protected static properties; `@@_name` is invalid. The

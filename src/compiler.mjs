@@ -557,6 +557,8 @@ class Parser {
       } else if (/^global (\$?[A-Za-z_]\w*)$/.test(text)) {
         const [, name] = /^global (\$?[A-Za-z_]\w*)$/.exec(text);
         body.push({ type: "globalDeclare", name, line: line.number });
+      } else if (/^@{1,2}\$?[A-Za-z_]\w*.*\(.*\)$/.test(text) && !text.includes(" = ")) {
+        body.push({ type: "expression", value: expr(text, line, this) });
       } else if (/^context ([A-Za-z_]\w*) = (.+)$/.test(text)) {
         const [, name, value] = /^context ([A-Za-z_]\w*) = (.+)$/.exec(text);
         body.push({ type: "contextSet", name, value: expr(value, line, this) });
@@ -944,9 +946,9 @@ class Parser {
           name,
           value: { type: "sql", text: sqlText, parts, parameters },
         });
-      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] = (.+)$/.test(text)) {
+      } else if (/^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] = (.+)$/.test(text)) {
         const [, receiver, firstIndex, secondIndex, sourceValue] =
-          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] = (.+)$/.exec(text);
+          /^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] = (.+)$/.exec(text);
         body.push({
           type: "indexAssign",
           receiver,
@@ -954,9 +956,9 @@ class Parser {
           value: this.expression(sourceValue, line),
           operator: null,
         });
-      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.test(text)) {
+      } else if (/^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.test(text)) {
         const [, receiver, firstIndex, secondIndex, operator, sourceValue] =
-          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.exec(text);
+          /^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.exec(text);
         body.push({
           type: "indexAssign",
           receiver,
@@ -964,9 +966,9 @@ class Parser {
           value: this.expression(sourceValue, line),
           operator,
         });
-      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\](\+\+|--)$/.test(text)) {
+      } else if (/^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\](\+\+|--)$/.test(text)) {
         const [, receiver, firstIndex, secondIndex, suffix] =
-          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\](\+\+|--)$/.exec(text);
+          /^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\]\[([^\]]+)\](\+\+|--)$/.exec(text);
         body.push({
           type: "indexAssign",
           receiver,
@@ -974,9 +976,9 @@ class Parser {
           value: { type: "raw", value: "1" },
           operator: suffix === "++" ? "+" : "-",
         });
-      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] = (.+)$/.test(text)) {
+      } else if (/^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] = (.+)$/.test(text)) {
         const [, receiver, sourceIndex, sourceValue] =
-          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] = (.+)$/.exec(text);
+          /^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] = (.+)$/.exec(text);
         body.push({
           type: "indexAssign",
           receiver,
@@ -984,9 +986,9 @@ class Parser {
           value: this.expression(sourceValue, line),
           operator: null,
         });
-      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.test(text)) {
+      } else if (/^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.test(text)) {
         const [, receiver, sourceIndex, operator, sourceValue] =
-          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.exec(text);
+          /^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\] (\+|-|\*|\/|%|\*\*)= (.+)$/.exec(text);
         body.push({
           type: "indexAssign",
           receiver,
@@ -994,9 +996,9 @@ class Parser {
           value: this.expression(sourceValue, line),
           operator,
         });
-      } else if (/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\](\+\+|--)$/.test(text)) {
+      } else if (/^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\](\+\+|--)$/.test(text)) {
         const [, receiver, sourceIndex, suffix] =
-          /^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\](\+\+|--)$/.exec(text);
+          /^(@{0,2}\$?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\[([^\]]+)\](\+\+|--)$/.exec(text);
         body.push({
           type: "indexAssign",
           receiver,
@@ -1005,7 +1007,7 @@ class Parser {
           operator: suffix === "++" ? "+" : "-",
         });
       } else {
-        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*|[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)+) = (.+)$/.exec(text);
+        const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)*) = (.+)$/.exec(text);
         if (!assignment)
           this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
         body.push({
@@ -1412,7 +1414,7 @@ function expr(source, line, parser) {
       line: line.number,
     };
   const nestedIndex =
-    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*(?:\?\.)?\[.+\])(\?\.)?\[(.+)\]$/.exec(
+    /^(@{0,2}\$?[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*(?:\?\.)?\[.+\])(\?\.)?\[(.+)\]$/.exec(
       text,
     );
   if (nestedIndex)
@@ -1423,7 +1425,7 @@ function expr(source, line, parser) {
       index: expr(nestedIndex[3], line, parser),
     };
   const computedIndex =
-    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*)(\?\.)?\[([^\]]+)\]$/.exec(
+    /^(@{0,2}\$?[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w)*)(\?\.)?\[([^\]]+)\]$/.exec(
       text,
     );
   if (
@@ -1437,7 +1439,7 @@ function expr(source, line, parser) {
       index: expr(computedIndex[3], line, parser),
     };
   const indexedProperty =
-    /^([A-Za-z_]\w*.*\])(\?\.|\.)(\$?[A-Za-z_]\w*)$/.exec(text);
+    /^(@{0,2}\$?[A-Za-z_]\w*.*\])(\?\.|\.)(\$?[A-Za-z_]\w*)$/.exec(text);
   if (
     indexedProperty &&
     !/^[A-Za-z_]\w*\?\.\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(
@@ -1451,7 +1453,7 @@ function expr(source, line, parser) {
       name: indexedProperty[3],
     };
   const indexedMethodCall =
-    /^([A-Za-z_]\w*.*\])(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+    /^(@{0,2}\$?[A-Za-z_]\w*.*\])(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(text);
   if (indexedMethodCall)
     return {
       type: "methodCall",
@@ -1464,7 +1466,7 @@ function expr(source, line, parser) {
       line: line.number,
     };
   const nestedCallResultIndex =
-    /^([A-Za-z_]\w*.*\)\?\.\[.+\])(\?\.)?\[(.+)\]$/.exec(text);
+    /^(@{0,2}\$?[A-Za-z_]\w*.*\)\?\.\[.+\])(\?\.)?\[(.+)\]$/.exec(text);
   if (nestedCallResultIndex)
     return {
       type: "index",
@@ -1473,7 +1475,7 @@ function expr(source, line, parser) {
       index: expr(nestedCallResultIndex[3], line, parser),
     };
   const callResultIndex =
-    /^([A-Za-z_]\w*.*\))(\?\.)?\[(.+)\]$/.exec(text);
+    /^(@{0,2}\$?[A-Za-z_]\w*.*\))(\?\.)?\[(.+)\]$/.exec(text);
   if (callResultIndex)
     return {
       type: "index",
@@ -1482,7 +1484,7 @@ function expr(source, line, parser) {
       index: expr(callResultIndex[3], line, parser),
     };
   const callResultProperty =
-    /^([A-Za-z_]\w*.*\))(\?\.|\.)(\$?[A-Za-z_]\w*)$/.exec(text);
+    /^(@{0,2}\$?[A-Za-z_]\w*.*\))(\?\.|\.)(\$?[A-Za-z_]\w*)$/.exec(text);
   if (callResultProperty)
     return {
       type: "property",
@@ -1491,7 +1493,7 @@ function expr(source, line, parser) {
       name: callResultProperty[3],
     };
   const callResultMethod =
-    /^([A-Za-z_]\w*.*\))(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(text);
+    /^(@{0,2}\$?[A-Za-z_]\w*.*\))(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(text);
   if (callResultMethod)
     return {
       type: "methodCall",
@@ -1515,7 +1517,7 @@ function expr(source, line, parser) {
       line: line.number,
     };
   const methodCall =
-    /^([A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*?)(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(
+    /^(@{0,2}\$?[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*?)(\?\.|\.)([A-Za-z_]\w*)\((.*)\)$/.exec(
       text,
     );
   const namespaceMethodCall =
@@ -1569,15 +1571,15 @@ function expr(source, line, parser) {
     return { type: "raw", value: text };
   }
   if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
-  if (/^[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*(?:\.|\?\.)_[A-Za-z_]\w*$/.test(text))
+  if (/^@{0,2}\$?[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*(?:\.|\?\.)_[A-Za-z_]\w*$/.test(text))
     parser.fail(
       line,
       "LNG1115",
       "protected properties are not accessible outside a class",
     );
-  if (/^[A-Za-z_]\w*(?:(?:\.|\?\.)\$?[A-Za-z_]\w*|(?:\?\.)?\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])+$/.test(text))
+  if (/^@{0,2}\$?[A-Za-z_]\w*(?:(?:\.|\?\.)\$?[A-Za-z_]\w*|(?:\?\.)?\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])+$/.test(text))
     return { type: "raw", value: text };
-  if (/^[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(text))
+  if (/^@{0,2}\$?[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(text))
     return { type: "raw", value: text };
   if (/^(?:\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*)$/.test(text)) return { type: "raw", value: text };
   parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
@@ -3754,15 +3756,10 @@ function emitStatement(node, depth, declared, flags) {
   }
   if (node.type === "assign") {
     const decimalBinding = node.name.startsWith("$") || /^@{1,2}\$/.test(node.name);
-    const property = node.name.slice(node.name.startsWith("@@") ? 2 : 1);
     const target = /^[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)+$/.test(node.name)
       ? emitReceiverName(node.name, flags)
-      : node.name.startsWith("@@")
-      ? `${flags.className}.${property}`
       : node.name.startsWith("@")
-        ? flags.publicProperties?.has(property)
-          ? `this.${property}`
-          : `this.#${property}`
+        ? emitReceiverName(node.name, flags)
         : flags.className && node.name.startsWith("_")
           ? `this.${node.name}`
           : node.name;
@@ -3789,7 +3786,7 @@ function emitStatement(node, depth, declared, flags) {
     return `${pad}${prefix}${target} = ${decimalBinding && node.value.type !== "binary" && !decimalLiteral ? `__decimal(${decimalInput})` : value};\n`;
   }
   if (node.type === "indexAssign") {
-    const target = `${node.receiver}${(node.indexes ?? [node.index]).map((index) => `[${emitExpr(index, flags)}]`).join("")}`;
+    const target = `${emitReceiverName(node.receiver, flags)}${(node.indexes ?? [node.index]).map((index) => `[${emitExpr(index, flags)}]`).join("")}`;
     const value = emitExpr(node.value, flags);
     if (node.operator) flags.finite = true;
     return `${pad}${target} = ${node.operator ? `__finite(${target} ${node.operator} ${value})` : value};\n`;
@@ -3967,6 +3964,13 @@ function emitBoundaryChecks(parameters, depth, flags) {
     .join("");
 }
 function emitReceiverName(name, flags) {
+  const member = /^(@{1,2})(\$?[A-Za-z_]\w*)(.*)$/.exec(name);
+  if (member) {
+    const [, scope, property, suffix] = member;
+    const owner = scope === "@@" ? flags.className : "this";
+    const visibility = scope === "@@" || flags.publicProperties?.has(property) ? "" : "#";
+    return `${owner}.${visibility}${property}${suffix}`;
+  }
   const base = /^([A-Za-z_]\w*)([.\[].*)$/.exec(name);
   if (base && flags.contextNames?.has(base[1])) {
     flags.context = true;
@@ -3990,6 +3994,9 @@ function emitExpr(node, flags) {
     flags.normalize = true;
     return `__normalize(${value})`;
   };
+  if (node.type === "raw")
+    if (/^@{1,2}\$?[A-Za-z_]\w*[.\[?]/.test(node.value))
+      return normalize(emitReceiverName(node.value, flags));
   if (node.type === "raw")
     if (flags.contextNames?.has(node.value)) {
       flags.context = true;
