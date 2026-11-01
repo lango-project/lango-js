@@ -1055,7 +1055,10 @@ class Parser {
       const next = this.peek();
       if (next === undefined || spaces(next) < indent)
         this.fail(line, "LNG1262", "unterminated multi-line expression");
-      source += ` ${this.line().text.trim()}`;
+      const continuation = this.line().text.trim();
+      const startsField = /^(?:\$?[A-Za-z_][\w-]*|['"][^'"]+['"]): /.test(continuation);
+      if (startsField && !/[{,]\s*$/.test(source)) source += ",";
+      source += ` ${continuation}`;
       depth = curlyDelimiterDepth(source);
     }
     return source;
