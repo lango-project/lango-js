@@ -19,7 +19,8 @@ Employee(name, id)
     @id = id
 
 Employee:describe()
-    return super.describe() + ": " + @id
+    id = @id
+    return "${super.describe()}: ${id}"
 
 main(args)
     employee = new Employee("Ada", 7)

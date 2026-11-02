@@ -13,7 +13,7 @@ main(args)
     total = 12.5 + 1.2e3 + 0xFF
     println(total)
 `).javascript;
-    assert.match(output, /__finite\(__finite\(12\.5 \+ 1\.2e3\) \+ 0xFF\)/);
+    assert.match(output, /__numericAdd\(__numericAdd\(12\.5, 1\.2e3\), 0xFF\)/);
 });
 
 test("Faz 22 number-literals fixture runs", async () => {

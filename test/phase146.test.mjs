@@ -10,7 +10,7 @@ test("Faz 146 lowers computed index expressions with null normalization", () => 
     const output = compile(`main(args)
     return items[position + 1]
 `).javascript;
-    assert.match(output, /return __normalize\(items\[__finite\(position \+ 1\)\]\);/);
+    assert.match(output, /return __normalize\(items\[__numericAdd\(position, 1\)\]\);/);
 });
 
 test("Faz 146 supports computed indexes and optional computed access", async () => {

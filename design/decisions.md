@@ -616,6 +616,24 @@ rather than string concatenation. `and`, `or`, and `not` require Boolean
 operands; `and` and `or` short-circuit and produce a Boolean result. D-010
 continues to define `==` as non-coercive equality.
 
+Addition (`+`) and compound addition (`+=`) accept only finite Numbers and
+Decimals. Operands are checked at runtime before addition; strings, including
+numeric strings, Booleans, null, arrays, and other objects are rejected with
+`NumberRequired`. A Decimal operand promotes the numeric result to Decimal;
+assigning addition to a `$` binding also preserves its Decimal context. Explicit
+`$(value)` conversion remains available when a numeric string is intentional.
+Neither addition nor compound addition invokes JavaScript string concatenation
+or object coercion. Compose strings with `"${left}${right}"`.
+
+String interpolation parses each `${...}` body as a regular Lango expression.
+Calls, including `super.method()`, namespace calls, private fields, indexing,
+and nested expressions follow the same validation, context, and capture rules
+as expressions outside strings. Each body is evaluated once in source order.
+Balanced braces and quoted arguments delimit bodies, so embedded object maps
+and nested interpolated strings are supported. Empty or unterminated bodies
+produce `LNG1267`. Escaped `\${...}` remains literal text. Localization uses the
+same expression parsing and emits evaluated values as catalog placeholders.
+
 Word logical operators have lower precedence than symbolic logical operators.
 Binary logical precedence, from highest to lowest, is `&&`, `||`, `and`, `or`.
 The prefix `!` binds tightly to its operand. A leading `not` instead consumes

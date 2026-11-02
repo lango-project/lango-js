@@ -10,7 +10,7 @@ test("Faz 127 lowers native remainder with multiplicative precedence", () => {
     const output = compile(`main(args)
     return 10 % 4 + 1
 `).javascript;
-    assert.match(output, /__finite\(__finite\(10 % 4\) \+ 1\)/);
+    assert.match(output, /__numericAdd\(__finite\(10 % 4\), 1\)/);
 });
 
 test("Faz 127 lowers Decimal remainder through the Decimal backend", () => {

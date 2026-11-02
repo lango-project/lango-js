@@ -12,7 +12,7 @@ test("Faz 117 lowers dollar-prefixed numeric literals as Decimal values", () => 
     return price + $0.25
 `).javascript;
     assert.match(output, /let price = __decimal\("10\.50"\)/);
-    assert.match(output, /price\.plus\(__decimal\("0\.25"\)\)/);
+    assert.match(output, /__numericAdd\(price, __decimal\("0\.25"\)\)/);
 });
 
 test("Faz 117 executes Decimal literals without a dollar binding target", async () => {

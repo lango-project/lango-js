@@ -1,6 +1,6 @@
 import {
     println as __println,
-    finite as __finite,
+    numericAdd as __numericAdd,
     boundary as __boundary,
     requireArity as __requireArity,
 } from "./.lango/runtime.mjs";
@@ -10,7 +10,7 @@ function sum(values) {
     values = __boundary(values);
     let total = 0;
     for (const value of values) {
-        total = __finite(total + value);
+        total = __numericAdd(total, value);
     }
     return total;
     return null;

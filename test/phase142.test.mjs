@@ -26,7 +26,7 @@ main(args)
     values = args[0]
     result = ""
     for values as key: value
-        result = result + key + value
+        result = "\${result}\${key}\${value}"
     return result
 `);
     await buildFile(input, output);

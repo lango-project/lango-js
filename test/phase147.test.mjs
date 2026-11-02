@@ -10,7 +10,7 @@ test("Faz 147 lowers chained computed indexes", () => {
     const output = compile(`main(args)
     return matrix[row + 1][column + 1]
 `).javascript;
-    assert.match(output, /return __normalize\(__normalize\(matrix\[__finite\(row \+ 1\)\]\)\[__finite\(column \+ 1\)\]\);/);
+    assert.match(output, /return __normalize\(__normalize\(matrix\[__numericAdd\(row, 1\)\]\)\[__numericAdd\(column, 1\)\]\);/);
 });
 
 test("Faz 147 reads a nested computed array value", async () => {

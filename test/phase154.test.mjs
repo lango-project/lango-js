@@ -15,7 +15,7 @@ test("Faz 154 lowers postfix updates for properties and Decimal bindings", () =>
     $price++
     return state.count
 `).javascript;
-    assert.match(output, /state\.count = __finite\(__normalize\(state\.count\) \+ 1\);/);
+    assert.match(output, /state\.count = __numericAdd\(__normalize\(state\.count\), 1\);/);
     assert.match(output, /state\.count = __finite\(__normalize\(state\.count\) - 1\);/);
     assert.match(output, /\$price = \$price\.plus\(__decimal\("1"\)\);/);
 });

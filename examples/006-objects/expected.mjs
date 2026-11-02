@@ -2,6 +2,7 @@ import {
     println as __println,
     translate as __translate,
     entries as __entries,
+    normalize as __normalize,
     boundary as __boundary,
     requireArity as __requireArity,
 } from "./.lango/runtime.mjs";
@@ -9,7 +10,7 @@ import {
 function show_order(order) {
     __requireArity(arguments.length, [0], "show_order");
     order = __boundary(order);
-    return __translate("Order {0}: {1}", [order.id, order.customer]);
+    return __translate("Order {0}: {1}", [__normalize(order.id), __normalize(order.customer)]);
     return null;
 }
 

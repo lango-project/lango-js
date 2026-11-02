@@ -15,7 +15,7 @@ test("Faz 157 lowers indexed updates on object-held collections", () => {
     return state.items[0]
 `).javascript;
     assert.match(output, /state\.items\[0\] = 3;/);
-    assert.match(output, /state\.items\[0\] = __finite\(state\.items\[0\] \+ 2\);/);
+    assert.match(output, /state\.items\[0\] = __numericAdd\(state\.items\[0\], 2\);/);
 });
 
 test("Faz 157 updates an object-held collection target", async () => {

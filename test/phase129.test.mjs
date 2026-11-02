@@ -10,7 +10,7 @@ test("Faz 129 lowers arithmetic with compound Decimal operands through the backe
     const output = compile(`main(args)
     return ($1 + $2) * ($3 + $4)
 `).javascript;
-    assert.match(output, /\.plus\([^\n]+\)\.times\([^\n]+\.plus\(/);
+    assert.match(output, /__numericAdd\([^\n]+\)\.times\(__numericAdd\(/);
 });
 
 test("Faz 129 retains precision for arithmetic with compound Decimal operands", async () => {

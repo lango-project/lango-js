@@ -6,7 +6,7 @@ test("Faz 120 evaluates additive chains from left to right", () => {
     const output = compile(`main(args)
     return 10 - 3 + 2
 `).javascript;
-    assert.match(output, /return __finite\(__finite\(10 - 3\) \+ 2\)/);
+    assert.match(output, /return __numericAdd\(__finite\(10 - 3\), 2\)/);
 });
 
 test("Faz 120 evaluates multiplicative chains from left to right", () => {

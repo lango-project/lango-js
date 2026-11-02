@@ -16,7 +16,7 @@ test("Faz 155 lowers indexed assignment, compound update, and postfix update", (
     return items[position]
 `).javascript;
     assert.match(output, /items\[position\] = 3;/);
-    assert.match(output, /items\[position\] = __finite\(items\[position\] \+ 2\);/);
+    assert.match(output, /items\[position\] = __numericAdd\(items\[position\], 2\);/);
     assert.match(output, /items\[position\] = __finite\(items\[position\] - 1\);/);
 });
 

@@ -1181,18 +1181,42 @@ function collectSqlParameters(sql) {
   return [...new Set(names)];
 }
 
+function interpolationEnd(text, start) {
+  let depth = 1;
+  for (let index = start; index < text.length; index += 1) {
+    const character = text[index];
+    if (character === "'" || character === '"') {
+      index = quotedStringEnd(text, index);
+      if (index < 0) return -1;
+    } else if (character === "{") depth += 1;
+    else if (character === "}" && --depth === 0) return index;
+  }
+  return -1;
+}
+
+function quotedStringEnd(text, start) {
+  const quote = text[start];
+  for (let index = start + 1; index < text.length; index += 1) {
+    if (text[index] === "\\") { index += 1; continue; }
+    if (text.startsWith("${", index)) {
+      index = interpolationEnd(text, index + 2);
+      if (index < 0) return -1;
+    } else if (text[index] === quote) return index;
+  }
+  return -1;
+}
+
+function skipString(text, start) {
+  const end = quotedStringEnd(text, start);
+  return end < 0 ? text.length : end;
+}
+
 function topLevelBinary(text, operators, rightAssociative = false) {
-  let quote = null;
   let depth = 0;
   let match = null;
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
-    if (quote !== null) {
-      if (character === "\\") { index += 1; continue; }
-      if (character === quote) quote = null;
-      continue;
-    }
-    if (character === "'" || character === '"') { quote = character; continue; }
+    if (character === "'" || character === '"') { index = skipString(text, index); continue; }
     if ("([{".includes(character)) { depth += 1; continue; }
     if (")]}".includes(character)) { depth -= 1; continue; }
     if (depth !== 0) continue;
@@ -1208,16 +1232,10 @@ function topLevelBinary(text, operators, rightAssociative = false) {
 }
 
 function curlyDelimiterDepth(text) {
-  let quote = null;
   let depth = 0;
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
-    if (quote !== null) {
-      if (character === "\\") { index += 1; continue; }
-      if (character === quote) quote = null;
-      continue;
-    }
-    if (character === "'" || character === '"') { quote = character; continue; }
+    if (character === "'" || character === '"') { index = skipString(text, index); continue; }
     if (character === "{") depth += 1;
     if (character === "}") depth -= 1;
   }
@@ -1228,16 +1246,14 @@ const KEBAB_MARKER = "__lango_dash__";
 
 function normalizeKebabIdentifiers(source) {
   let result = "";
-  let quote = null;
   for (let index = 0; index < source.length; index += 1) {
     const character = source[index];
-    if (quote !== null) {
-      result += character;
-      if (character === "\\") result += source[++index] ?? "";
-      else if (character === quote) quote = null;
+    if (character === "'" || character === '"') {
+      const end = skipString(source, index);
+      result += source.slice(index, end + 1);
+      index = end;
       continue;
     }
-    if (character === "'" || character === '"') { quote = character; result += character; continue; }
     const match = /^[A-Za-z_]\w*(?:-[A-Za-z_]\w*)+/.exec(source.slice(index));
     if (match) {
       result += match[0].replaceAll("-", KEBAB_MARKER);
@@ -1270,16 +1286,10 @@ function emitKebabPath(value) {
 function splitTopLevel(text, separator = ", ") {
   const parts = [];
   let start = 0;
-  let quote = null;
   let depth = 0;
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
-    if (quote !== null) {
-      if (character === "\\") { index += 1; continue; }
-      if (character === quote) quote = null;
-      continue;
-    }
-    if (character === "'" || character === '"') { quote = character; continue; }
+    if (character === "'" || character === '"') { index = skipString(text, index); continue; }
     if ("([{".includes(character)) { depth += 1; continue; }
     if (")]}".includes(character)) { depth -= 1; continue; }
     if (depth === 0 && text.startsWith(separator, index)) {
@@ -1294,16 +1304,10 @@ function splitTopLevel(text, separator = ", ") {
 
 function parenthesizedExpression(text) {
   if (!text.startsWith("(") || !text.endsWith(")")) return null;
-  let quote = null;
   let depth = 0;
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
-    if (quote !== null) {
-      if (character === "\\") { index += 1; continue; }
-      if (character === quote) quote = null;
-      continue;
-    }
-    if (character === "'" || character === '"') { quote = character; continue; }
+    if (character === "'" || character === '"') { index = skipString(text, index); continue; }
     if (character === "(") depth += 1;
     if (character === ")") {
       depth -= 1;
@@ -1744,23 +1748,13 @@ function xmlTagEnd(source, start) {
 }
 
 function stripComment(line) {
-  let quote = null;
-  let escaped = false;
   for (let index = 0; index < line.length; index += 1) {
     const character = line[index];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (quote && character === "\\") {
-      escaped = true;
-      continue;
-    }
     if (character === '"' || character === "'") {
-      quote = quote === character ? null : quote ?? character;
+      index = skipString(line, index);
       continue;
     }
-    if (!quote && character === "#") return line.slice(0, index).trimEnd();
+    if (character === "#") return line.slice(0, index).trimEnd();
   }
   return line;
 }
@@ -1769,20 +1763,25 @@ function literal(value, line, parser) {
   const quote = value[0];
   if (!((quote === "'" || quote === '"') && value.at(-1) === quote))
     parser.fail(line, "LNG1109", "expected a string literal");
-  const decoded = value
-    .slice(1, -1)
+  const decode = (text) => text
     .replace(/\\n/g, "\n")
     .replace(/\\t/g, "\t")
-    .replace(/\\(['"\\])/g, "$1");
+    .replace(/\\(['"\\$])/g, "$1");
   const parts = [];
-  let at = 0;
-  const regex = /\$\{([A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\[\d+\])?)\}/g;
-  let match;
-  while ((match = regex.exec(decoded))) {
-    parts.push({ text: decoded.slice(at, match.index), value: match[1] });
-    at = match.index + match[0].length;
+  let at = 1;
+  for (let index = 1; index < value.length - 1; index += 1) {
+    if (value[index] === "\\") { index += 1; continue; }
+    if (!value.startsWith("${", index)) continue;
+    const end = interpolationEnd(value, index + 2);
+    if (end < 0 || end >= value.length - 1)
+      parser.fail(line, "LNG1267", "unterminated string interpolation");
+    const source = value.slice(index + 2, end).trim();
+    if (!source) parser.fail(line, "LNG1267", "string interpolation requires an expression");
+    parts.push({ text: decode(value.slice(at, index)), value: expr(normalizeKebabIdentifiers(source), line, parser) });
+    index = end;
+    at = end + 1;
   }
-  parts.push({ text: decoded.slice(at), value: null });
+  parts.push({ text: decode(value.slice(at, -1)), value: null });
   return parts;
 }
 
@@ -2482,6 +2481,7 @@ function validate(program, imports = []) {
   const expressionReferences = (node, references) => {
     if (!node || typeof node !== "object") return;
     if (node.type === "raw") {
+      if (["true", "false", "null", "this"].includes(node.value)) return;
       const match = /^(@{0,2}[A-Za-z_]\w*)/.exec(node.value);
       if (match) references.add(match[1]);
       return;
@@ -2519,10 +2519,7 @@ function validate(program, imports = []) {
     if (node.type === "string" || node.type === "translate") {
       node.literal
         .filter((part) => part.value)
-        .forEach((part) => {
-          const match = /^(@{0,2}[A-Za-z_]\w*)/.exec(part.value);
-          if (match) references.add(match[1]);
-        });
+        .forEach((part) => expressionReferences(part.value, references));
       return;
     }
     Object.values(node).forEach((value) => {
@@ -3461,6 +3458,8 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.normalize && "normalize as __normalize",
     flags.finite && "finite as __finite",
     flags.number && "requireNumber as __requireNumber",
+    flags.numeric && "requireNumeric as __requireNumeric",
+    flags.numericAdd && "numericAdd as __numericAdd",
     flags.call && "call as __call",
     flags.callMethod && "callMethod as __callMethod",
     flags.boundary && "boundary as __boundary",
@@ -3712,7 +3711,7 @@ function collectEmitLocals(body, names = new Set(), nested = false) {
   return names;
 }
 function emitDecimalExpression(node, flags) {
-  const operand = (value) => {
+  const operand = (value, numericOnly = false) => {
     if (value.type === "decimal") return emitExpr(value, flags);
     if (value.type === "binary" && ["+", "-", "*", "/", "%", "**"].includes(value.operator))
       return emitDecimalExpression(value, flags);
@@ -3722,13 +3721,15 @@ function emitDecimalExpression(node, flags) {
     }
     if (value.type === "raw" && value.value.startsWith("$")) return emitExpr(value, flags);
     flags.decimal = true;
-    return `__decimal(${emitExpr(value, flags)})`;
+    if (numericOnly) flags.numeric = true;
+    const emitted = emitExpr(value, flags);
+    return `__decimal(${numericOnly ? `__requireNumeric(${emitted})` : emitted})`;
   };
   if (node.type !== "binary" || !["+", "-", "*", "/", "%", "**"].includes(node.operator))
     return operand(node);
   flags.decimal = true;
   const methods = { "+": "plus", "-": "minus", "*": "times", "/": "div", "%": "mod", "**": "pow" };
-  return `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`;
+  return `${operand(node.left, node.operator === "+")}.${methods[node.operator]}(${operand(node.right, node.operator === "+")})`;
 }
 function needsLoopLabel(body, nestedLoopDepth = 0) {
   for (const node of body) {
@@ -3800,6 +3801,10 @@ function emitStatement(node, depth, declared, flags) {
   if (node.type === "indexAssign") {
     const target = `${emitReceiverName(node.receiver, flags)}${(node.indexes ?? [node.index]).map((index) => `[${emitExpr(index, flags)}]`).join("")}`;
     const value = emitExpr(node.value, flags);
+    if (node.operator === "+") {
+      flags.numericAdd = true;
+      return `${pad}${target} = __numericAdd(${target}, ${value});\n`;
+    }
     if (node.operator) flags.finite = true;
     return `${pad}${target} = ${node.operator ? `__finite(${target} ${node.operator} ${value})` : value};\n`;
   }
@@ -3813,7 +3818,10 @@ function emitStatement(node, depth, declared, flags) {
   }
   if (node.type === "superConstructor")
     return `${pad}super(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")});\n`;
-  if (node.type === "increment") return `${pad}${node.name} += 1;\n`;
+  if (node.type === "increment") {
+    flags.numericAdd = true;
+    return `${pad}${node.name} = __numericAdd(${node.name}, 1);\n`;
+  }
   if (node.type === "add")
     return `${pad}${node.target}.push(${emitExpr(node.value, flags)});\n`;
   if (node.type === "return")
@@ -4209,7 +4217,15 @@ function emitExpr(node, flags) {
           : value.type === "raw" && /^\d+(?:\.\d+)?$/.test(value.value)
             ? `__decimal(${JSON.stringify(value.value)})`
             : emitExpr(value, flags);
+      if (node.operator === "+") {
+        flags.numericAdd = true;
+        return `__numericAdd(${operand(node.left)}, ${operand(node.right)})`;
+      }
       return `${operand(node.left)}.${methods[node.operator]}(${operand(node.right)})`;
+    }
+    if (node.operator === "+") {
+      flags.numericAdd = true;
+      return `__numericAdd(${emitExpr(node.left, flags)}, ${emitExpr(node.right, flags)})`;
     }
     const value = `${emitExpr(node.left, flags)} ${operators[node.operator] ?? node.operator} ${emitExpr(node.right, flags)}`;
     if (["+", "-", "*", "/", "%", "**"].includes(node.operator)) {
@@ -4299,7 +4315,7 @@ function emitExpr(node, flags) {
     .join("");
   const values = node.literal
     .filter((item) => item.value)
-    .map((item) => item.value);
+    .map((item) => emitExpr(item.value, flags));
   return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`;
 }
 function emitBoolean(node, flags) {
@@ -4308,7 +4324,7 @@ function emitBoolean(node, flags) {
 }
 function emitString(parts, flags) {
   if (parts.length === 1) return JSON.stringify(parts[0].text);
-  return `\`${parts.map((item) => `${item.text.replaceAll("`", "\\`")}${item.value === null ? "" : `\${${emitReceiverName(item.value, flags)}}`}`).join("")}\``;
+  return `\`${parts.map((item) => `${JSON.stringify(item.text).slice(1, -1).replaceAll("`", "\\`").replaceAll("${", "\\${")}${item.value === null ? "" : `\${${emitExpr(item.value, flags)}}`}`).join("")}\``;
 }
 function spaces(line) {
   return line.length - line.trimStart().length;

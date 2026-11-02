@@ -17,7 +17,7 @@ test("Faz 156 lowers multidimensional indexed updates", () => {
     return matrix[row][column]
 `).javascript;
     assert.match(output, /matrix\[row\]\[column\] = 3;/);
-    assert.match(output, /matrix\[row\]\[column\] = __finite\(matrix\[row\]\[column\] \+ 2\);/);
+    assert.match(output, /matrix\[row\]\[column\] = __numericAdd\(matrix\[row\]\[column\], 2\);/);
     assert.match(output, /matrix\[row\]\[column\] = __finite\(matrix\[row\]\[column\] - 1\);/);
 });
 

@@ -492,6 +492,11 @@ example `range(10, 0, -2)`.
 
 ## Operators
 
+`+` and `+=` accept only Numbers and Decimals. A string operand raises
+`NumberRequired`, even if its text is numeric. Use `"${left}${right}"` to
+compose strings, or explicitly convert numeric text with `$(value)` before
+adding it.
+
 Operators are as usual, except: Logical operators _and_, _or_ and _not_ can be used alongside &&, || and !. Operators at the same precedence level associate from left to right; exponentiation (`**`) instead associates from right to left and binds more tightly than multiplication. Conditions require `true` or `false`; Lango does not use JavaScript truthiness or implicit conversion. Arithmetic operators, including remainder (`%`), work on numbers, and strings are composed with interpolation.
 
 Word logical operators bind more loosely than symbolic logical operators. From
@@ -532,6 +537,19 @@ interpolation:
 name = 'Savaş'
 message = 'Hello, ${name}'
 ```
+
+`${...}` accepts a full Lango expression, including function and method calls,
+namespace calls, indexing, private fields, and nested expressions:
+
+```lango
+return "${super.describe()}: ${id}"
+message = "${format(items[index])} / ${@label}"
+```
+
+Expressions run once, from left to right, and use the normal call, scope, and
+capture rules. Quoted arguments and nested interpolated strings are allowed
+inside an expression. Write `\${name}` when the placeholder should remain
+literal text. The same expression support applies inside `_()` translations.
 
 Localization is explicit. `_()` accepts a string literal, extracts it during
 compilation, and returns the translated primitive string at runtime. Its

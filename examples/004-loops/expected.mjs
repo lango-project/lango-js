@@ -1,7 +1,7 @@
 import {
     println as __println,
     requireBoolean as __requireBoolean,
-    finite as __finite,
+    numericAdd as __numericAdd,
     boundary as __boundary,
     requireArity as __requireArity,
 } from "./.lango/runtime.mjs";
@@ -12,8 +12,8 @@ function sum_to(limit) {
     let number = 0;
     let total = 0;
     __loop1: while (__requireBoolean(number < limit)) {
-        total = __finite(total + number);
-        number += 1;
+        total = __numericAdd(total, number);
+        number = __numericAdd(number, 1);
     }
     return total;
     return null;

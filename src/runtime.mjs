@@ -530,6 +530,19 @@ export function requireNumber(value) {
     return finite(value);
 }
 
+export function requireNumeric(value) {
+    if (isDecimal(value) && value.isFinite()) return value;
+    return requireNumber(value);
+}
+
+export function numericAdd(left, right) {
+    requireNumeric(left);
+    requireNumeric(right);
+    if (isDecimal(left) || isDecimal(right))
+        return decimal(left).plus(right);
+    return finite(left + right);
+}
+
 export function call(value, ...arguments_) {
     if (typeof value !== "function") throw new Error("NotCallable");
     return normalize(value(...arguments_));

@@ -12,7 +12,7 @@ test("Faz 233 converts a value to Decimal with $()", () => {
     return $value + 0.25
 `).javascript;
     assert.match(output, /__decimal\("12\.50"\)/);
-    assert.match(output, /\$value\.plus\(__decimal\("0\.25"\)\)/);
+    assert.match(output, /__numericAdd\(\$value, __decimal\("0\.25"\)\)/);
 });
 
 test("Faz 233 rejects an invalid dynamic Decimal value", async () => {

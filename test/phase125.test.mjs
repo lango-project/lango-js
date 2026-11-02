@@ -10,7 +10,7 @@ test("Faz 125 lowers compound Decimal equality through the Decimal backend", () 
     const output = compile(`main(args)
     return ($1 + $2) == ($3 + $0)
 `).javascript;
-    assert.match(output, /\.plus\([^\n]+\)\.eq\(/);
+    assert.match(output, /__numericAdd\([^\n]+\)\.eq\(/);
 });
 
 test("Faz 125 retains precision when comparing compound Decimal expressions", async () => {
