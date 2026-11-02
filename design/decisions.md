@@ -438,6 +438,17 @@ on ESM versus CommonJS named-export shape; Lango source writes namespace paths
 with `/`, such as `fs/promises/readFile(...)`; ordinary object member access
 remains dotted. The selected Node or browser host resolves that specifier.
 
+Host globals use `import js global Path[/Member] [as name]`. With no alias,
+the final path segment supplies the local name. This is a host binding, not
+an ESM import and not a Lango module global. Each use resolves the path from
+the current JavaScript global object. Imports do not eagerly read host getters;
+an unavailable path raises `HostGlobalUnavailable` at the use site, and native
+getter failures propagate unchanged. Direct function calls retain their owning
+object as `this`; constructor and namespace calls use the same live resolution.
+The local import name cannot be rebound or shadowed (`LNG1268`), while object
+properties remain mutable. Host imports are available in callbacks without
+`global` or `capture` declarations and obey JavaScript argument boundary rules.
+
 The compiler resolves the complete Lango module graph before ordinary compilation.
 Cyclic Lango imports are permitted and emit ESM live bindings, but a global or
 static initializer in the cycle may not read a value whose defining module has
@@ -871,7 +882,8 @@ as Node, browser, test runner, or database adapter. Lango source does not select
 or branch on its host through a core keyword, and the language provides no
 implicit `env`, `process`, `window`, or equivalent host global.
 
-Programs access host services through explicitly imported libraries, the
+Programs access host services through explicitly imported libraries or
+`import js global` bindings, the
 `main(args)` argument array, or explicitly declared context bindings. Host
 configuration belongs to the compiler, host, or library layer rather than the
 core language.

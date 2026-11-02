@@ -283,6 +283,17 @@ class Parser {
         this.blank();
         continue;
       }
+      const hostImport = /^import js global ([A-Za-z_]\w*(?:\/[A-Za-z_]\w*)*)(?: as ([A-Za-z_]\w*))?$/.exec(line.text);
+      if (hostImport) {
+        if (declarationSeen)
+          this.fail(line, "LNG1121", "imports must precede class and function declarations");
+        const name = hostImport[2] ?? hostImport[1].split("/").at(-1);
+        if (jsImports.some((item) => item.name === name))
+          this.fail(line, "LNG1122", `duplicate JavaScript import name ${name}`);
+        jsImports.push({ name, globalPath: hostImport[1].split("/").map(kebabName) });
+        this.blank();
+        continue;
+      }
       const jsImport = /^import js "([^"]+)" as ([A-Za-z_]\w*)$/.exec(line.text);
       if (jsImport) {
         if (declarationSeen)
@@ -1807,6 +1818,8 @@ function validate(program, imports = []) {
     ),
   );
   const jsImportNames = new Set(program.jsImports.map((item) => item.name));
+  const jsModuleNames = new Set(program.jsImports.filter((item) => !item.globalPath).map((item) => item.name));
+  const hostImportNames = new Set(program.jsImports.filter((item) => item.globalPath).map((item) => item.name));
   const importedFunctions = new Map(
     imports.flatMap((item) =>
       (item.selections ?? [])
@@ -1840,7 +1853,7 @@ function validate(program, imports = []) {
     ["xml2obj", 1],
     ["start_trans", 0], ["commit_trans", 0], ["rollback_trans", 0], ["trans_state", 0],
   ]);
-  const hostFunctions = new Set(["fetch"]);
+  const hostFunctions = new Set(["fetch", ...hostImportNames]);
   const isDecimalValue = (value) =>
     value &&
     (value.type === "decimal" ||
@@ -2264,6 +2277,18 @@ function validate(program, imports = []) {
     findMethod(classNode, "constructor", false);
   const walk = (value, localCallables, classNode = null, staticMethod = false) => {
     if (!value || typeof value !== "object") return;
+    if (value.type === "closure" || value.type === "closureAssign")
+      localCallables = new Set([...localCallables, ...value.parameters.map((parameter) => parameter.name), ...dynamicBindingNames(value.body)]);
+    const bindings = [
+      ...(["assign", "closureAssign", "increment", "contextSet", "contextDeclare", "globalDeclare"].includes(value.type) ? [value.name] : []),
+      ...(value.parameters ?? []).map((parameter) => parameter.name),
+      ...(value.type === "for" ? [value.item] : []),
+      ...(value.type === "forObject" ? [value.key, value.value] : []),
+      ...(value.catchName ? [value.catchName] : []),
+    ];
+    const readonly = bindings.find((name) => hostImportNames.has(name));
+    if (readonly)
+      throw new LangoError("LNG1268", value.line ?? 1, `${readonly} is a readonly host import and cannot be rebound or shadowed`);
     if (value.type === "binary" && ["+", "-", "*", "/", "%", "**", ">", "<", ">=", "<="].includes(value.operator)) {
       const string = (item) => item.type === "string";
       const number = (item) => item.type === "raw" && /^\d/.test(item.value);
@@ -2340,7 +2365,7 @@ function validate(program, imports = []) {
           value.line,
           `use / between JavaScript namespace segments in new ${value.name}(...)`,
         );
-      if (value.name.includes("/")) validateJavaScriptArguments(value, value.name);
+      if (value.name.includes("/") || hostImportNames.has(value.name)) validateJavaScriptArguments(value, value.name);
       const target = classes.get(value.name);
       const constructor = target && findConstructor(target);
       if (constructor) validateRequiredArguments(constructor, value, value.name);
@@ -2348,7 +2373,7 @@ function validate(program, imports = []) {
     if (value.type === "methodCall" && typeof value.receiver === "string") {
       if (
         value.receiver.includes(".") &&
-        jsImportNames.has(value.receiver.split(".")[0])
+        jsModuleNames.has(value.receiver.split(".")[0])
       )
         throw new LangoError(
           "LNG1232",
@@ -2408,6 +2433,8 @@ function validate(program, imports = []) {
           `${targetClass.name}${target.method.static ? "::" : ":"}${value.name}`,
         );
     }
+    if (value.type === "methodCall" && hostImportNames.has(receiverRoot(value.receiver)))
+      validateJavaScriptArguments(value, `${receiverRoot(value.receiver)}.${value.name}`);
     if (value.type === "methodCall" && receiverRoot(value.receiver) === "args")
       validateJavaScriptArguments(value, `args.${value.name}`);
     if (value.type === "namespaceMethodCall") {
@@ -3405,6 +3432,7 @@ function emit(program, moduleImports = [], includeTests = false) {
         item.names.map((name) => name.split(" as ").at(-1)),
       ),
     ),
+    hostGlobals: new Map(program.jsImports.filter((item) => item.globalPath).map((item) => [item.name, item.globalPath])),
   };
   const classes = program.classes
     .map((item) => emitClass(item, flags))
@@ -3428,7 +3456,18 @@ function emit(program, moduleImports = [], includeTests = false) {
         .concat("...__langoOwnTests")
         .join(", ")}];\n`
     : "";
+  const globals = program.globals
+    .map((item) => {
+      const value = emitExpr(item.value, flags);
+      const prefix = item.exported ? "export let" : "let";
+      if (!item.name.startsWith("$")) return `${prefix} ${item.name} = ${value};\n`;
+      flags.decimal = true;
+      return `${prefix} ${item.name} = __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value});\n`;
+    })
+    .join("");
   const helpers = [
+    flags.hostGlobal && "hostGlobal as __hostGlobal",
+    flags.hostGlobalCall && "hostGlobalCall as __hostGlobalCall",
     flags.decimal && "decimal as __decimal",
     flags.print && "println as __println",
     flags.translate && "translate as __translate",
@@ -3486,19 +3525,11 @@ function emit(program, moduleImports = [], includeTests = false) {
     )
     .join("");
   const jsModules = program.jsImports
+    .filter((item) => !item.globalPath)
     .map(
       (item) =>
         `import * as ${item.name} from ${JSON.stringify(item.specifier)};\n`,
     )
-    .join("");
-  const globals = program.globals
-    .map((item) => {
-      const value = emitExpr(item.value, flags);
-      const prefix = item.exported ? "export let" : "let";
-      if (!item.name.startsWith("$")) return `${prefix} ${item.name} = ${value};\n`;
-      flags.decimal = true;
-      return `${prefix} ${item.name} = __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value});\n`;
-    })
     .join("");
   const testReset = includeTests
     ? `export function __langoResetTests() {\n${program.globals
@@ -3988,6 +4019,11 @@ function emitBoundaryChecks(parameters, depth, flags) {
     .join("");
 }
 function emitReceiverName(name, flags) {
+  const host = /^([A-Za-z_]\w*)(.*)$/.exec(name);
+  if (host && flags.hostGlobals?.has(host[1])) {
+    flags.hostGlobal = true;
+    return `__hostGlobal(${JSON.stringify(flags.hostGlobals.get(host[1]))})${emitKebabPath(host[2])}`;
+  }
   const member = /^(@{1,2})(\$?[A-Za-z_]\w*)(.*)$/.exec(name);
   if (member) {
     const [, scope, property, suffix] = member;
@@ -4018,6 +4054,13 @@ function emitExpr(node, flags) {
     flags.normalize = true;
     return `__normalize(${value})`;
   };
+  if (node.type === "raw" && flags.hostGlobals.has(node.value.split(/[.\[?]/)[0]))
+    return normalize(emitReceiverName(node.value, flags));
+  if (node.type === "call" && flags.hostGlobals.has(node.name)) {
+    flags.hostGlobalCall = true;
+    const arguments_ = node.arguments.map((item) => item.type === "closure" ? emitClosure(item, 0, flags) : emitExpr(item, flags)).join(", ");
+    return `__hostGlobalCall(${JSON.stringify(flags.hostGlobals.get(node.name))}${arguments_ ? `, ${arguments_}` : ""})`;
+  }
   if (node.type === "raw")
     if (/^@{1,2}\$?[A-Za-z_]\w*[.\[?]/.test(node.value))
       return normalize(emitReceiverName(node.value, flags));
@@ -4080,7 +4123,7 @@ function emitExpr(node, flags) {
     return `__finite(-${numericLiteral ? emitExpr(node.value, flags) : `__requireNumber(${emitExpr(node.value, flags)})`})`;
   }
   if (node.type === "new")
-    return `new ${node.name.replaceAll("/", ".")}(${node.arguments.map((item) =>
+    return `new ${flags.hostGlobals.has(node.name.split("/")[0]) ? `(${emitReceiverName(node.name.replaceAll("/", "."), flags)})` : node.name.replaceAll("/", ".")}(${node.arguments.map((item) =>
       item.type === "closure" ? emitClosure(item, 0, flags) : emitExpr(item, flags),
     ).join(", ")})`;
   if (node.type === "superMethodCall")
@@ -4096,7 +4139,7 @@ function emitExpr(node, flags) {
   if (node.type === "methodCall" || node.type === "namespaceMethodCall") {
     const namespace = node.type === "namespaceMethodCall";
     const sourceReceiver = namespace
-      ? node.receiver.replaceAll("/", ".")
+      ? emitReceiverName(node.receiver.replaceAll("/", "."), flags)
       : typeof node.receiver === "string"
         ? emitReceiverName(node.receiver, flags)
         : emitExpr(node.receiver, flags);

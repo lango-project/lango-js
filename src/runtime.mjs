@@ -548,6 +548,36 @@ export function call(value, ...arguments_) {
     return normalize(value(...arguments_));
 }
 
+export class HostGlobalUnavailable extends Error {
+    constructor(path) {
+        super("HostGlobalUnavailable: " + path.join("/"));
+        this.name = "HostGlobalUnavailable";
+    }
+}
+
+function resolveHostGlobal(path) {
+    let owner = globalThis;
+    let value = owner;
+    for (const segment of path) {
+        owner = value;
+        if (owner === null || owner === undefined || !(segment in Object(owner)))
+            throw new HostGlobalUnavailable(path);
+        value = owner[segment];
+    }
+    if (value === undefined) throw new HostGlobalUnavailable(path);
+    return { owner, value };
+}
+
+export function hostGlobal(path) {
+    return resolveHostGlobal(path).value;
+}
+
+export function hostGlobalCall(path, ...arguments_) {
+    const { owner, value } = resolveHostGlobal(path);
+    if (typeof value !== "function") throw new Error("NotCallable");
+    return normalize(Reflect.apply(value, owner, arguments_));
+}
+
 export function callMethod(receiver, name, ...arguments_) {
     const value = receiver?.[name];
     if (typeof value !== "function") throw new Error("NotCallable");

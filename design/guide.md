@@ -1118,6 +1118,36 @@ Use a JavaScript namespace path with `/`, for example
 `fs/promises/readFile(...)`. Ordinary object properties and methods continue to
 use `.`, such as `file.name` or `file.close()`. A namespace call may be used as
 an ordinary expression statement when its result is intentionally discarded.
+
+Host globals use explicit imports without an ESM module specifier:
+```lango
+import js global Promise
+import js global document
+import js global fetch
+import js global localStorage
+import js global Intl/DateTimeFormat as DateTimeFormat
+
+load(path)
+    return fetch(path)
+
+ready(value)
+    return Promise/resolve(value)
+```
+
+An alias is optional: `import js global Promise as promises`. For a nested
+path, the default local name is its final segment. Constructors use `new`,
+such as `new DateTimeFormat("en")`; object methods use ordinary member access,
+such as `document.getElementById("app")`.
+
+These imports resolve the host value on each use, including in callbacks;
+they do not snapshot it during module loading. No `global` or `capture`
+declaration is needed. Missing values raise `HostGlobalUnavailable` when used,
+so an unavailable browser API can be handled in a surrounding `try` block.
+Host getter exceptions retain their original error. Imported names cannot be
+assigned or shadowed (`LNG1268`), but an imported object's properties remain
+mutable. Direct imported function calls preserve the owning host object's
+`this` binding. Existing JavaScript argument boundary rules also apply here.
+
 Lango module cycles are allowed
 for functions and classes. A cycle cannot read an uninitialized global or static
 value from another module; that is a compile-time error. Module cycles are
