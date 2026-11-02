@@ -1074,8 +1074,12 @@ class Parser {
   }
   captures() {
     if (!(this.peek() ?? "").trimStart().startsWith("capture ")) return [];
-    const line = this.line();
-    const names = splitTopLevel(line.text.trim().slice(8));
+    const line = { text: this.peek(), number: this.i + 1 };
+    const indent = spaces(line.text);
+    const names = [];
+    while (spaces(this.peek() ?? "") === indent && (this.peek() ?? "").trimStart().startsWith("capture ")) {
+      names.push(...splitTopLevel(this.line().text.trim().slice(8)));
+    }
     if (
       names.some(
         (name) =>
@@ -1116,7 +1120,7 @@ class Parser {
         value:
           match[2] === "{"
             ? this.object(indent + 4)
-            : expr(match[2], line, this),
+            : expr(this.continuedStatement(match[2], line, indent + 4), line, this),
       });
     }
     return { type: "object", fields };

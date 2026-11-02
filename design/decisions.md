@@ -302,7 +302,10 @@ closures observe its later mutations.
 
 Within a closure, `global name` and `context name` must be declared again when
 those bindings are used; imported names remain directly available. Every
-`capture` declaration must precede ordinary closure statements and must name a
+`capture` declarations must precede ordinary closure statements. Consecutive
+declarations form one capture set; a duplicate name across lines is rejected.
+Prefer one captured binding per line; comma-separated capture lists remain
+accepted for compatibility. Each declaration must name a
 binding actually used by that closure. An implicit local capture is a
 compile-time `MissingCapture` diagnostic that identifies the name and suggests
 its `capture name` declaration. Destructuring has no separate rule because it

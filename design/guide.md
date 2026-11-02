@@ -915,7 +915,8 @@ Instance and static properties used by a closure must also be captured. A
 property capture keeps its owner, not a snapshot of its current value:
 ```lango
 return ()
-    capture @count, @@limit
+    capture @count
+    capture @@limit
     @count = @count + 1
     return @count < @@limit
 ```
@@ -925,6 +926,10 @@ own captured item; a local declared outside a `loop` remains shared across its
 iterations. Put every `capture` at the start of the closure body. Missing or
 unused captures are compile-time errors; a missing capture reports
 `MissingCapture` and the needed name.
+
+Use one `capture` line per binding, like `context` declarations. Consecutive
+capture declarations form one capture set; repeating a name across lines is a
+compile-time error. A comma-separated list remains accepted for compatibility.
 ## Context
 
 Context variables are used for dependency injection or not to carry specific variables through all functions or methods.
