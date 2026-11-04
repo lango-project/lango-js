@@ -277,13 +277,14 @@ compile-time dependency declaration; JavaScript's normal closure mechanism
 provides the runtime capture.
 
 `global` bindings, `context` bindings, and imports follow their own explicit
-access rules and do not need a `capture` declaration. An instance or static
-property used by a closure must be listed as `capture @property` or
-`capture @@property`. A missing required capture is a compile-time error.
+access rules. Capturing an outer context binding remains explicit (D-013).
+Within a class method, the receiver and its instance, static and protected
+properties are retained automatically (D-063). A missing required local or
+context capture is a compile-time error.
 
-Capturing `@property` retains the class instance on which the closure was
-created; it does not copy the property's current value. Capturing `@@property`
-retains its declaring class. The compiler verifies that every captured property
+Using `@property` retains the class instance on which the closure was
+created; it does not copy the property's current value. Using `@@property`
+retains its declaring class. The compiler verifies that every retained property
 and every property used in the closure resolves to a valid class member, which
 makes an accidental property name a compile-time error. The generated closure
 therefore safely outlives the method that created it while continuing to access
@@ -293,7 +294,9 @@ class-member context.
 Each closure declares its own direct external dependencies. An inner closure
 therefore captures a local even if an enclosing closure also captures it; a
 capture is a shared binding, not a value snapshot, so a closure may mutate it.
-The same rule applies to protected properties, written `capture _property`.
+Protected properties also retain their original owner automatically. Explicit
+`capture @this`, `capture @property`, `capture @@property`, and
+`capture _property` remain accepted for compatibility when used by the closure.
 
 `for collection as item` creates a fresh `item` binding for every iteration.
 A closure created in that iteration captures that iteration's binding. By
@@ -418,7 +421,7 @@ The `methods` section lists public instance methods as `name(parameters)`. The
 `name(parameters)`. Every static member name must be unique across `static`
 values, `enum` values, and public static methods. A method implementation omitted from its API section is
 private. Lango source never spells JavaScript's `#`: code
-inside the defining class uses ordinary `this.name()` or `Class.name()` calls,
+inside the defining class uses ordinary `name()` calls (D-063),
 and the JavaScript backend emits `#name` only for private implementations and
 their resolved calls.
 
@@ -715,9 +718,10 @@ such as `callback = manager.add`, is a compile-time error. Lango never silently
 creates a bound callback or exposes JavaScript's unbound-`this` behavior.
 
 To pass instance behavior as a callback, source code creates an explicit
-closure, captures any outer local bindings and properties it uses, and calls the
-method through its receiver. This makes callback dependencies and receiver
-lifetime visible in source. The behavior of methods on imported JavaScript
+closure, captures any outer local bindings it uses, and calls the
+method through its receiver. Within the receiver's own class method, implicit
+method calls and member accesses automatically retain that receiver (D-063).
+The behavior of methods on imported JavaScript
 objects remains part of the JavaScript-interoperability contract.
 
 ## D-028: Callbacks use ordinary Lango closure semantics
@@ -1377,3 +1381,39 @@ adapter interface, so the language API is not coupled to that host module.
 PostgreSQL, networked databases, pooling, savepoints, and independent
 connections remain separate adapter/library work. A host may provide
 `better-sqlite3` as a compatibility fallback without changing Lango semantics.
+
+## D-063: Method calls have an implicit receiver
+
+**Status:** Accepted and implemented
+
+Within a class method, `method(arguments)` resolves a method on the current
+receiver. Instance methods resolve instance methods, and static methods resolve
+static methods. Lookup follows the existing ancestor chain and preserves public
+virtual dispatch, private visibility and required argument checks. Explicit
+ancestor dispatch remains `super.method(arguments)`. Calls on other objects
+retain `object.method(arguments)`.
+
+A method name that also names a lexical binding, module function, import,
+global, or standard callable is ambiguous. The compiler rejects the call rather
+than choosing a different target silently. Renaming the competing binding or
+aliasing the import resolves the conflict. A bare name without a matching method
+continues to follow ordinary function-call rules.
+
+`@this` is the readonly receiver reference, not a private field. It is valid only
+inside a class method. In a static method it denotes the receiving constructor.
+Use it when passing or returning the receiver; ordinary method calls need no
+prefix. Instance properties still use `@property`, static properties use
+`@@property`, and protected properties retain their existing spelling.
+The former `this` and `this.method()` source spellings are rejected with a
+migration diagnostic. JavaScript output continues to use its native `this`.
+
+A closure using `@this`, an implicit method call, or an instance, static or
+protected property automatically retains the required receiver or declaring
+class. This applies at every nesting level. Properties are read live, and the
+host caller's dynamic receiver never replaces the original receiver. A callback
+that does not use a receiver or member does not gain a receiver dependency.
+
+Outer local bindings and captured context bindings still require explicit
+`capture`; receiver retention does not propagate dynamic contexts. Member lookup,
+visibility and instance/static restrictions still apply. Explicit member captures
+remain accepted for compatibility, with the existing unused-capture checks.

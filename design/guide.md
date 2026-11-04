@@ -205,10 +205,37 @@ Will be used as @length, @quality in the class implementation.
 The `methods` list is the public instance API. The `static` list holds both
 static values and public static methods. An implementation written as
 `Manager:helper()` or `Manager::helper()` but omitted from that list is private.
-Inside its class, call it with ordinary source syntax such as
-`this.helper()` or `Manager.helper()`; the JavaScript backend chooses private
-`#` method syntax where needed. A static public method is listed as
+Inside its class, call it as `helper()`. The compiler resolves the current
+instance's methods in an instance method, and static methods in a static method.
+The JavaScript backend chooses private `#` method syntax where needed.
+A static public method is listed as
 `create(name)` under `static`.
+
+Use `@this` only when you need the receiver itself, for example to pass it to
+another function. It is readonly and valid only inside a method; in a static
+method it denotes the receiving class. Properties retain their `@property`
+and `@@property` spellings. `this` and `this.method()` are not Lango syntax.
+Calls on another object still use `object.method()`, and an explicit ancestor
+call remains `super.method()`.
+
+Bare method calls preserve virtual dispatch, privacy and required argument
+checks. If a method name also names a local, parameter, module function,
+import, global, or standard callable, the call is ambiguous and compilation
+fails. Rename the competing binding or give an imported function an alias.
+Instance and static methods resolve within their respective method scopes.
+
+A callback automatically retains the receiver when it uses a method or member:
+
+```lango
+Manager:callback()
+    return ()
+        return prepare()
+```
+
+This retains the original receiver even when the callback is invoked elsewhere.
+It does not expose a JavaScript caller's dynamic `this`. `@this`, `@property`,
+`@@property`, and protected properties also work without capture declarations.
+Outer locals and captured context bindings still require explicit `capture`.
 
 ### Inheritance
 
@@ -911,16 +938,18 @@ make_adder()
         capture number
         return a + b + number
 ```
-Instance and static properties used by a closure must also be captured. A
-property capture keeps its owner, not a snapshot of its current value:
+Within a class method, closures automatically retain the receiver and the owners
+of instance, static and protected properties. They read live properties rather
+than snapshots of their values:
 ```lango
 return ()
-    capture @count
-    capture @@limit
     @count = @count + 1
     return @count < @@limit
 ```
-Each nested closure declares its own captures. Captures are shared bindings, so
+The same rule applies to nested callbacks and implicit method calls. Explicit
+member captures remain accepted for compatibility, but are unnecessary.
+Each nested closure declares its own captures of outer locals and context
+bindings. Local captures are shared bindings, so
 a closure may change a captured local. A `for` loop gives each iteration its
 own captured item; a local declared outside a `loop` remains shared across its
 iterations. Put every `capture` at the start of the closure body. Missing or

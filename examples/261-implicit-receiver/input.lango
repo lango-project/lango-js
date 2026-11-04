@@ -1,0 +1,69 @@
+export main(args)
+export class Worker
+    methods
+        run()
+        label()
+        callback()
+        receiver()
+    static
+        create()
+        receiver()
+        later()
+
+Worker:run()
+    return "${label()}:${secret()}"
+
+Worker:label()
+    return "base"
+
+Worker:secret()
+    return "private"
+
+Worker:callback()
+    return ()
+        return run()
+
+Worker:receiver()
+    return ()
+        return @this
+
+Worker::create()
+    return construct()
+
+Worker::construct()
+    return new Worker()
+
+Worker::receiver()
+    return @this
+
+Worker::later()
+    return ()
+        return construct()
+
+class Child : Worker
+    methods
+        label()
+        inherited()
+
+Child:label()
+    return "child"
+
+Child:inherited()
+    return run()
+
+main(args)
+    worker = new Worker()
+    callback = worker.callback()
+    receiver = worker.receiver()
+    assert callback() == "base:private"
+    assert receiver() == worker
+    child = new Child()
+    inherited = child.callback()
+    assert inherited() == "child:private"
+    assert child.inherited() == "child:private"
+    created = Worker.create()
+    assert created.run() == "base:private"
+    assert Worker.receiver() == Worker
+    later = Worker.later()
+    result = later()
+    assert result.run() == "base:private"

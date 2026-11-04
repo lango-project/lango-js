@@ -7,7 +7,7 @@ test("Faz 87 rejects unknown methods on a known Lango class", () => {
         () => compile(`class Counter
 
 Counter:read()
-    return this.missing()
+    return Counter.missing()
 `),
         (error) => error instanceof LangoError && error.code === "LNG1241",
     );
@@ -23,7 +23,7 @@ Base:hidden()
     return 1
 
 Child:read()
-    return this.hidden()
+    return hidden()
 `),
         (error) => error instanceof LangoError && error.code === "LNG1242",
     );

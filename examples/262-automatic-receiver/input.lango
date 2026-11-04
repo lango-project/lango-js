@@ -1,0 +1,69 @@
+import js global Reflect
+export main(args)
+
+class Counter
+    methods
+        callback(step)
+        value()
+        reset(value)
+        nested()
+    static
+        limit = 10
+        limitCallback()
+        readLimit()
+
+Counter(start)
+    @count = start
+    _offset = 1
+
+Counter:callback(step)
+    return ()
+        capture step
+        @count = @count + step
+        _offset = _offset + 1
+        return value()
+
+Counter:value()
+    return @count + _offset + @@limit
+
+Counter:reset(value)
+    @count = value
+
+Counter:nested()
+    return ()
+        return ()
+            return @this
+
+Counter::limitCallback()
+    return ()
+        @@limit = @@limit + 1
+        return readLimit()
+
+Counter::readLimit()
+    return @@limit
+
+class Child : Counter
+    methods
+        protectedCallback()
+
+Child:protectedCallback()
+    return ()
+        return _offset
+
+main(args)
+    counter = new Counter(7)
+    callback = counter.callback(2)
+    hostile = {
+        count: 999
+    }
+    assert Reflect/apply(callback, hostile, []) == 21
+    counter.reset(20)
+    assert callback() == 35
+    factory = counter.nested()
+    receiver = factory()
+    assert Reflect/apply(receiver, hostile, []) == counter
+    child = new Child(0)
+    readOffset = child.protectedCallback()
+    assert readOffset() == 1
+    limit = Counter.limitCallback()
+    assert Reflect/apply(limit, hostile, []) == 11

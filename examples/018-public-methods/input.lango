@@ -10,14 +10,14 @@ Account(value)
     @value = value
 
 Account:total()
-    this.validate()
+    validate()
     return @value
 
 Account:validate()
     return null
 
 Account::zero()
-    return Account.create_zero()
+    return create_zero()
 
 Account::create_zero()
     return new Account(0)

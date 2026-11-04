@@ -1565,6 +1565,8 @@ function expr(source, line, parser) {
         : [],
       line: line.number,
     };
+  if (methodCall?.[1] === "this")
+    parser.fail(line, "LNG1270", `use ${methodCall[3]}(...) without this.`);
   if (methodCall)
     return {
       type: "methodCall",
@@ -1602,6 +1604,8 @@ function expr(source, line, parser) {
     return { type: "raw", value: text };
   }
   if (/^(true|false|null)$/.test(text)) return { type: "raw", value: text };
+  if (/^this(?:$|[.\[?])/.test(text))
+    parser.fail(line, "LNG1270", "use @this for the current receiver and method(...) for its methods");
   if (/^@{0,2}\$?[A-Za-z_]\w*(?:(?:\.|\?\.)[A-Za-z_]\w*)*(?:\.|\?\.)_[A-Za-z_]\w*$/.test(text))
     parser.fail(
       line,
@@ -2129,6 +2133,8 @@ function validate(program, imports = []) {
       if (node.type === "assign" && !node.name.startsWith("@"))
         result.add(node.name);
       if (node.type === "closureAssign") result.add(node.name);
+      if (node.type === "closureAssign" || node.type === "closure") continue;
+      if (["contextDeclare", "contextSet", "globalDeclare"].includes(node.type)) result.add(node.name);
       if (node.type === "for") result.add(node.item);
       if (node.type === "forObject") {
         result.add(node.key);
@@ -2277,7 +2283,7 @@ function validate(program, imports = []) {
     findMethod(classNode, "constructor", false);
   const walk = (value, localCallables, classNode = null, staticMethod = false) => {
     if (!value || typeof value !== "object") return;
-    if (value.type === "closure" || value.type === "closureAssign")
+    if (value.parameters && value.body)
       localCallables = new Set([...localCallables, ...value.parameters.map((parameter) => parameter.name), ...dynamicBindingNames(value.body)]);
     const bindings = [
       ...(["assign", "closureAssign", "increment", "contextSet", "contextDeclare", "globalDeclare"].includes(value.type) ? [value.name] : []),
@@ -2289,6 +2295,12 @@ function validate(program, imports = []) {
     const readonly = bindings.find((name) => hostImportNames.has(name));
     if (readonly)
       throw new LangoError("LNG1268", value.line ?? 1, `${readonly} is a readonly host import and cannot be rebound or shadowed`);
+    if (bindings.includes("this") || bindings.includes("@this"))
+      throw new LangoError("LNG1270", value.line ?? 1, "the current receiver cannot be rebound or shadowed");
+    if (value.type === "methodCall" && value.receiver === "this" && !value.implicitReceiver)
+      throw new LangoError("LNG1270", value.line ?? 1, `use ${value.name}(...) without this.`);
+    if (typeof value.receiver === "string" && /^@this(?:$|[.\[?])/.test(value.receiver) && !classNode)
+      throw new LangoError("LNG1270", value.line ?? 1, "@this is only valid in a class method");
     if (value.type === "binary" && ["+", "-", "*", "/", "%", "**", ">", "<", ">=", "<="].includes(value.operator)) {
       const string = (item) => item.type === "string";
       const number = (item) => item.type === "raw" && /^\d/.test(item.value);
@@ -2302,6 +2314,21 @@ function validate(program, imports = []) {
            (leftKind === "string" && value.operator !== "+")))
         throw new LangoError("LNG1254", value.line ?? 1, "primitive values do not coerce in operators");
     }
+    if (value.type === "call") {
+      const member = classNode && findMethodWithOwner(classNode, value.name, staticMethod);
+      if (member) {
+        const competing = names.has(value.name) || imported.has(value.name) || globals.has(value.name) ||
+          standardFunctions.has(value.name) || hostFunctions.has(value.name) ||
+          localCallables.has(value.name);
+        if (competing)
+          throw new LangoError("LNG1269", value.line, `ambiguous call ${value.name}: a method and another binding have the same name`);
+        value.type = "methodCall";
+        value.receiver = "this";
+        value.implicitReceiver = true;
+      }
+    }
+    if (value.type === "raw" && /^@this(?:$|[.\[?])/.test(value.value) && !classNode)
+      throw new LangoError("LNG1270", value.line ?? 1, "@this is only valid in a class method");
     if (value.type === "call") {
       const target = names.get(value.name) ?? importedFunctions.get(value.name);
       if (
@@ -2380,8 +2407,9 @@ function validate(program, imports = []) {
           value.line,
           `use / between JavaScript namespace segments in ${value.receiver}.${value.name}(...)`,
         );
+      const currentReceiver = value.receiver === "this" || value.receiver === "@this";
       const targetClass =
-        value.receiver === "this"
+        currentReceiver
           ? classNode
           : classes.get(value.receiver) ?? null;
       const importedStaticMethod =
@@ -2408,13 +2436,13 @@ function validate(program, imports = []) {
         findMethodWithOwner(
           targetClass,
           value.name,
-          value.receiver === "this" ? staticMethod : true,
+          currentReceiver ? staticMethod : true,
         );
       if (targetClass && !target)
         throw new LangoError(
           "LNG1241",
           value.line,
-          `${targetClass.name}: unknown ${value.receiver === "this" ? "instance" : "static"} method ${value.name}`,
+          `${targetClass.name}: unknown ${currentReceiver && !staticMethod ? "instance" : "static"} method ${value.name}`,
         );
       if (
         target &&
@@ -2476,12 +2504,16 @@ function validate(program, imports = []) {
         );
       validateRequiredArguments(target, value, `super.${value.name}`);
     }
-    Object.values(value).forEach((item) =>
+    Object.entries(value).forEach(([key, item]) =>
       Array.isArray(item)
-        ? item.forEach((child) => walk(child, localCallables, classNode, staticMethod))
+        ? item.forEach((child) => walk(child, key === "catchBody" && value.catchName ? new Set([...localCallables, value.catchName]) : localCallables, classNode, staticMethod))
         : walk(item, localCallables, classNode, staticMethod),
     );
   };
+  program.globals.forEach((global) => walk(global, new Set()));
+  program.classes.forEach((classNode) =>
+    [...classNode.staticValues, ...classNode.enumValues].forEach((value) => walk(value, new Set())),
+  );
   [...program.functions, ...program.tests].forEach((fn) =>
     walk(
       fn,
@@ -2527,6 +2559,7 @@ function validate(program, imports = []) {
       return;
     }
     if (node.type === "methodCall" || node.type === "namespaceMethodCall") {
+      if (node.implicitReceiver) references.add("@this");
       if (typeof node.receiver === "string" && node.receiver !== "this")
         references.add(node.receiver.split(/[./]/)[0]);
       else if (typeof node.receiver !== "string")
@@ -2858,17 +2891,20 @@ function validate(program, imports = []) {
             !hostFunctions.has(name),
         );
         const captures = new Set(closure.captures);
+        const automaticCaptures = new Set(needed.filter((name) =>
+          classScope && (name.startsWith("@") || name.startsWith("_")),
+        ));
         const contextCaptures = new Set(
           closure.captures.filter((name) => availableContexts.has(name)),
         );
         for (const name of needed)
-          if (!captures.has(name))
+          if (!captures.has(name) && !automaticCaptures.has(name))
             throw new LangoError(
               "LNG1210",
               closure.line,
               `MissingCapture: ${name}; add capture ${name}`,
             );
-        for (const name of captures) {
+        for (const name of new Set([...captures, ...automaticCaptures])) {
           if (!needed.includes(name) && !contextCaptures.has(name))
             throw new LangoError(
               "LNG1211",
@@ -2884,6 +2920,11 @@ function validate(program, imports = []) {
               `capture ${name} is not assigned before this closure`,
             );
           if (propertyCapture) {
+            if (name === "@this") {
+              if (!classScope)
+                throw new LangoError("LNG1213", closure.line, "@this is only valid in a class method");
+              continue;
+            }
             const staticMember = name.startsWith("@@");
             const property = name.startsWith("@")
               ? name.slice(staticMember ? 2 : 1)
@@ -3119,6 +3160,8 @@ function validate(program, imports = []) {
   program.functions.forEach((fn) => validateLoopLevels(fn.body));
   program.tests.forEach((test) => validateLoopLevels(test.body));
   for (const classNode of program.classes) {
+    if (classNode.publicProperties.includes("this"))
+      throw new LangoError("LNG1270", classNode.line, "this is reserved for the current receiver");
     if (classNode.ancestor && !classes.has(classNode.ancestor))
       throw new LangoError(
         "LNG1206",
@@ -3313,6 +3356,7 @@ function validate(program, imports = []) {
           );
       }
       if (name && /^@[A-Za-z_]\w*$/.test(name)) {
+        if (name === "@this") return;
         if (!classScope.instanceMembers.has(name.slice(1)))
           throw new LangoError(
             "LNG1222",
@@ -3343,7 +3387,7 @@ function validate(program, imports = []) {
             : null;
       if (
         name &&
-        (/^@[A-Za-z_]\w*$/.test(name) || /^_[A-Za-z_]\w*$/.test(name))
+        ((/^@[A-Za-z_]\w*$/.test(name) && name !== "@this") || /^_[A-Za-z_]\w*$/.test(name))
       )
         throw new LangoError(
           "LNG1231",
@@ -3620,7 +3664,7 @@ function emitClass(item, flags) {
         .filter((name) => !name.startsWith("@@"))
         .map((name) => name.slice(1)),
     ),
-  ].filter((field) => !flags.publicProperties.has(field));
+  ].filter((field) => field !== "this" && !flags.publicProperties.has(field));
   const implicitConstructor =
     item.ancestor &&
     !item.methods.some((method) => method.name === "constructor")
@@ -4019,6 +4063,7 @@ function emitBoundaryChecks(parameters, depth, flags) {
     .join("");
 }
 function emitReceiverName(name, flags) {
+  if (/^@this(?:$|[.\[?])/.test(name)) return `this${name.slice(5)}`;
   const host = /^([A-Za-z_]\w*)(.*)$/.exec(name);
   if (host && flags.hostGlobals?.has(host[1])) {
     flags.hostGlobal = true;
@@ -4042,6 +4087,7 @@ function emitReceiverName(name, flags) {
 }
 
 function emitExpr(node, flags) {
+  if (node.type === "raw" && node.value === "@this") return "this";
   const decimalRaw = (value) =>
     value?.type === "raw" &&
     (value.value.startsWith("$") || value.value.includes(".$"));

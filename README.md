@@ -232,8 +232,8 @@ Faz 30 permits a function to return a closure directly. See
 
 ## Faz 31
 
-Faz 31 makes an explicit `capture @property` retain the original class
-instance in a returned closure. See `examples/031-property-capture`.
+Faz 31 retains the original class instance for property access in a returned
+closure. Member capture is now automatic (D-063). See `examples/031-property-capture`.
 
 ## Faz 32
 
@@ -252,7 +252,7 @@ capture declarations. See `examples/034-static-capture`.
 
 ## Faz 35
 
-Faz 35 extends explicit closure capture to protected properties. See
+Faz 35 retains protected properties in closures; capture is now automatic. See
 `examples/035-protected-capture`.
 
 ## Faz 36
@@ -901,3 +901,15 @@ are native finite numbers.
 ## Faz 209
 
 Faz 209 rejects dynamic non-numeric range bounds.
+
+## Implicit method receivers
+
+Inside a class method, call another method as `prepare()`; instance and static
+methods resolve within their respective scopes. Use the readonly `@this` only
+when the receiver itself is needed. Callbacks automatically retain the receiver
+for method calls and member access; outer locals and captured context bindings
+still require `capture`. The former `this` and `this.method()` spellings produce migration
+diagnostics. See [the class guide](design/guide.md#public),
+[D-063](design/decisions.md#d-063-method-calls-have-an-implicit-receiver), and
+`examples/261-implicit-receiver` and `examples/262-automatic-receiver` for
+executable examples.

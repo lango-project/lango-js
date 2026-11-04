@@ -8,7 +8,6 @@ export class Limits
 
 Limits:callback()
     callback = ()
-        capture @@maximum
         return @@maximum
     return callback
 

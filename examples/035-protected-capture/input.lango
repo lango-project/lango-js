@@ -9,7 +9,6 @@ Counter(start)
 
 Counter:callback()
     callback = ()
-        capture _value
         _value = _value + 1
         return _value
     return callback
