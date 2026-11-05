@@ -154,7 +154,7 @@ if (command === "init" && inputPath && rest.length === 0) {
             try {
                 program.__langoResetTests?.();
                 runtime.configure({ output: (value) => console.log(value), catalog, database_adapter: database });
-                test.run();
+                await test.run();
                 console.log(`PASS ${test.name}`);
             } catch (error) {
                 failures += 1;

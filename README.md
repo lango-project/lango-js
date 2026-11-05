@@ -36,6 +36,14 @@ private `.lango/runtime.mjs` beside the output. Run the current checks with:
 npm test
 ```
 
+For a Node command-line entry, use `lango build input.lango --out cli.mjs
+--executable`. It requires `export main(args)`, configures console output and
+invokes main with the command-line arguments, waiting for a returned Promise.
+The generated entry starts with `#!/usr/bin/env node`, so it can be an npm
+`bin` target. npm sets its executable permission during installation; when
+running the file directly outside npm, use `node cli.mjs` or set that permission
+yourself. Ordinary library builds do not invoke main.
+
 Create a new application project with:
 
 ```sh
@@ -923,3 +931,12 @@ access use the inherited receiver; public fields are not redeclared in the
 subclass. An omitted subclass constructor forwards its arguments. Private method
 access/overrides remain rejected. This supports browser control subclasses in
 separate Lango modules without JavaScript wrappers.
+
+Method visibility and implicit-receiver lookup apply to the current Lango
+receiver. Calls to a JavaScript namespace or another object keep their own method
+and boundary normalization, even when the current class declares a private or
+public method with the same name.
+
+The CLI test runner waits for a Promise returned by a Lango test before
+reporting its result and resetting state for the next test. Async rejections
+are reported as test failures and remaining tests continue.

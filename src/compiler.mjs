@@ -105,6 +105,7 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
       `//# sourceMappingURL=${path.basename(outputPath)}.map`,
       `const { configure } = await import("./.lango/runtime.mjs");\nconfigure({ output: (value) => console.log(value) });\nawait main(process.argv.slice(2));\n//# sourceMappingURL=${path.basename(outputPath)}.map`,
     );
+    output = `#!/usr/bin/env node\n${output}`;
   }
   const directory = path.dirname(outputPath);
 
@@ -4214,7 +4215,8 @@ function emitExpr(node, flags) {
       (sourceReceiver === "this" && flags.staticMethod)
         ? "static"
         : "instance";
-    const visibility = flags.methods?.get(`${type}:${node.name}`);
+    const ownReceiver = !namespace && (sourceReceiver === "this" || sourceReceiver === flags.className);
+    const visibility = ownReceiver ? flags.methods?.get(`${type}:${node.name}`) : undefined;
     const receiver =
       sourceReceiver === "this" && flags.staticMethod && visibility === false
         ? flags.className
