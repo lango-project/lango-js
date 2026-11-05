@@ -77,14 +77,16 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
           1,
           `${inputPath}: import signature for ${selection.sourceName} does not match ${item.sourcePath}`,
         );
-      if (selection.kind === "class")
+      if (selection.kind === "class") {
+        selection.classMetadata = await importedClassMetadata(item.sourcePath, selection.sourceName);
         validateImportedClassInterface(
           selection,
-          target,
-          importedProgram,
+          selection.classMetadata,
+          { classes: [selection.classMetadata] },
           inputPath,
           item.sourcePath,
         );
+      }
     }
   }
 
@@ -2009,7 +2011,12 @@ function validate(program, imports = []) {
         1,
         `imported local name ${name} conflicts with a Lango declaration`,
       ));
-  const classes = new Map(program.classes.map((item) => [item.name, item]));
+  const classes = new Map([
+    ...imports.flatMap((item) => (item.selections ?? [])
+      .filter((selection) => selection.classMetadata && program.classes.some((node) => node.ancestor === selection.localName))
+      .map((selection) => [selection.localName, { ...selection.classMetadata, name: selection.localName }])),
+    ...program.classes.map((item) => [item.name, item]),
+  ]);
   duplicateDiagnostics(program.classes, "LNG1205", "class name");
   if (nameDiagnostics.length) {
     const [primary] = nameDiagnostics;
@@ -3464,6 +3471,12 @@ function validate(program, imports = []) {
 
 function emit(program, moduleImports = [], includeTests = false) {
   const flags = {
+    classes: new Map([
+      ...moduleImports.flatMap((item) => (item.selections ?? [])
+        .filter((selection) => selection.classMetadata)
+        .map((selection) => [selection.localName, selection.classMetadata])),
+      ...program.classes.map((item) => [item.name, item]),
+    ]),
     print: false,
     translate: false,
     context: false,
@@ -3654,6 +3667,13 @@ function emitClass(item, flags) {
       method.public,
     ]),
   );
+  for (let ancestor = flags.classes.get(item.ancestor); ancestor; ancestor = flags.classes.get(ancestor.ancestor)) {
+    ancestor.publicProperties.forEach((name) => flags.publicProperties.add(name));
+    for (const method of ancestor.methods) {
+      const key = `${method.static ? "static" : "instance"}:${method.name}`;
+      if (method.public && !flags.methods.has(key)) flags.methods.set(key, true);
+    }
+  }
   const fields = [
     ...new Set(
       item.methods
@@ -4587,6 +4607,46 @@ function collectClassImportInterface(lines, getIndex, setIndex) {
   setIndex(index);
   return api;
 }
+async function importedClassMetadata(sourcePath, name, visiting = new Set()) {
+  const key = `${sourcePath}:${name}`;
+  if (visiting.has(key))
+    throw new LangoError("LNG1207", 1, `cyclic class inheritance involving ${name}`, sourcePath);
+  const chain = new Set(visiting).add(key);
+  const source = await readFile(sourcePath, "utf8");
+  const program = new Parser(source, sourcePath).parse();
+  const target = program.classes.find((item) => item.name === name);
+  if (!target) throw new LangoError("LNG1206", 1, `unknown ancestor ${name}`, sourcePath);
+  let ancestor = null;
+  if (target.ancestor) {
+    if (program.classes.some((item) => item.name === target.ancestor))
+      ancestor = await importedClassMetadata(sourcePath, target.ancestor, chain);
+    else {
+      for (const item of collectImports(source, sourcePath, sourcePath)) {
+        const selection = item.selections.find((entry) => entry.kind === "class" && entry.localName === target.ancestor);
+        if (selection) {
+          ancestor = await importedClassMetadata(item.sourcePath, selection.sourceName, chain);
+          break;
+        }
+      }
+      if (!ancestor) throw new LangoError("LNG1206", target.line, `unknown ancestor ${target.ancestor}`, sourcePath);
+    }
+  }
+  const nearest = (own, inherited, keyOf) => [...new Map([
+    ...inherited.map((item) => [keyOf(item), item]),
+    ...own.map((item) => [keyOf(item), item]),
+  ]).values()];
+  const methodKey = (method) => `${method.static ? "static" : "instance"}:${method.name}`;
+  return {
+    ...target,
+    ancestor: null,
+    publicProperties: [...new Set([...(ancestor?.publicProperties ?? []), ...target.publicProperties])],
+    methods: nearest(target.methods, ancestor?.methods ?? [], methodKey),
+    publicMethods: nearest(target.publicMethods, ancestor?.publicMethods ?? [], methodKey),
+    staticValues: nearest(target.staticValues, ancestor?.staticValues ?? [], (item) => item.name),
+    enumValues: nearest(target.enumValues, ancestor?.enumValues ?? [], (item) => item.name),
+  };
+}
+
 function validateImportedClassInterface(
   selection,
   target,

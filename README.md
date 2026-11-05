@@ -913,3 +913,13 @@ diagnostics. See [the class guide](design/guide.md#public),
 [D-063](design/decisions.md#d-063-method-calls-have-an-implicit-receiver), and
 `examples/261-implicit-receiver` and `examples/262-automatic-receiver` for
 executable examples.
+
+## Inheritance across modules
+
+A Lango class can extend an imported Lango class, including an aliased import.
+Builds resolve inherited public members, constructor defaults and `super` method
+signatures across module boundaries. Bare inherited method calls and `@property`
+access use the inherited receiver; public fields are not redeclared in the
+subclass. An omitted subclass constructor forwards its arguments. Private method
+access/overrides remain rejected. This supports browser control subclasses in
+separate Lango modules without JavaScript wrappers.
