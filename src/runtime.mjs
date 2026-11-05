@@ -427,7 +427,8 @@ export function add(value, ...items) {
     throw new Error("NotAddable");
 }
 
-export function remove(value, item) {
+export function remove(value, ...items) {
+    const [item] = items;
     if (Array.isArray(value)) {
         const index = value.indexOf(item);
         if (index < 0) return false;
@@ -435,12 +436,13 @@ export function remove(value, item) {
         return true;
     }
     if (value !== null && typeof value?.remove === "function") {
-        return normalize(value.remove(item));
+        return normalize(value.remove(...items));
     }
     throw new Error("NotRemovable");
 }
 
-export function remove_all(value, item) {
+export function remove_all(value, ...items) {
+    const [item] = items;
     if (Array.isArray(value)) {
         let removed = 0;
         for (let index = value.length - 1; index >= 0; index -= 1) {
@@ -451,23 +453,24 @@ export function remove_all(value, item) {
         return removed;
     }
     if (value !== null && typeof value?.remove_all === "function") {
-        return normalize(value.remove_all(item));
+        return normalize(value.remove_all(...items));
     }
     throw new Error("NotRemovable");
 }
 
-export function clear(value) {
+export function clear(value, ...items) {
     if (Array.isArray(value)) {
         value.length = 0;
         return null;
     }
     if (value !== null && typeof value?.clear === "function") {
-        return normalize(value.clear());
+        return normalize(value.clear(...items));
     }
     throw new Error("NotClearable");
 }
 
-export function remove_at(value, index) {
+export function remove_at(value, ...items) {
+    const [index] = items;
     if (Array.isArray(value)) {
         if (!Number.isSafeInteger(index) || index < 0 || index >= value.length)
             return false;
@@ -475,12 +478,13 @@ export function remove_at(value, index) {
         return true;
     }
     if (value !== null && typeof value?.remove_at === "function") {
-        return normalize(value.remove_at(index));
+        return normalize(value.remove_at(...items));
     }
     throw new Error("NotRemovable");
 }
 
-export function insert_at(value, index, item) {
+export function insert_at(value, ...items) {
+    const [index, item] = items;
     if (Array.isArray(value)) {
         if (!Number.isSafeInteger(index) || index < 0 || index > value.length)
             return false;
@@ -488,7 +492,7 @@ export function insert_at(value, index, item) {
         return true;
     }
     if (value !== null && typeof value?.insert_at === "function") {
-        return normalize(value.insert_at(index, item));
+        return normalize(value.insert_at(...items));
     }
     throw new Error("NotInsertable");
 }

@@ -30,20 +30,24 @@ export function formatDiagnostics(error) {
   }).join("\n");
 }
 
-export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false, profile = {}) {
+export async function buildFile(inputPath, outputPath, seen = new Set(), includeTests = false, profile = {}, layout = null) {
+  inputPath = path.resolve(inputPath);
+  outputPath = path.resolve(outputPath);
   const decimalProfile = validateDecimalProfile(profile);
   if (decimalProfile.target === "browser" && profile.executable)
     throw new LangoError("LNG1266", 1, "browser builds cannot use --executable", inputPath);
   const isEntryPoint = seen.size === 0;
-  if (isEntryPoint)
-    await validateModuleInitializerCycles(inputPath, outputPath);
+  if (layout === null) {
+    const modules = await validateModuleInitializerCycles(inputPath, outputPath);
+    layout = moduleOutputLayout(inputPath, outputPath, modules);
+  }
   if (seen.has(inputPath)) return;
   seen.add(inputPath);
 
   const source = await readFile(inputPath, "utf8");
-  const imports = collectImports(source, inputPath, outputPath);
+  const imports = collectImports(source, inputPath, outputPath, layout);
   for (const item of imports)
-    await buildFile(item.sourcePath, item.outputPath, seen, includeTests, decimalProfile);
+    await buildFile(item.sourcePath, item.outputPath, seen, includeTests, decimalProfile, layout);
   for (const item of imports) {
     const importedProgram = new Parser(
       await readFile(item.sourcePath, "utf8"),
@@ -3765,7 +3769,8 @@ function emitFunction(fn, flags) {
       .map((node) => node.name),
   );
   const hoisted = new Set(
-    [...collectEmitLocals(fn.body)].filter((name) => !topLevelAssigned.has(name)),
+    [...collectEmitLocals(fn.body)].filter((name) =>
+      !topLevelAssigned.has(name) && !fn.parameters.some((parameter) => parameter.name === name)),
   );
   const declared = new Set([...fn.parameters.map((p) => p.name), ...hoisted]);
   const priorArrayBindings = flags.arrayBindings;
@@ -4444,7 +4449,7 @@ function emitString(parts, flags) {
 function spaces(line) {
   return line.length - line.trimStart().length;
 }
-function collectImports(source, inputPath, outputPath) {
+function collectImports(source, inputPath, outputPath, layout = null) {
   const lines = source.split(/\r?\n/);
   const items = [];
   for (let index = 0; index < lines.length; index += 1) {
@@ -4493,7 +4498,7 @@ function collectImports(source, inputPath, outputPath) {
       path.dirname(inputPath),
       `${match[1]}.lango`,
     );
-    const outputPathForImport = path.resolve(
+    const outputPathForImport = layout?.get(sourcePath) ?? path.resolve(
       path.dirname(outputPath),
       `${match[1]}.mjs`,
     );
@@ -4502,10 +4507,36 @@ function collectImports(source, inputPath, outputPath) {
       selections,
       sourcePath,
       outputPath: outputPathForImport,
-      specifier: `./${path.basename(outputPathForImport)}`,
+      specifier: relativeModuleSpecifier(outputPath, outputPathForImport),
     });
   }
   return items;
+}
+
+function relativeModuleSpecifier(from, to) {
+  const relative = path.relative(path.dirname(from), to).split(path.sep).join("/");
+  return relative.startsWith("../") ? relative : `./${relative}`;
+}
+
+function moduleOutputLayout(entryPath, entryOutputPath, modules) {
+  let sourceRoot = path.dirname(entryPath);
+  for (const sourcePath of modules.keys()) {
+    while (true) {
+      const relative = path.relative(sourceRoot, sourcePath);
+      if (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)) break;
+      sourceRoot = path.dirname(sourceRoot);
+    }
+  }
+  const outputRoot = path.dirname(entryOutputPath);
+  const dependencyPath = (sourcePath, root) =>
+    path.join(root, path.relative(sourceRoot, sourcePath).replace(/\.lango$/, ".mjs"));
+  const collision = [...modules.keys()].some((sourcePath) =>
+    sourcePath !== entryPath && dependencyPath(sourcePath, outputRoot) === entryOutputPath);
+  const dependencyRoot = collision ? path.join(outputRoot, ".lango/modules") : outputRoot;
+  return new Map([...modules.keys()].map((sourcePath) => [
+    sourcePath,
+    sourcePath === entryPath ? entryOutputPath : dependencyPath(sourcePath, dependencyRoot),
+  ]));
 }
 
 async function validateModuleInitializerCycles(entryPath, entryOutputPath) {
@@ -4565,6 +4596,7 @@ async function validateModuleInitializerCycles(entryPath, entryOutputPath) {
               `${modulePath}: cyclic module initializer reads imported ${selection.kind} ${selection.localName}`,
             );
     }
+  return modules;
 }
 function collectClassImportInterface(lines, getIndex, setIndex) {
   const api = {

@@ -36,6 +36,16 @@ private `.lango/runtime.mjs` beside the output. Run the current checks with:
 npm test
 ```
 
+Relative Lango imports are compiled under the entry output directory. The build
+preserves their paths relative to the common source directory, and emitted
+imports use the relative path to each actual output. Parent-directory imports
+therefore stay inside the output tree. A shared dependency is emitted once;
+cycles refer back to the configured entry filename. If that filename collides
+with a dependency, dependencies are placed under `.lango/modules/`. Each output
+folder receives its private runtime. Changing the source import graph may change
+its common root and dependency paths; rebuild the complete entry graph rather
+than relying on generated dependency filenames.
+
 For a Node command-line entry, use `lango build input.lango --out cli.mjs
 --executable`. It requires `export main(args)`, configures console output and
 invokes main with the command-line arguments, waiting for a returned Promise.
@@ -844,6 +854,11 @@ Faz 174 adds `Array#remove_all(value)` for removing every matching value. See
 
 Faz 175 preserves null-safe optional access for array mutation helpers. See
 `examples/175-optional-array-mutations`.
+
+On non-array receivers, these helpers delegate to the receiver's own method,
+preserving every supplied argument and the method receiver. This includes
+`remove`, `remove_all`, `clear`, `remove_at` and `insert_at`; an undefined method
+result becomes null. Array mutation semantics remain as described above.
 
 ## Faz 176
 
