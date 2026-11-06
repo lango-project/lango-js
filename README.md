@@ -93,6 +93,13 @@ test:lango -- input.lango` when Lango test blocks need host services.
 
 ### Embedding a generated program
 
+Statically visible local class/global initialization dependencies are ordered
+before use. A startup global may call a function that constructs a class declared
+later in the module; global values used by that class's static fields initialize
+first. The test reset hook follows the same order. Deferred callback bodies are
+excluded from startup dependencies. A cyclic local initialization fails with
+`LNG1271` instead of producing a JavaScript temporal-dead-zone failure.
+
 `buildFile()` writes a matched private runtime next to the generated module.
 Before calling exported Lango entry points, import that runtime and configure
 it. Runtimes generated into separate packages share dynamic Lango contexts

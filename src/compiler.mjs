@@ -157,6 +157,7 @@ export function compile(source, sourceName = "<source>", imports = [], includeTe
   const program = parser.parse();
   try {
     validate(program, imports);
+    return { javascript: emit(program, imports, includeTests), program };
   } catch (error) {
     if (error instanceof LangoError && error.sourceName === null)
       error.sourceName = sourceName;
@@ -166,7 +167,6 @@ export function compile(source, sourceName = "<source>", imports = [], includeTe
       });
     throw error;
   }
-  return { javascript: emit(program, imports, includeTests), program };
 }
 
 export function diagnose(source, sourceName = "<source>", imports = [], includeTests = false, profile = {}) {
@@ -3496,9 +3496,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     ),
     hostGlobals: new Map(program.jsImports.filter((item) => item.globalPath).map((item) => [item.name, item.globalPath])),
   };
-  const classes = program.classes
-    .map((item) => emitClass(item, flags))
-    .join("\n");
+  const classes = new Map(program.classes.map((item) => [item.name, emitClass(item, flags)]));
   const functions = program.functions
     .map((fn) => emitFunction(fn, flags))
     .join("\n");
@@ -3518,15 +3516,18 @@ function emit(program, moduleImports = [], includeTests = false) {
         .concat("...__langoOwnTests")
         .join(", ")}];\n`
     : "";
-  const globals = program.globals
+  const globals = new Map(program.globals
     .map((item) => {
       const value = emitExpr(item.value, flags);
       const prefix = item.exported ? "export let" : "let";
-      if (!item.name.startsWith("$")) return `${prefix} ${item.name} = ${value};\n`;
+      if (!item.name.startsWith("$")) return [item.name, `${prefix} ${item.name} = ${value};\n`];
       flags.decimal = true;
-      return `${prefix} ${item.name} = __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value});\n`;
+      return [item.name, `${prefix} ${item.name} = __decimal(${item.value.type === "raw" ? JSON.stringify(item.value.value) : value});\n`];
     })
-    .join("");
+    );
+  const initializerNodes = initializerOrder(program);
+  const initializers = initializerNodes
+    .map((item) => (item.kind === "class" ? classes : globals).get(item.name)).join("\n");
   const helpers = [
     flags.hostGlobal && "hostGlobal as __hostGlobal",
     flags.hostGlobalCall && "hostGlobalCall as __hostGlobalCall",
@@ -3594,18 +3595,103 @@ function emit(program, moduleImports = [], includeTests = false) {
     )
     .join("");
   const testReset = includeTests
-    ? `export function __langoResetTests() {\n${program.globals
-        .map((item) => `    ${item.name} = ${emitExpr(item.value, flags)};\n`)
-        .join("")}${program.classes
-        .flatMap((item) =>
-          [...item.staticValues, ...item.enumValues].map(
+    ? `export function __langoResetTests() {\n${initializerNodes
+        .flatMap((item) => item.kind === "global"
+          ? [`    ${item.name} = ${emitExpr(item.value, flags)};\n`]
+          : [...item.staticValues, ...item.enumValues].map(
             (value) =>
               `    ${item.name}.${value.name} = ${emitExpr(value.value, flags)};\n`,
           ),
         )
         .join("")}}\n`
     : "";
-  return `${modules}${testImports}${jsModules}${imports}${globals}${classes}${functions}${testReset}${tests}//# sourceMappingURL=main.mjs.map\n`;
+  return `${modules}${testImports}${jsModules}${imports}${initializers}${functions}${testReset}${tests}//# sourceMappingURL=main.mjs.map\n`;
+}
+
+function initializerOrder(program) {
+  const classes = new Map(program.classes.map((item) => [item.name, item]));
+  const functions = new Map(program.functions.map((item) => [item.name, item]));
+  const nodes = new Map([
+    ...program.globals.map((item) => [item.name, { ...item, kind: "global" }]),
+    ...program.classes.map((item) => [item.name, { ...item, kind: "class" }]),
+  ]);
+  const dependencies = (item) => {
+    const result = new Set();
+    const visited = new Set();
+    const reference = (name, bound) => {
+      if (typeof name !== "string") return;
+      const first = /^([$A-Za-z_]\w*)/.exec(name)?.[1];
+      if (nodes.has(first) && !bound.has(first)) result.add(first);
+    };
+    const callable = (fn, owner = null) => {
+      if (!fn || visited.has(fn)) return;
+      visited.add(fn);
+      const bound = new Set(fn.parameters.map((parameter) => parameter.name));
+      const locals = (node) => {
+        if (!node || typeof node !== "object" || node.type === "closure") return;
+        if (["assign", "closureAssign"].includes(node.type)) bound.add(node.name);
+        for (const value of Object.values(node)) {
+          if (Array.isArray(value)) value.forEach(locals);
+          else if (value && typeof value === "object") locals(value);
+        }
+      };
+      locals(fn.body);
+      for (const name of collectGlobalNames(fn.body)) bound.delete(name);
+      inspect(fn.body, bound, owner);
+    };
+    const inspect = (node, bound = new Set(), owner = null) => {
+      if (!node || typeof node !== "object" || node.type === "closure" || node.type === "closureAssign") return;
+      if (Array.isArray(node)) return node.forEach((child) => inspect(child, bound, owner));
+      if (node.type === "raw") reference(node.value, bound);
+      if (node.type === "call" && !bound.has(node.name)) callable(functions.get(node.name));
+      if (node.type === "new") {
+        reference(node.name, bound);
+        const type = classes.get(node.name);
+        if (type && !bound.has(node.name)) {
+          let owner = type;
+          while (owner) {
+            const constructor = owner.methods.find((method) => method.name === "constructor");
+            if (constructor) { callable(constructor, owner); break; }
+            owner = classes.get(owner.ancestor);
+          }
+        }
+      }
+      if (node.type === "superConstructor" && owner) {
+        const base = classes.get(owner.ancestor);
+        if (base) callable(base.methods.find((method) => method.name === "constructor"), base);
+      }
+      if (node.type === "methodCall") {
+        if (typeof node.receiver === "string") reference(node.receiver, bound);
+        const type = node.receiver === "this" ? owner : classes.get(node.receiver);
+        if (type && !bound.has(node.receiver)) callable(type.methods.find((method) => method.name === node.name), type);
+      }
+      for (const value of Object.values(node)) {
+        if (value && typeof value === "object") inspect(value, bound, owner);
+      }
+    };
+    if (item.kind === "global") inspect(item.value);
+    else {
+      if (classes.has(item.ancestor)) result.add(item.ancestor);
+      for (const value of [...item.staticValues, ...item.enumValues]) inspect(value.value, new Set(), classes.get(item.name));
+      result.delete(item.name);
+    }
+    return result;
+  };
+  const ordered = [];
+  const done = new Set();
+  const active = new Set();
+  const visit = (name) => {
+    if (done.has(name)) return;
+    const item = nodes.get(name);
+    if (active.has(name)) throw new LangoError("LNG1271", item.line ?? 1, `cyclic module initialization involving ${name}`);
+    active.add(name);
+    for (const dependency of dependencies(item)) visit(dependency);
+    active.delete(name);
+    done.add(name);
+    ordered.push(item);
+  };
+  for (const name of nodes.keys()) visit(name);
+  return ordered;
 }
 function emitTest(test, flags) {
   const priorGlobalNames = flags.globalNames;
