@@ -569,6 +569,16 @@ class Parser {
       const text = /^([A-Za-z_]\w*) = \{$/.test(initialText)
         ? initialText
         : this.continuedStatement(initialText, line, indent);
+      const chainStart = /^(?:(return) |(@{0,2}\$?[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)*) = )?chain(?: (.*))?$/.exec(text);
+      if (chainStart) {
+        const value = this.promiseChain(chainStart[3] ?? "", line, indent);
+        body.push(chainStart[1]
+          ? { type: "return", value, line: line.number }
+          : chainStart[2]
+            ? { type: "assign", name: chainStart[2], value, line: line.number }
+            : value);
+        continue;
+      }
       if (text === "else")
         this.fail(
           line,
@@ -1052,6 +1062,62 @@ class Parser {
         "expected a statement",
       );
     return body;
+  }
+  promiseChain(source, line, indent) {
+    let header = null;
+    let depth = 0;
+    for (let index = 0; index < source.length; index += 1) {
+      const character = source[index];
+      if (character === "'" || character === '"') { index = skipString(source, index); continue; }
+      if ("([{".includes(character)) { depth += 1; continue; }
+      if (")]}".includes(character)) { depth -= 1; continue; }
+      if (depth === 0 && character === " " && /^(?:then\b|catch\b|finally\b)/.test(source.slice(index).trimStart())) {
+        header = { base: source.slice(0, index).trim(), step: source.slice(index).trim() };
+        break;
+      }
+    }
+    const separateClauses = header === null;
+    if (separateClauses) header = { base: source.trim() };
+    if (!header.base)
+      this.fail(line, "LNG1273", "chain requires a Promise expression followed by then(...), catch(...) or finally");
+    const clauseIndent = separateClauses ? indent + 2 : indent;
+    const bodyIndent = indent + 4;
+    const base = this.expression(header.base, line);
+    const steps = [];
+    const readStep = (text, stepLine) => {
+      const callback = /^(then|catch)\((.*)\)$/.exec(text);
+      if (!callback && text !== "finally")
+        this.fail(stepLine, "LNG1273", "expected then(...), catch(...) or parameterless finally");
+      const parameters = callback ? this.parameters(callback[2], stepLine) : [];
+      if (parameters.length > 1)
+        this.fail(stepLine, "LNG1273", `${callback[1]} accepts at most one callback parameter`);
+      this.blank();
+      if ((this.peek() ?? "").trimStart().startsWith("capture ") && spaces(this.peek()) !== bodyIndent)
+        this.fail({ text: this.peek(), number: this.i + 1 }, "LNG1273", `chain captures must be indented ${bodyIndent - clauseIndent} spaces more than the clause`);
+      const captures = this.captures();
+      return {
+        type: "closure",
+        name: callback ? callback[1] : "finally",
+        parameters,
+        captures,
+        line: stepLine.number,
+        body: this.block(bodyIndent),
+      };
+    };
+    if (!separateClauses) steps.push(readStep(header.step, line));
+    while (true) {
+      this.blank();
+      const next = this.peek();
+      if (!next || spaces(next) < clauseIndent) break;
+      if (!separateClauses && spaces(next) === clauseIndent && !/^(?:then\(|catch\(|finally(?:$|\())/.test(next.slice(clauseIndent))) break;
+      if (spaces(next) !== clauseIndent)
+        this.fail({ text: next, number: this.i + 1 }, "LNG1273", `chain clauses must be indented ${clauseIndent} spaces`);
+      const stepLine = this.line();
+      steps.push(readStep(stepLine.text.slice(clauseIndent), stepLine));
+    }
+    if (!steps.length)
+      this.fail(line, "LNG1273", "chain requires at least one then(...), catch(...) or finally clause");
+    return { type: "chain", base, steps, line: line.number };
   }
   parameters(raw, line) {
     if (raw === "") return [];
@@ -2724,7 +2790,7 @@ function validate(program, imports = []) {
       }
       if (node.type === "for" || node.type === "forObject")
         expressionReferences(node.collection, references);
-      [node.value, node.condition, node.arguments, node.tests].forEach((value) => {
+      [node.value, node.base, node.condition, node.arguments, node.tests].forEach((value) => {
         if (Array.isArray(value))
           value.forEach((item) => expressionReferences(item, references));
         else expressionReferences(value, references);
@@ -2749,7 +2815,7 @@ function validate(program, imports = []) {
     ]);
     for (const node of body) {
       const references = new Set();
-      [node.value, node.condition, node.collection, node.arguments, node.tests].forEach((value) => {
+      [node.value, node.base, node.condition, node.collection, node.arguments, node.tests].forEach((value) => {
         if (Array.isArray(value)) value.forEach((item) => expressionReferences(item, references));
         else expressionReferences(value, references);
       });
@@ -2875,7 +2941,7 @@ function validate(program, imports = []) {
       }
       const chain = node.type === "chain"
         ? node
-        : node.type === "return" && node.value?.type === "chain"
+        : node.value?.type === "chain"
           ? node.value
           : null;
       if (chain) {
@@ -2887,6 +2953,7 @@ function validate(program, imports = []) {
             expiredCatchBindings,
             availableContexts,
           );
+        if (node.type === "assign" && !node.name.startsWith("@")) available.add(node.name);
         continue;
       }
       const closure =
@@ -2981,7 +3048,7 @@ function validate(program, imports = []) {
           closure.body,
           new Set([...available, ...localBindings]),
           classScope,
-          expiredCatchBindings,
+          new Set([...expiredCatchBindings].filter((name) => !localBindings.has(name))),
           new Set([...availableContexts, ...contextCaptures]),
         );
       if (node.type === "closureAssign" || node.type === "assign") available.add(node.name);
@@ -3013,7 +3080,7 @@ function validate(program, imports = []) {
           node.type === "namespaceMethodCall"
         )
           expressionReferences(node, references);
-        [node.value, node.condition, node.collection, node.arguments, node.tests].forEach((value) => {
+        [node.value, node.base, node.condition, node.collection, node.arguments, node.tests].forEach((value) => {
           if (Array.isArray(value)) value.forEach((item) => expressionReferences(item, references));
           else expressionReferences(value, references);
         });
@@ -4218,6 +4285,7 @@ function emitReceiverName(name, flags) {
 }
 
 function emitExpr(node, flags) {
+  if (node.type === "chain") return emitChain(node, 0, flags);
   if (node.type === "raw" && node.value === "@this") return "this";
   const decimalRaw = (value) =>
     value?.type === "raw" &&

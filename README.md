@@ -944,6 +944,53 @@ diagnostics. See [the class guide](design/guide.md#public),
 `examples/261-implicit-receiver` and `examples/262-automatic-receiver` for
 executable examples.
 
+## Promise chain blocks
+
+Use `chain` for new Promise flows. Existing `.then((...))`, `.catch((...))` and
+`.finally((...))` forms remain supported.
+
+```lango
+import js global fetch
+
+load(url)
+    return chain fetch(url)
+      then(response)
+        return response.json()
+      then(data)
+        return data
+      catch(error)
+        context log
+        log.err(error)
+        throw error
+      finally
+        context log
+        log.debug("Request finished")
+```
+
+Each `then(...)`, `catch(...)` and `finally` clause is on its own line, indented
+two spaces from `chain`. Clause bodies use two more spaces (four from `chain`).
+`then` and `catch` accept zero or one parameter; `finally` has no parentheses or
+parameters. A normal statement at the chain's indentation ends the chain.
+Blank lines and ordinary comments are allowed. Bodies can contain nested chains,
+and the initial expression can contain a normal multiline map argument.
+
+Assign a chain with `pending = chain operation()` or return it with
+`return chain operation()`, followed by its indented clauses and bodies. Instance,
+static and object-property assignment targets use their existing syntax. A
+detached `chain` registers callbacks and execution continues immediately. The
+base expression runs once, synchronously; an exception during that initial call
+propagates synchronously. The base supplies the Promise/thenable.
+
+Each callback's return value becomes the next result, and a returned Promise is
+adopted. An omitted return yields Lango null. Catch can recover or rethrow;
+finally waits for its returned Promise and preserves the earlier outcome unless
+cleanup fails. These are ordinary native Promise chains, without implicit await.
+Each clause has its own parameter/local scope. Outer bindings and context values
+retain the existing explicit capture rules; the current method receiver remains
+automatic. Put each capture on its own line at the start of the callback body.
+The earlier inline-first-clause syntax remains supported.
+Malformed clause headers produce `LNG1273`. See `examples/chain-blocks/input.lango`.
+
 ## Constructor signatures in class declarations
 
 A class header can declare its constructor signature:

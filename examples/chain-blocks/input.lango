@@ -1,0 +1,17 @@
+import js global Promise
+
+export main(args)
+
+main(args)
+    return chain Promise/resolve("Ada")
+      then(name)
+        return "Hello, ${name}!"
+      then(message)
+        println(message)
+      catch(error)
+        context log
+        log.err(error)
+        throw error
+      finally
+        context log
+        log.info("Chain finished")
