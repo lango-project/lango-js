@@ -337,14 +337,15 @@ class Parser {
         continue;
       }
       const classHeader =
-        /^(export )?class ([A-Za-z_]\w*)(?: : ([A-Za-z_]\w*))?$/.exec(
+        /^(export )?class ([A-Za-z_]\w*)(?:\((.*)\))?(?: : ([A-Za-z_]\w*))?$/.exec(
           line.text,
         );
       if (classHeader) {
         declarationSeen = true;
         const classNode = {
           name: classHeader[2],
-          ancestor: classHeader[3] ?? null,
+          ancestor: classHeader[4] ?? null,
+          constructorParameters: classHeader[3] === undefined ? null : this.parameters(classHeader[3], line),
           exported: Boolean(classHeader[1]),
           methods: [],
           publicMethods: [],
@@ -454,7 +455,7 @@ class Parser {
       const header =
         staticMethodHeader ??
         methodHeader ??
-        /^(export )?([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
+        /^(export )?([A-Za-z_]\w*)\((.*)\)$/.exec(line.text);
       if (!header)
         this.fail(line, "LNG1101", "expected a function declaration");
       declarationSeen = true;
@@ -1848,6 +1849,11 @@ function validate(program, imports = []) {
         .map((selection) => [selection.localName, selection.interface]),
     ),
   );
+  const importedConstructorClasses = new Map(
+    imports.flatMap((item) => (item.selections ?? [])
+      .filter((selection) => selection.classMetadata)
+      .map((selection) => [selection.localName, selection.classMetadata])),
+  );
   const standardFunctions = new Map([
     ["from_json", 1],
     ["to_json", 1],
@@ -2030,6 +2036,19 @@ function validate(program, imports = []) {
   }
   const classDeclarationDiagnostics = [];
   for (const classNode of program.classes) {
+    if (classNode.constructorParameters !== null) {
+      const constructor = classNode.methods.find((method) => method.name === "constructor" && !method.static);
+      if (!constructor)
+        classDeclarationDiagnostics.push(new LangoError(
+          "LNG1272", classNode.line,
+          `${classNode.name}: constructor signature requires a matching constructor definition`,
+        ));
+      else if (JSON.stringify(classNode.constructorParameters, withoutSourceLine) !== JSON.stringify(constructor.parameters, withoutSourceLine))
+        classDeclarationDiagnostics.push(new LangoError(
+          "LNG1272", constructor.line,
+          `${classNode.name}: constructor signature does not match its class declaration at line ${classNode.line}`,
+        ));
+    }
     if (classNode.ancestor && !classes.has(classNode.ancestor))
       classDeclarationDiagnostics.push(new LangoError(
         "LNG1206",
@@ -2405,7 +2424,7 @@ function validate(program, imports = []) {
           `use / between JavaScript namespace segments in new ${value.name}(...)`,
         );
       if (value.name.includes("/") || hostImportNames.has(value.name)) validateJavaScriptArguments(value, value.name);
-      const target = classes.get(value.name);
+      const target = classes.get(value.name) ?? importedConstructorClasses.get(value.name);
       const constructor = target && findConstructor(target);
       if (constructor) validateRequiredArguments(constructor, value, value.name);
     }
@@ -4841,4 +4860,8 @@ function sameParameters(left, right) {
           (right[index].defaultValue === null),
     )
   );
+}
+
+function withoutSourceLine(key, value) {
+  return key === "line" ? undefined : value;
 }

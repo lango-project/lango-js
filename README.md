@@ -944,6 +944,31 @@ diagnostics. See [the class guide](design/guide.md#public),
 `examples/261-implicit-receiver` and `examples/262-automatic-receiver` for
 executable examples.
 
+## Constructor signatures in class declarations
+
+A class header can declare its constructor signature:
+
+```lango
+class Greeting(name, suffix = "!")
+    methods
+        text()
+
+Greeting(name, suffix = "!")
+    @message = "Hello, ${name}${suffix}"
+
+Greeting:text()
+    return @message
+```
+
+Names, parameter order, dollar markers and default values must match the separate
+constructor definition. A declared signature without a constructor definition,
+or a mismatch, produces `LNG1272`. Write inheritance after the signature:
+`class Child(value) : Parent`. Exported classes accept the same syntax;
+relative imports continue selecting `class Greeting`, with constructor metadata
+resolved from the source module. Legacy headers such as `class Greeting` remain
+valid, including their existing implicit-constructor behavior. See
+`examples/constructor-signatures/input.lango`.
+
 ## Inheritance across modules
 
 A Lango class can extend an imported Lango class, including an aliased import.

@@ -1,0 +1,16 @@
+export main(args)
+
+class Greeting(name, suffix = "!")
+    methods
+        text()
+
+Greeting(name, suffix = "!")
+    @message = "Hello, ${name}${suffix}"
+
+Greeting:text()
+    return @message
+
+main(args)
+    greeting = new Greeting("Ada")
+    assert greeting.text() == "Hello, Ada!"
+    println(greeting.text())
