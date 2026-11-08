@@ -1,3 +1,5 @@
+import { sqlBindings, postgresQuery } from "./sql.mjs";
+
 export const Decimal = Object.freeze({
     Rounding: Object.freeze({
         Up: "up", Down: "down", Ceil: "ceil", Floor: "floor",
@@ -58,7 +60,12 @@ export function toJsNumber(value) {
 let catalog = {};
 let output = null;
 let database = null;
-let failedTransaction = false;
+const failureStore = Symbol.for("lango.databaseFailures");
+const failedTransactions = globalThis[failureStore] ?? new WeakSet();
+globalThis[failureStore] = failedTransactions;
+
+${sqlBindings.toString()}
+${postgresQuery.toString()}
 export const DB = Object.freeze({ Active: "active", RollbackOnly: "rollback_only", Failed: "failed" });
 const contextStore = Symbol.for("lango.contexts");
 const contexts = globalThis[contextStore] ?? new Map();
@@ -85,36 +92,42 @@ export function configure(options = {}) {
         throw new RuntimeConfigurationError("runtime database_adapter must be an object or null");
     catalog = nextCatalog;
     output = nextOutput;
+    if (database !== null) failedTransactions.delete(database);
     database = nextDatabase;
-    failedTransaction = false;
+    if (database !== null) failedTransactions.delete(database);
     contexts.clear();
     return null;
 }
 
 function requireDatabase() {
-    if (database === null) throw new Error("DatabaseNotConfigured");
-    return database;
+    const stack = contexts.get("db");
+    const adapter = stack?.length ? stack.at(-1) : database;
+    if (adapter === null || adapter === undefined) throw new Error("DatabaseNotConfigured");
+    return adapter;
 }
 
 export function startTrans() {
-    if (failedTransaction) throw new Error("TransactionFailed");
-    requireDatabase().begin();
+    const adapter = requireDatabase();
+    if (failedTransactions.has(adapter)) throw new Error("TransactionFailed");
+    adapter.begin();
     return null;
 }
 export function commitTrans() {
-    if (failedTransaction) throw new Error("TransactionFailed");
-    requireDatabase().commit();
+    const adapter = requireDatabase();
+    if (failedTransactions.has(adapter)) throw new Error("TransactionFailed");
+    adapter.commit();
     return null;
 }
 export function rollbackTrans() {
     const adapter = requireDatabase();
     adapter.rollback();
-    if (adapter.transactionState() === null) failedTransaction = false;
+    if (adapter.transactionState() === null) failedTransactions.delete(adapter);
     return null;
 }
 export function transState() {
-    const state = requireDatabase().transactionState();
-    return failedTransaction && state !== null ? DB.Failed : state;
+    const adapter = requireDatabase();
+    const state = adapter.transactionState();
+    return failedTransactions.has(adapter) && state !== null ? DB.Failed : state;
 }
 
 export class SqlError extends Error {
@@ -142,10 +155,16 @@ export function query(sql, parameterNames) {
                 ]),
             );
             try {
-                result = adapter.execute(sql, boundParameters);
+                if (failedTransactions.has(adapter)) throw new Error("TransactionFailed");
+                if (adapter.parameterStyle === "postgresql") {
+                    const prepared = postgresQuery(sql, boundParameters);
+                    result = adapter.execute(prepared.text, prepared.values);
+                } else result = adapter.execute(sql, boundParameters);
+                if (result && typeof result.then === "function")
+                    throw new Error("SynchronousDatabaseAdapterRequired");
             } catch (error) {
                 if (error?.transactionUnusable === true && adapter.transactionState() !== null)
-                    failedTransaction = true;
+                    failedTransactions.add(adapter);
                 throw new SqlError(error, sql);
             }
             rows = result.rows;

@@ -1034,3 +1034,23 @@ public method with the same name.
 The CLI test runner waits for a Promise returned by a Lango test before
 reporting its result and resetting state for the next test. Async rejections
 are reported as test failures and remaining tests continue.
+
+
+## Request-scoped SQL databases (0.1.13)
+
+SQL and the transaction functions first use the active `context db` adapter.
+Without a db context, the existing `configure({ database_adapter })` default
+continues to work. An explicit null db context disables that fallback. Contexts
+and transaction-failure markers are shared across separately compiled runtime
+copies in the same JavaScript realm; failure markers belong to the adapter scope,
+not the module. Hosts must clean up and close request scopes before reusing a
+physical connection. Do not call `configure()` for every request: it resets contexts.
+
+Adapters implement synchronous `execute`, `begin`, `commit`, `rollback`, and
+`transactionState`. An adapter with `parameterStyle: "postgresql"` receives SQL
+with positional `$1` bindings and a values array. Quoted strings/identifiers,
+PostgreSQL dollar strings, nested comments and `::` casts are preserved. Repeated
+names share a position; missing values are errors. Decimal bindings remain exact
+text. SQL dialects are not translated. Promise-returning adapters are rejected.
+
+Rebuild application modules with 0.1.13 or newer to use context-based SQL.

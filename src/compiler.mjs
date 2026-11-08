@@ -1,3 +1,4 @@
+import { sqlBindings } from "./sql.mjs";
 import path from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { Decimal, runtimeSource } from "./runtime.mjs";
@@ -1236,38 +1237,7 @@ class Parser {
 }
 
 function collectSqlParameters(sql) {
-  const names = [];
-  let quote = null;
-  let lineComment = false;
-  let blockComment = false;
-  for (let index = 0; index < sql.length; index += 1) {
-    const character = sql[index];
-    const next = sql[index + 1];
-    if (lineComment) {
-      if (character === "\n") lineComment = false;
-      continue;
-    }
-    if (blockComment) {
-      if (character === "*" && next === "/") { blockComment = false; index += 1; }
-      continue;
-    }
-    if (quote !== null) {
-      if (character === quote) {
-        if (next === quote) { index += 1; continue; }
-        quote = null;
-      }
-      continue;
-    }
-    if (character === "-" && next === "-") { lineComment = true; index += 1; continue; }
-    if (character === "/" && next === "*") { blockComment = true; index += 1; continue; }
-    if (character === "'" || character === '"') { quote = character; continue; }
-    if (character !== ":" || sql[index - 1] === ":" || !/[A-Za-z_]/.test(next ?? "")) continue;
-    let end = index + 2;
-    while (/\w/.test(sql[end] ?? "")) end += 1;
-    names.push(sql.slice(index + 1, end));
-    index = end - 1;
-  }
-  return [...new Set(names)];
+  return [...new Set(sqlBindings(sql).map((binding) => binding.name))];
 }
 
 function interpolationEnd(text, start) {
@@ -2734,7 +2704,7 @@ function validate(program, imports = []) {
 
   const contextDeclarations = (body, names = new Set()) => {
     for (const node of body) {
-      if (node.type === "contextDeclare") names.add(node.name);
+      if (node.type === "contextDeclare" || node.type === "contextSet") names.add(node.name);
       if (node.type !== "closureAssign")
         nestedBodies(node).forEach((child) => contextDeclarations(child, names));
     }
