@@ -1307,10 +1307,23 @@ function normalizeKebabIdentifiers(source) {
   let result = "";
   for (let index = 0; index < source.length; index += 1) {
     const character = source[index];
+    if (character === "#") {
+      const end = source.indexOf("\n", index);
+      if (end === -1) return result + source.slice(index);
+      result += source.slice(index, end);
+      index = end - 1;
+      continue;
+    }
     if (character === "'" || character === '"') {
       const end = skipString(source, index);
       result += source.slice(index, end + 1);
       index = end;
+      continue;
+    }
+    if (character === "<" && /^<(?:[A-Za-z_]|!--)/.test(source.slice(index))) {
+      const end = xmlSourceEnd(source, index);
+      result += source.slice(index, end);
+      index = end - 1;
       continue;
     }
     const match = /^[A-Za-z_]\w*(?:-[A-Za-z_]\w*)+/.exec(source.slice(index));
@@ -1322,6 +1335,29 @@ function normalizeKebabIdentifiers(source) {
     result += character;
   }
   return result;
+}
+
+function xmlSourceEnd(source, start) {
+  let depth = 0;
+  let at = start;
+  while (at < source.length) {
+    const next = source.indexOf("<", at);
+    if (next === -1) break;
+    if (source.startsWith("<!--", next)) {
+      const end = source.indexOf("-->", next + 4);
+      if (end === -1) break;
+      at = end + 3;
+      continue;
+    }
+    const end = xmlTagEnd(source, next);
+    if (end === -1) break;
+    const tag = source.slice(next, end + 1);
+    if (tag.startsWith("</")) depth -= 1;
+    else if (!/\/\s*>$/.test(tag)) depth += 1;
+    if (depth === 0) return end + 1;
+    at = end + 1;
+  }
+  return source.length;
 }
 
 function kebabName(name) {
@@ -1687,7 +1723,7 @@ function xmlLiteral(source, line, parser) {
       const expression = text.slice(start + 2, end).trim();
       if (!expression)
         parser.fail(line, "LNG1248", "XML interpolation requires an expression");
-      parts.push({ type: "expression", value: expr(expression, line, parser) });
+      parts.push({ type: "expression", value: expr(normalizeKebabIdentifiers(expression), line, parser) });
       at = end + 1;
     }
     return true;
@@ -1745,7 +1781,7 @@ function xmlLiteral(source, line, parser) {
         const expression = tag.slice(index + 2, end).trim();
         if (!expression)
           parser.fail(line, "LNG1248", "XML interpolation requires an expression");
-        parts.push({ type: "expression", value: expr(expression, line, parser) });
+        parts.push({ type: "expression", value: expr(normalizeKebabIdentifiers(expression), line, parser) });
         index = end;
         segmentStart = end + 1;
       }

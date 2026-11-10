@@ -1054,3 +1054,11 @@ names share a position; missing values are errors. Decimal bindings remain exact
 text. SQL dialects are not translated. Promise-returning adapters are rejected.
 
 Rebuild application modules with 0.1.13 or newer to use context-based SQL.
+
+
+## XML literals and kebab-case
+
+XML literal tag names, attribute names and text retain their exact spelling.
+For example, `<ui-start data-id="root">keep-this-text</ui-start>` is emitted
+unchanged. Only Lango expressions inside `${...}` are normalized as identifiers,
+so kebab-case variables work in both XML text and quoted attribute values.
