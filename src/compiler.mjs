@@ -5,7 +5,7 @@ import { Decimal, runtimeSource } from "./runtime.mjs";
 
 export class LangoError extends Error {
   constructor(code, line, message, sourceName = null, column = 1, endColumn = column) {
-    super(`${code} at line ${line}: ${message}`);
+    super(`${code} at line ${line}: ${displayAccessors(message)}`);
     this.code = code;
     this.severity = "error";
     this.sourceName = sourceName;
@@ -449,10 +449,14 @@ class Parser {
         continue;
       }
       const staticMethodHeader =
-        /^([A-Za-z_]\w*)::([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text);
-      const methodHeader = /^([A-Za-z_]\w*):([A-Za-z_]\w*)\(([^)]*)\)$/.exec(
-        line.text,
-      );
+        /^([A-Za-z_]\w*)::([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text)
+        ?? (() => {
+          const getter = /^([A-Za-z_]\w*)::([A-Za-z_]\w*__lango_get__)$/.exec(line.text);
+          return getter ? [line.text, getter[1], getter[2], ""] : null;
+        })();
+      const getterHeader = /^([A-Za-z_]\w*)(:{1,2})(\$?[A-Za-z_]\w*__lango_get__)$/.exec(line.text);
+      const methodHeader = /^([A-Za-z_]\w*):(\$?[A-Za-z_]\w*)\(([^)]*)\)$/.exec(line.text)
+        ?? (getterHeader?.[2] === ":" ? [line.text, getterHeader[1], getterHeader[3], ""] : null);
       const header =
         staticMethodHeader ??
         methodHeader ??
@@ -485,7 +489,7 @@ class Parser {
           static: isStatic,
           public: owner.publicMethods.some(
             (item) => item.name === name && item.static === isStatic,
-          ),
+          ) || (!isStatic && owner.publicProperties.includes(name) && Boolean(accessorKind(name))),
           parameters,
           line: line.number,
           body,
@@ -1302,6 +1306,18 @@ function curlyDelimiterDepth(text) {
 }
 
 const KEBAB_MARKER = "__lango_dash__";
+const GET_MARKER = "__lango_get__";
+const SET_MARKER = "__lango_set__";
+
+function accessorKind(name) {
+  return name?.endsWith(GET_MARKER) ? "get" : name?.endsWith(SET_MARKER) ? "set" : null;
+}
+function accessorBase(name) {
+  return name.replace(/__lango_(?:get|set)__$/, "");
+}
+function displayAccessors(text) {
+  return String(text).replaceAll(GET_MARKER, "?").replaceAll(SET_MARKER, "!");
+}
 
 function normalizeKebabIdentifiers(source) {
   let result = "";
@@ -1326,10 +1342,16 @@ function normalizeKebabIdentifiers(source) {
       index = end - 1;
       continue;
     }
-    const match = /^[A-Za-z_]\w*(?:-[A-Za-z_]\w*)+/.exec(source.slice(index));
+    const match = /^\$?[A-Za-z_]\w*(?:-[A-Za-z_]\w*)*/.exec(source.slice(index));
     if (match) {
       result += match[0].replaceAll("-", KEBAB_MARKER);
       index += match[0].length - 1;
+      const suffix = source[index + 1];
+      if ((suffix === "?" && source[index + 2] !== ".") ||
+          (suffix === "!" && source[index + 2] !== "=")) {
+        result += suffix === "?" ? GET_MARKER : SET_MARKER;
+        index += 1;
+      }
       continue;
     }
     result += character;
@@ -1365,14 +1387,15 @@ function kebabName(name) {
 }
 
 function emitKebabMember(receiver, operator, name) {
+  name = accessorBase(name);
   return name.includes(KEBAB_MARKER)
     ? `${receiver}${operator === "?." ? "?." : ""}[${JSON.stringify(kebabName(name))}]`
     : `${receiver}${operator}${name}`;
 }
 
 function emitKebabPath(value) {
-  return value.replace(/(\?\.|\.)([A-Za-z_]\w*)/g, (all, operator, name) =>
-    name.includes(KEBAB_MARKER)
+  return value.replace(/(\?\.|\.)(\$?[A-Za-z_]\w*)/g, (all, operator, name) =>
+    name.includes(KEBAB_MARKER) || accessorKind(name)
       ? emitKebabMember("", operator, name)
       : all,
   );
@@ -2106,6 +2129,7 @@ function validate(program, imports = []) {
     primary.diagnostics = nameDiagnostics;
     throw primary;
   }
+  validateAccessors(program, classes, isDecimalValue);
   const classDeclarationDiagnostics = [];
   for (const classNode of program.classes) {
     if (classNode.constructorParameters !== null) {
@@ -2500,7 +2524,7 @@ function validate(program, imports = []) {
       const constructor = target && findConstructor(target);
       if (constructor) validateRequiredArguments(constructor, value, value.name);
     }
-    if (value.type === "methodCall" && typeof value.receiver === "string") {
+    if (value.type === "methodCall" && typeof value.receiver === "string" && !accessorKind(value.name)) {
       if (
         value.receiver.includes(".") &&
         jsModuleNames.has(value.receiver.split(".")[0])
@@ -2648,6 +2672,10 @@ function validate(program, imports = []) {
     if (!node || typeof node !== "object") return;
     if (node.type === "raw") {
       if (["true", "false", "null", "this"].includes(node.value)) return;
+      if (node.value.startsWith("super.") && node.value.includes(GET_MARKER)) {
+        references.add("@this");
+        return;
+      }
       const match = /^(@{0,2}[A-Za-z_]\w*)/.exec(node.value);
       if (match) references.add(match[1]);
       return;
@@ -3327,7 +3355,7 @@ function validate(program, imports = []) {
         !classNode.publicMethods.some(
           (candidate) =>
             candidate.name === method.name && candidate.static === method.static,
-        )
+        ) && !(accessorKind(method.name) && classNode.publicProperties.includes(method.name))
       )
         throw new LangoError(
           "LNG1238",
@@ -3400,7 +3428,10 @@ function validate(program, imports = []) {
           .filter(Boolean)
           .forEach(validateMethod);
       });
-    const instanceMembers = new Set(classNode.publicProperties);
+    const instanceMembers = new Set([
+      ...classNode.publicProperties,
+      ...classNode.methods.filter((method) => accessorKind(method.name)).map((method) => method.name),
+    ]);
     const collectInstanceMembers = (body) => {
       for (const node of body) {
         if (node.type === "assign" && /^@[A-Za-z_]\w*$/.test(node.name))
@@ -3835,6 +3866,189 @@ function collectContextNames(body, names = new Set()) {
   }
   return names;
 }
+function validateAccessors(program, classes, isDecimalValue) {
+  const fail = (line, message) => { throw new LangoError("LNG1274", line ?? 1, message); };
+  const hierarchy = (type) => {
+    const result = [], seen = new Set();
+    for (let current = type; current && !seen.has(current); current = classes.get(current.ancestor)) {
+      seen.add(current);
+      result.push(current);
+    }
+    return result;
+  };
+  const lookup = (type, name) => {
+    for (const owner of hierarchy(type)) {
+      const method = owner.methods.find((item) => item.name === name && !item.static);
+      if (method) return { owner, method };
+    }
+    return null;
+  };
+  for (const type of program.classes) {
+    if (accessorKind(type.name)) fail(type.line, "class names cannot carry accessor markers");
+    for (const value of [...type.staticValues, ...type.enumValues])
+      if (accessorKind(value.name)) fail(value.line, "accessor markers are not static values or enum names");
+    for (const property of type.publicProperties.filter(accessorKind)) {
+      if (!lookup(type, property)) fail(type.line, `${type.name}: accessor ${property} has no implementation`);
+    }
+    for (const method of type.publicMethods)
+      if (accessorKind(method.name)) fail(type.line, "declare accessors in properties, without parentheses");
+    for (const method of type.methods) {
+      const kind = accessorKind(method.name);
+      if (!kind) continue;
+      if (method.static) fail(method.line, "accessors are instance properties; use Class:property? or Class:property!(value)");
+      if (["constructor", "this"].includes(accessorBase(method.name))) fail(method.line, "constructor and this are reserved accessor names");
+      if (kind === "get" && method.parameters.length !== 0) fail(method.line, "a getter has no parameters");
+      if (kind === "set" && (method.parameters.length !== 1 || method.parameters[0].defaultValue !== null))
+        fail(method.line, "a setter requires exactly one parameter without a default");
+      const base = accessorBase(method.name);
+      if (method.public && hierarchy(type).some((owner) =>
+        owner.publicProperties.includes(base) || owner.publicMethods.some((item) => item.name === base && !item.static)))
+        fail(method.line, `${type.name}: accessor ${base} conflicts with a public field or method`);
+    }
+  }
+  for (const fn of program.functions)
+    if (accessorKind(fn.name)) fail(fn.line, "accessor definitions require a class owner");
+
+  const fields = new Map();
+  for (const type of classes.values()) {
+    const members = new Map();
+    for (const method of type.methods)
+      for (const node of method.body ?? [])
+        if (node.type === "assign" && node.value.type === "new" && classes.has(node.value.name)) members.set(node.name, classes.get(node.value.name));
+    fields.set(type, members);
+  }
+  const functions = new Map(program.functions.map((fn) => [fn.name, fn]));
+  const infer = (value, locals, owner, seen = new Set()) => {
+    if (!value) return null;
+    if (value.type === "new") return classes.get(value.name) ?? null;
+    if (value.type === "raw") {
+      if (value.value === "@this" || value.value === "this") return owner;
+      if (value.value === "super") return classes.get(owner?.ancestor) ?? null;
+      return locals.get(value.value) ?? fields.get(owner)?.get(value.value) ?? null;
+    }
+    if (value.type === "call" && functions.has(value.name) && !seen.has(value.name)) {
+      const fn = functions.get(value.name);
+      const returns = fn.body.filter((node) => node.type === "return");
+      const types = returns.map((node) => infer(node.value, locals, owner, new Set(seen).add(value.name)));
+      return types.length && types.every((type) => type === types[0]) ? types[0] : null;
+    }
+    return null;
+  };
+  const member = (type, name, mode, own, owner, line) => {
+    const kind = accessorKind(name);
+    if ((mode === "write" && kind === "get") || (mode === "read" && kind === "set"))
+      fail(line, `${name} is ${kind === "get" ? "read-only; assign through property!" : "write-only; read through property?"}`);
+    if (!type) return null;
+    if (!kind) {
+      if (hierarchy(type).some((item) => item.methods.some((method) => method.public && accessorKind(method.name) && accessorBase(method.name) === name)))
+        fail(line, `${type.name}.${name}: use ${name}${mode === "write" ? "!" : "?"}`);
+      return null;
+    }
+    const target = lookup(type, name);
+    if (!target) fail(line, `${type.name}: accessor ${name} is not defined`);
+    if (!target.method.public && (!own || target.owner !== owner)) fail(line, `${type.name}: accessor ${name} is private`);
+    return target;
+  };
+  const path = (text, mode, locals, owner, line) => {
+    const root = /^(@this|@@?\$?[A-Za-z_]\w*|[A-Za-z_]\w*)/.exec(text);
+    if (!root) return;
+    let type = infer({ type: "raw", value: root[1] }, locals, owner);
+    let resolved = null;
+    if (accessorKind(root[1])) {
+      if (!root[1].startsWith("@")) fail(line, "an accessor requires an object receiver");
+      resolved = member(owner, root[1].slice(1), mode, true, owner, line);
+    }
+    const tail = text.slice(root[0].length);
+    const parts = [...tail.matchAll(/(\?\.|\.)(\$?[A-Za-z_]\w*)/g)];
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const last = i === parts.length - 1 && part.index + part[0].length === tail.length;
+      resolved = member(type, part[2], last ? mode : "read", root[1] === "@this" || root[1] === "this", owner, line);
+      type = null;
+    }
+    return resolved;
+  };
+  const inspect = (value, locals, owner, line = 1) => {
+    if (!value || typeof value !== "object") return;
+    line = value.line ?? line;
+    if (value.type === "raw") path(value.value, "read", locals, owner, line);
+    if (value.type === "assign") {
+      const target = path(value.name, "write", locals, owner, line);
+      if (target && accessorKind(target.method.name) === "set" && isDecimalValue(value.value) &&
+          !target.method.parameters[0].name.startsWith("$"))
+        fail(line, `${target.method.name}: Decimal assignment requires a $ setter parameter or explicit conversion`);
+    }
+    for (const parameter of value.parameters ?? [])
+      if (accessorKind(parameter.name)) fail(line, "parameters cannot carry accessor markers");
+    if (value.type === "object")
+      for (const field of value.fields)
+        if (accessorKind(field.key)) fail(line, "accessor markers require a property read or write, not an object key");
+    if (value.type === "indexAssign" && typeof value.receiver === "string") path(value.receiver, "read", locals, owner, line);
+    if (value.type === "property") member(infer(value.receiver, locals, owner), value.name, "read", value.receiver?.value === "@this", owner, line);
+    if (value.type === "methodCall") {
+      if (typeof value.receiver === "string") path(value.receiver, "read", locals, owner, line);
+      member(infer(typeof value.receiver === "string" ? { type: "raw", value: value.receiver } : value.receiver, locals, owner), value.name, "read", value.receiver === "@this" || value.receiver === "this", owner, line);
+    }
+    for (const [key, item] of Object.entries(value)) {
+      if (["body", "thenBody", "elseBody", "tryBody", "catchBody", "finallyBody", "cases", "steps"].includes(key)) continue;
+      if (Array.isArray(item)) item.forEach((child) => inspect(child, locals, owner, line));
+      else if (item && typeof item === "object") inspect(item, locals, owner, line);
+    }
+    if (value.type === "closure") {
+      const inner = new Map(locals);
+      for (const parameter of value.parameters) inner.delete(parameter.name);
+      walk(value.body, inner, owner, value.line);
+    }
+    if (value.type === "chain")
+      for (const step of value.steps) {
+        const inner = new Map(locals);
+        for (const parameter of step.parameters ?? []) inner.delete(parameter.name);
+        walk(step.body, inner, owner, step.line);
+      }
+  };
+  const walk = (body, locals, owner = null, line = 1) => {
+    for (const node of body) {
+      inspect(node, locals, owner, node.line ?? line);
+      if (node.type === "assign" && /^[A-Za-z_]\w*$/.test(node.name)) {
+        const type = infer(node.value, locals, owner);
+        if (type) locals.set(node.name, type); else locals.delete(node.name);
+      }
+      for (const child of [node.thenBody, node.elseBody, node.tryBody, node.catchBody, node.finallyBody, node.body, ...(node.cases?.map((item) => item.body) ?? [])].filter(Boolean)) {
+        walk(child, new Map(locals), owner, node.line ?? line);
+        for (const changed of child) if (changed.type === "assign") locals.delete(changed.name);
+      }
+    }
+  };
+  const globals = new Map();
+  for (const global of program.globals) {
+    if (accessorKind(global.name)) fail(global.line, "global names cannot carry accessor markers");
+    const type = infer(global.value, globals, null);
+    if (type) globals.set(global.name, type);
+  }
+  for (const fn of [...program.functions, ...program.tests]) {
+    for (const parameter of fn.parameters ?? [])
+      if (accessorKind(parameter.name)) fail(fn.line, "parameters cannot carry accessor markers");
+    const locals = new Map(globals);
+    for (const parameter of fn.parameters ?? []) locals.delete(parameter.name);
+    walk(fn.body, locals, null, fn.line);
+  }
+  for (const type of program.classes)
+    for (const method of type.methods) {
+      for (const parameter of method.parameters)
+        if (accessorKind(parameter.name)) fail(method.line, "parameters cannot carry accessor markers");
+      const locals = new Map(globals);
+      for (const parameter of method.parameters) locals.delete(parameter.name);
+      walk(method.body, locals, type, method.line);
+    }
+}
+
+function emitOwnAccessorPath(suffix, flags) {
+  const first = /^\.(\$?[A-Za-z_]\w*)(.*)$/.exec(suffix);
+  if (first && accessorKind(first[1]) && flags.methods?.get(`instance:${first[1]}`) === false)
+    return `.#${first[1]}${emitKebabPath(first[2])}`;
+  return emitKebabPath(suffix);
+}
+
 function emitClass(item, flags) {
   const prior = {
     publicProperties: flags.publicProperties,
@@ -3867,7 +4081,8 @@ function emitClass(item, flags) {
         .filter((name) => !name.startsWith("@@"))
         .map((name) => name.slice(1)),
     ),
-  ].filter((field) => field !== "this" && !flags.publicProperties.has(field));
+  ].filter((field) => field !== "this" && !flags.publicProperties.has(field) &&
+    !item.methods.some((method) => method.name === field && accessorKind(field)));
   const implicitConstructor =
     item.ancestor &&
     !item.methods.some((method) => method.name === "constructor")
@@ -3892,10 +4107,12 @@ function emitClass(item, flags) {
         )
         .join(", ");
       const suffix = method.name === "constructor" ? "" : "    return null;\n";
-      const name =
-        method.name === "constructor" || method.public
-          ? method.name
-          : `#${method.name}`;
+      const kind = accessorKind(method.name);
+      const name = kind
+        ? method.public
+          ? `${kind} ${accessorBase(method.name).includes(KEBAB_MARKER) ? `[${JSON.stringify(kebabName(accessorBase(method.name)))}]` : accessorBase(method.name)}`
+          : `${kind} #${method.name}`
+        : method.name === "constructor" || method.public ? method.name : `#${method.name}`;
       const statementDepth = contextNames.size ? 3 : 2;
       const statements = method.body
         .map((node) =>
@@ -3904,7 +4121,7 @@ function emitClass(item, flags) {
       const arityGuard = emitArityGuard(
         method.parameters,
         "arguments.length",
-        method.name,
+        displayAccessors(method.name),
         statementDepth,
         flags,
       );
@@ -3934,11 +4151,27 @@ function emitClass(item, flags) {
       },
     )
     .join("");
+  let inheritedAccessors = "";
+  const ownAccessors = item.methods.filter((method) => method.public && accessorKind(method.name));
+  for (const method of ownAccessors) {
+    const kind = accessorKind(method.name), base = accessorBase(method.name);
+    const opposite = base + (kind === "get" ? SET_MARKER : GET_MARKER);
+    if (ownAccessors.some((candidate) => candidate.name === opposite)) continue;
+    let inherited = null;
+    for (let ancestor = flags.classes.get(item.ancestor); ancestor && !inherited; ancestor = flags.classes.get(ancestor.ancestor))
+      inherited = ancestor.methods.find((candidate) => candidate.name === opposite && candidate.public);
+    if (!inherited) continue;
+    const key = base.includes(KEBAB_MARKER) ? `[${JSON.stringify(kebabName(base))}]` : base;
+    const reference = emitKebabMember("super", ".", base);
+    inheritedAccessors += kind === "get"
+      ? `    set ${key}(value) { ${reference} = value; }\n`
+      : `    get ${key}() { return ${reference}; }\n`;
+  }
   flags.publicProperties = prior.publicProperties;
   flags.className = prior.className;
   flags.methods = prior.methods;
   flags.staticMethod = prior.staticMethod;
-  return `${item.exported ? "export " : ""}class ${item.name}${item.ancestor ? ` extends ${item.ancestor}` : ""} {\n${item.publicProperties.map((field) => `    ${field};\n`).join("")}${statics}${fields.map((field) => `    #${field};\n`).join("")}${implicitConstructor}${body}}\n`;
+  return `${item.exported ? "export " : ""}class ${item.name}${item.ancestor ? ` extends ${item.ancestor}` : ""} {\n${item.publicProperties.filter((field) => !accessorKind(field)).map((field) => `    ${field};\n`).join("")}${statics}${fields.map((field) => `    #${field};\n`).join("")}${implicitConstructor}${body}${inheritedAccessors}}\n`;
 }
 function emitFunction(fn, flags) {
   const topLevelAssigned = new Set(
@@ -4267,7 +4500,7 @@ function emitBoundaryChecks(parameters, depth, flags) {
     .join("");
 }
 function emitReceiverName(name, flags) {
-  if (/^@this(?:$|[.\[?])/.test(name)) return `this${name.slice(5)}`;
+  if (/^@this(?:$|[.\[?])/.test(name)) return `this${emitOwnAccessorPath(name.slice(5), flags)}`;
   const host = /^([A-Za-z_]\w*)(.*)$/.exec(name);
   if (host && flags.hostGlobals?.has(host[1])) {
     flags.hostGlobal = true;
@@ -4278,14 +4511,16 @@ function emitReceiverName(name, flags) {
     const [, scope, property, suffix] = member;
     const owner = scope === "@@" ? flags.className : "this";
     const visibility = scope === "@@" || flags.publicProperties?.has(property) ? "" : "#";
-    return `${owner}.${visibility}${property}${suffix}`;
+    if (accessorKind(property) && visibility === "")
+      return `${emitKebabMember(owner, ".", property)}${emitKebabPath(suffix)}`;
+    return `${owner}.${visibility}${property}${emitKebabPath(suffix)}`;
   }
   const base = /^([A-Za-z_]\w*)([.\[].*)$/.exec(name);
   if (base && flags.contextNames?.has(base[1])) {
     flags.context = true;
-    return `__contextGet(${JSON.stringify(base[1])})${base[2]}`;
+    return `__contextGet(${JSON.stringify(base[1])})${emitKebabPath(base[2])}`;
   }
-  if (!flags.contextNames?.has(name)) return name;
+  if (!flags.contextNames?.has(name)) return emitKebabPath(name);
   flags.context = true;
   return `__contextGet(${JSON.stringify(name)})`;
 }
@@ -4293,6 +4528,10 @@ function emitReceiverName(name, flags) {
 function emitExpr(node, flags) {
   if (node.type === "chain") return emitChain(node, 0, flags);
   if (node.type === "raw" && node.value === "@this") return "this";
+  if (node.type === "raw" && (node.value.includes(GET_MARKER) || node.value.includes(SET_MARKER)) && node.value.startsWith("@")) {
+    flags.normalize = true;
+    return `__normalize(${emitReceiverName(node.value, flags)})`;
+  }
   const decimalRaw = (value) =>
     value?.type === "raw" &&
     (value.value.startsWith("$") || value.value.includes(".$"));
@@ -4343,7 +4582,7 @@ function emitExpr(node, flags) {
           : normalize(`this.#${node.value.slice(1)}`)
         : flags.className && node.value.startsWith("_")
           ? normalize(`this.${node.value}`)
-          : (node.value.includes("?.") || node.value.includes(KEBAB_MARKER) || /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value))
+          : (node.value.includes("?.") || node.value.includes(KEBAB_MARKER) || node.value.includes(GET_MARKER) || /^(?:[A-Za-z_]\w*\.[A-Za-z_]\w*|[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\])$/.test(node.value))
             ? normalize(emitKebabPath(node.value))
             : emitKebabPath(node.value);
   if (node.type === "decimal") {
@@ -4629,7 +4868,7 @@ function spaces(line) {
   return line.length - line.trimStart().length;
 }
 function collectImports(source, inputPath, outputPath, layout = null) {
-  const lines = source.split(/\r?\n/);
+  const lines = normalizeKebabIdentifiers(source).split(/\r?\n/);
   const items = [];
   for (let index = 0; index < lines.length; index += 1) {
     const match = /^import "(\.[^"]+)"$/.exec(lines[index]);
@@ -4802,7 +5041,7 @@ function collectClassImportInterface(lines, getIndex, setIndex) {
     while (true) {
       const line = lines[index + 1] ?? "";
       const method = /^            ([A-Za-z_]\w*)\(([^)]*)\)$/.exec(line);
-      const name = /^            ([A-Za-z_]\w*)$/.exec(line);
+      const name = /^            (\$?[A-Za-z_]\w*)$/.exec(line);
       if (!method && !name) break;
       if (section === "        properties" && name) target.push(name[1]);
       else if (section === "        methods" && method)

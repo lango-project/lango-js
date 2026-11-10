@@ -20,6 +20,13 @@ to further nested control-flow combinations across every loop form. Enforce the
 accepted non-coercive operation model without regressing explicit interpolation
 or JavaScript interop boundaries.
 
+### Accessor receiver inference
+
+Explicit getter/setter markers are implemented (D-064). Extend receiver inference
+across nested member paths and more complex factory/control-flow returns before
+claiming marker enforcement for all dynamically typed Lango receivers. No runtime
+descriptor checks are part of the accepted JavaScript interop contract.
+
 ## JavaScript interoperability
 
 ### Remaining host-boundary coverage

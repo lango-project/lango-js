@@ -1062,3 +1062,57 @@ XML literal tag names, attribute names and text retain their exact spelling.
 For example, `<ui-start data-id="root">keep-this-text</ui-start>` is emitted
 unchanged. Only Lango expressions inside `${...}` are normalized as identifiers,
 so kebab-case variables work in both XML text and quoted attribute values.
+
+
+## Explicit getter and setter properties
+
+Accessor markers make computed property reads and writes visible at the call site.
+Declare the public halves separately in `properties`:
+
+```lango
+export class Box(initial)
+    properties
+        value?
+        value!
+
+Box(initial)
+    @value = initial
+
+Box:value?
+    return @value
+
+Box:value!(value)
+    @value = value
+```
+
+```lango
+box = new Box(0)
+box.value! = 333
+println("Value: ${box.value?}")
+```
+
+A getter takes no parameters; a setter takes exactly one without a default.
+Either half may exist independently. Inside the class, `@value?` and
+`@value! = value` invoke the accessor; `@value` remains the direct backing
+field. Accessors omitted from `properties` are private. Callbacks retain their
+receiver automatically, just as for ordinary instance members. Public inherited
+accessors may be overridden independently without hiding the other half.
+Accessors are instance members; static accessors are not supported.
+
+A getter cannot be assigned to, and a setter cannot be read. Read-modify-write
+forms such as `box.value! += 1` are rejected; write
+`box.value! = box.value? + 1` instead. Known Lango receivers require the declared
+marker and respect visibility. This check follows directly constructed objects,
+local aliases and simple factory returns; dynamically typed parameters do not
+provide a static receiver contract.
+
+Generated JavaScript exposes native `get value()` / `set value(value)` descriptors.
+JavaScript callers use `box.value` normally. On JavaScript objects, Lango accepts
+both `object.value` and `object.value?`, and both `object.value = value` and
+`object.value! = value`. The compiler removes the marker without inspecting
+property descriptors. Host getters, setters, proxies and exceptions keep their
+normal JavaScript behavior; receiver expressions are evaluated once.
+
+Kebab-case names and Decimal names work too (`display-name?`, `$amount!`). A
+setter receiving Decimal directly must declare a `$` parameter. Quoted keys
+such as `"value?"`, string text and XML text remain literal.

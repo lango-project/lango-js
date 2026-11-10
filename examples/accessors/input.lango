@@ -1,0 +1,20 @@
+export main(args)
+
+export class Box(initial)
+    properties
+        value?
+        value!
+
+Box(initial)
+    @value = initial
+
+Box:value?
+    return @value
+
+Box:value!(value)
+    @value = value
+
+main(args)
+    box = new Box(0)
+    box.value! = 333
+    println("Value: ${box.value?}")

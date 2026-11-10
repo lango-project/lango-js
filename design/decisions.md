@@ -1417,3 +1417,30 @@ Outer local bindings and captured context bindings still require explicit
 `capture`; receiver retention does not propagate dynamic contexts. Member lookup,
 visibility and instance/static restrictions still apply. Explicit member captures
 remain accepted for compatibility, with the existing unused-capture checks.
+
+
+## D-064: Explicit accessor markers
+
+**Status:** Accepted and implemented
+
+Instance getters use `Class:property?` and setters use
+`Class:property!(value)`. Public API declarations list `property?` and
+`property!` separately under `properties`. Reads and writes retain the respective
+marker: `object.property?` and `object.property! = value`. Direct `@property`
+access remains an independent backing field. Unlisted accessors are private.
+Getters have zero parameters; setters have exactly one without a default.
+Static accessors are outside this contract.
+
+The compiler rejects wrong-direction access, compound updates, missing accessor
+halves and unmarked access on statically known Lango receivers. Dynamic receivers
+retain JavaScript interoperability; this is not runtime descriptor validation.
+Public names cannot collide with an ordinary public field or method. Public
+accessor halves inherit independently; overriding one preserves the other.
+Receiver retention in callbacks follows D-063.
+
+JavaScript output uses native accessor descriptors with unmarked names, including
+computed names for kebab-case. JavaScript callers use ordinary property syntax.
+For JavaScript objects, marked and ordinary Lango property access are both valid,
+with no descriptor probing or duplicate receiver evaluation. Quoted keys, strings
+and XML text preserve literal punctuation. Decimal setter arguments follow the
+existing dollar-parameter boundary contract. See `test/accessors.test.mjs`.
