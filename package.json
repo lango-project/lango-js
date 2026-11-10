@@ -12,7 +12,8 @@
   "exports": {
     ".": "./src/compiler.mjs",
     "./runtime": "./src/runtime.mjs",
-    "./database": "./src/database.mjs"
+    "./database": "./src/database.mjs",
+    "./localization": "./src/localization.mjs"
   },
   "files": [
     "src/*.mjs",

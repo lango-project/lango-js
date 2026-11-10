@@ -1116,3 +1116,48 @@ normal JavaScript behavior; receiver expressions are evaluated once.
 Kebab-case names and Decimal names work too (`display-name?`, `$amount!`). A
 setter receiving Decimal directly must declare a `$` parameter. Quoted keys
 such as `"value?"`, string text and XML text remain literal.
+
+
+## Contextual translations and locale formatting
+
+`_("Hello ${name}")` keeps its source template separate from parameter values.
+Select a scoped translator with `context i18n = createI18n(options)`; defaults are
+English and UTC, with no inferred currency. Catalogs may reorder parameters,
+select plural/context variants, and format numbers, currencies, percentages and
+dates. Application catalogs are copied on creation; loading is application-owned.
+
+```lango
+context i18n = createI18n({
+    locale: "tr-TR"
+    timeZone: "Europe/Istanbul"
+    currency: "TRY"
+    catalog: {
+        "Hello {0}": "{0}, merhaba"
+    }
+})
+message = _("Hello ${name}")
+amount = formatNumber($1234.5)
+date = formatDate("2026-11-10T22:30:00Z")
+```
+
+`formatNumber(value, options = null)` uses Intl options, including currency and
+percent styles, without first converting Decimal to Number. `formatDate` accepts
+Date, epoch milliseconds or ISO dates/zoned timestamps, with an explicit context
+time zone. Optional `_()` settings include count, context and formatParams.
+Use `capture i18n` to retain a context in callbacks. Runtime configure accepts the
+same preferences or an i18n object; it is host setup and resets contexts.
+JavaScript hosts can import createI18n from `@lango-project/lango-js/localization`.
+
+The compiler embeds i18next 27.1.1 and its license in Node/browser builds; generated
+programs require no additional npm installation. The CLI accepts `--locale`,
+`--time-zone` and `--currency` alongside the existing `--catalog` option:
+
+```sh
+lango run main.lango --catalog tr.json --locale tr-TR --time-zone Europe/Istanbul --currency TRY
+```
+
+See [the language guide](design/guide.md#locale-contexts-and-formatting) and
+[the localization example](examples/localization/input.lango). Localization does
+not install UI or client text catalogs; all user-visible texts remain application
+owned. Standalone catalog-file extraction and localized input parsing are not
+included in this change.

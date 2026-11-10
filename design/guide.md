@@ -578,14 +578,114 @@ capture rules. Quoted arguments and nested interpolated strings are allowed
 inside an expression. Write `\${name}` when the placeholder should remain
 literal text. The same expression support applies inside `_()` translations.
 
-Localization is explicit. `_()` accepts a string literal, extracts it during
-compilation, and returns the translated primitive string at runtime. Its
+Localization is explicit. `_()` accepts a string literal, compiles its template
+and separate parameter values, and returns a translated primitive string at runtime. Its
 source template is the default catalog key and fallback; `${expression}` values
 become catalog placeholders.
 
 ```lango
 message = _("Welcome, ${name}")
 ```
+
+### Locale contexts and formatting
+
+`createI18n(options = {})` creates an immutable, synchronous translator. Use
+`context i18n = translator` to select it for a scope. `_()`, `formatNumber` and
+`formatDate` use that context; without an override they use the runtime default.
+Defaults are `locale: "en"`, `fallbackLocale: "en"`, `timeZone: "UTC"`, and no
+currency. These preferences are independent: a language does not select a time
+zone or currency.
+
+```lango
+context i18n = createI18n({
+    locale: "tr-TR"
+    timeZone: "Europe/Istanbul"
+    currency: "TRY"
+    catalogs: {
+        tr: {
+            "Hello {0}": "{0}, merhaba"
+            "Total: {0}": "Toplam: {0, currency}"
+        }
+    }
+})
+message = _("Hello ${name}")
+price = _("Total: ${$amount}")
+number = formatNumber($amount)
+date = formatDate("2026-11-10T22:30:00Z", {
+    dateStyle: "long"
+})
+```
+
+`catalogs` maps language tags to flat template/string catalogs. `catalog` is a
+convenience catalog for the selected locale, also retaining compatibility with
+host `configure({ catalog: ... })` and CLI `--catalog`. Catalogs are copied when
+creating the translator. Regional locale lookup and `fallbackLocale` are handled
+by the embedded i18next engine; absent messages use the source template. Empty
+translations remain empty. Catalog loading/storage belongs to the application.
+The compiler produces templates in generated calls; a standalone catalog
+extraction command is not yet provided.
+
+Catalog parameters are positional `{0}`, `{1}`, etc. They can be reordered or
+repeated. Literal braces are `{{` and `}}` in catalogs; write ordinary braces in
+source strings. Values are evaluated once from left to right and never parsed as
+new templates or executable expressions. Output is plain text, without HTML
+encoding. Rendering remains a separate layer.
+
+Catalogs may format raw values with `{0, number}`, `{0, currency}`,
+`{0, percent}`, `{0, date}` or `{0, datetime}`. Without a modifier, interpolation
+keeps its existing string conversion. `formatNumber(value, options = null)` and
+`formatDate(value, options = null)` are also usable independently or inside `_()`.
+Their options follow Intl.NumberFormat and Intl.DateTimeFormat respectively;
+locale comes from the active translator. Currency formatting uses an explicit
+currency option or the context's currency and never guesses it from a language.
+
+Numbers must be finite native numbers, Decimal values or host BigInts; numeric
+strings are not implicitly accepted. Decimal values, including those from other
+Lango runtime copies, are passed to Intl as exact decimal strings, preserving
+precision before the requested display rounding. Browser hosts need Intl support
+for exact decimal string formatting.
+
+Dates accept a Date, finite epoch milliseconds, an ISO date (`YYYY-MM-DD`, meaning
+UTC midnight), or an ISO timestamp with Z/explicit offset. Ambiguous local-time
+strings and invalid dates fail. The context's time zone defaults to UTC and can be
+overridden per call. A date-only string is an instant at UTC midnight and can
+therefore display as the preceding day in a negative-offset time zone; choose UTC
+for calendar-only presentation. Locale-aware display does not change stored
+values or parse localized user input.
+
+Plural and grammatical-context selection use an optional second options map:
+
+```lango
+message = _("${count} files", {
+    count: count
+})
+```
+
+For English, catalogs can define `{0} files_one` and `{0} files_other`. Use native
+finite numeric `count`; plural categories follow the selected language. Optional
+`context` selects i18next context variants. `formatParams` maps positional indexes
+to per-value Intl options, for example `"0": { minimumFractionDigits: 2 }`.
+Missing referenced parameters and invalid settings fail instead of silently
+producing `undefined`.
+
+Callbacks retain a selected translator through the normal context mechanism:
+
+```lango
+context i18n
+return (name)
+    capture i18n
+    return _("Hello ${name}")
+```
+
+Nested and separately built modules see the active context. The catalog engine
+never changes a process-global current language. Without a captured context,
+a later callback uses the context active when called, or its runtime's default.
+Host `configure` accepts `i18n` or the creation options above; it resets dynamic
+contexts and must not be used to change language for each request. JavaScript
+hosts can import `createI18n` from `@lango-project/lango-js/localization`.
+
+The CLI run/test flags `--locale`, `--time-zone` and `--currency` select default
+formatting preferences alongside the existing flat `--catalog` file.
 
 ### Multiline
 ```lango

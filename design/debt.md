@@ -42,6 +42,16 @@ Design a separate library for explicit connection selection, multiple databases,
 pooling, SQL savepoints, and independent transactions. The core library has one
 contextual default connection and join-only nested transactions (D-054).
 
+## Localization follow-up
+
+D-065 implements contextual catalogs, plural/context lookup, date/number formatting
+and exact Decimal display. Add standalone catalog extraction and placeholder
+validation across translation files; current compilation produces templates in
+calls but does not write a translation catalog. Application catalog loading,
+UI integration and locale-aware input parsing remain separate library work.
+Calendar-only values do not yet have a separate type; ISO date-only inputs denote
+UTC midnight. Custom stable message IDs and richer message grammars are deferred.
+
 ## Tooling
 
 ### Repository and package roadmap

@@ -25,6 +25,8 @@ export function runtimeSource(profile = {}) {
     if (!(rounding in ROUNDING_MODES))
         throw new Error(`unknown decimal_division_rounding ${rounding}`);
     return `import BigNumber from "./bignumber.mjs";
+import { createI18n } from "./localization.mjs";
+export { createI18n };
 ${browser ? 'const DOMParser = globalThis.DOMParser;' : `import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { DOMParser } = require("./xmldom/index.js");`}
@@ -57,7 +59,7 @@ export function toJsNumber(value) {
     return new Decimal(value).toNumber();
 }
 
-let catalog = {};
+let defaultI18n = null;
 let output = null;
 let database = null;
 const failureStore = Symbol.for("lango.databaseFailures");
@@ -90,7 +92,19 @@ export function configure(options = {}) {
         throw new RuntimeConfigurationError("runtime output must be a function or null");
     if (nextDatabase !== null && (typeof nextDatabase !== "object" && typeof nextDatabase !== "function"))
         throw new RuntimeConfigurationError("runtime database_adapter must be an object or null");
-    catalog = nextCatalog;
+    let nextI18n;
+    try {
+        nextI18n = options.i18n ?? createI18n({
+            catalog: nextCatalog, catalogs: options.catalogs,
+            locale: options.locale, fallbackLocale: options.fallbackLocale,
+            timeZone: options.timeZone, currency: options.currency,
+        });
+        if (typeof nextI18n.translate !== "function" || typeof nextI18n.formatNumber !== "function" || typeof nextI18n.formatDate !== "function")
+            throw new TypeError("i18n requires translate, formatNumber and formatDate methods");
+    } catch (error) {
+        throw new RuntimeConfigurationError(error.message);
+    }
+    defaultI18n = nextI18n;
     output = nextOutput;
     if (database !== null) failedTransactions.delete(database);
     database = nextDatabase;
@@ -198,10 +212,14 @@ export function query(sql, parameterNames) {
     return proxy;
 }
 
-export function translate(template, values) {
-    const translated = catalog[template] ?? template;
-
-    return translated.replace(/\\{(\\d+)\\}/g, (_, index) => String(values[index]));
+export function translate(template, values, options = null) {
+    return contextGet("i18n").translate(template, values, options);
+}
+export function formatNumber(value, options = null) {
+    return contextGet("i18n").formatNumber(value, options);
+}
+export function formatDate(value, options = null) {
+    return contextGet("i18n").formatDate(value, options);
 }
 
 export function xmlEscape(value) {
@@ -629,6 +647,7 @@ export function withArity(callback, requiredPositions, name) {
 export function contextGet(name) {
     const stack = contexts.get(name);
     if ((!stack || stack.length === 0) && name === "log") return defaultLog;
+    if ((!stack || stack.length === 0) && name === "i18n") return defaultI18n ??= createI18n();
     if (!stack || stack.length === 0) {
         throw new Error(\`Lango context is unavailable: \${name}\`);
     }

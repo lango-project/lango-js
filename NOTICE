@@ -5,3 +5,7 @@ This product includes @xmldom/xmldom 0.9.12.
 Copyright 2019-present Christopher J. Brody and other contributors.
 Copyright 2012-2017 @jindw <jindw@xidea.org> and other contributors.
 Licensed under the MIT License; see src/vendor/xmldom.LICENSE.md.
+
+This product includes i18next 27.1.1 (unmodified ESM distribution).
+Copyright (c) 2011-present i18next.
+Licensed under the MIT License; see src/vendor/i18next.LICENSE.

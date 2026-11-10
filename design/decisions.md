@@ -244,15 +244,16 @@ code-point equality under D-010; Lango has no Text value or alternate string
 comparison rule.
 
 `_(literal)` is the explicit localization operation. `_` is reserved for this
-standard function and cannot be shadowed by a declaration or import. Its one
+standard function and cannot be shadowed by a declaration or import. Its first
 argument must be a source string literal, including an interpolated or triple
-quoted literal. During compilation, the compiler extracts that literal into
-a JSON translation catalog. Its template is both default message key and
+quoted literal. The optional second argument supplies count/context/formatParams
+options. During compilation, the compiler produces a catalog template and
+separate parameter expressions; automatic catalog-file extraction is deferred. Its template is both default message key and
 fallback value; interpolations become `{0}`, `{1}`, and so on, so a translation
 may reorder or repeat them. Literal braces in a catalog template are `{{` and
 `}}`. At runtime `_()` returns the translated, interpolated primitive string;
-a missing translation returns the source-template result. The host chooses a
-catalog. Plurals, grammatical gender/context, custom message IDs, and catalog
+a missing translation returns the source-template result. D-065 defines locale
+contexts, plural/context selection and formatting. Custom message IDs and catalog
 loading remain library concerns.
 
 Triple double quotes create a multiline string. The opening delimiter must end
@@ -1444,3 +1445,42 @@ For JavaScript objects, marked and ordinary Lango property access are both valid
 with no descriptor probing or duplicate receiver evaluation. Quoted keys, strings
 and XML text preserve literal punctuation. Decimal setter arguments follow the
 existing dollar-parameter boundary contract. See `test/accessors.test.mjs`.
+
+
+## D-065: Contextual localization and exact locale formatting
+
+**Status:** Accepted and implemented
+
+`createI18n(options = {})` creates an immutable translator backed by pinned,
+unmodified i18next 27.1.1. The compiler copies the engine, its MIT license and
+localization adapter beside generated Node/browser runtimes. Generated programs
+need no installed i18next dependency. Host applications may also import the
+factory from the package's `/localization` subpath.
+
+`_()` resolves `context i18n`, with a runtime-default fallback. Explicit captures
+retain the translator in callbacks using the existing context restoration rules.
+Separate runtime copies share explicit contexts, not their default catalogs.
+Creation defaults are en/en for locale/fallbackLocale, UTC for timeZone and no
+currency. Language, currency and time zone are independent settings. Catalogs are
+copied application-owned flat maps, grouped by locale through `catalogs` or given
+for the selected locale through `catalog`. File loading and UI/client integration
+remain outside the compiler runtime.
+
+Source templates and numbered placeholders remain compatible. Catalogs can
+reorder/repeat raw parameters, escape literal braces with doubled braces, and use
+number/currency/percent/date/datetime modifiers. Plain interpolation retains its
+existing string conversion. A second `_()` options map supports i18next count
+and grammatical context, plus positional formatParams. Missing messages fall
+back to the source; parameter text is never interpreted again or HTML-encoded.
+
+`formatNumber(value, options = null)` and `formatDate(value, options = null)` use
+the same locale context and Intl formatting options. Decimal values are supplied
+as exact decimal strings rather than binary Numbers, including values crossing
+generated runtime boundaries. Date input is a Date, epoch milliseconds, an ISO
+date at UTC midnight or an explicitly zoned ISO timestamp. Display formatting is
+separate from value storage and localized input parsing. Ambiguous/invalid dates,
+nonfinite numbers, missing referenced parameters and invalid preferences fail.
+
+CLI run/test accept locale/time-zone/currency flags while retaining flat catalog
+files. configure resets contexts and is a host setup operation, not a per-request
+language switch. See test/localization.test.mjs and examples/localization.

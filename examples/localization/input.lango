@@ -1,0 +1,23 @@
+export main(args)
+
+main(args)
+    context i18n = createI18n({
+        locale: "tr-TR"
+        timeZone: "Europe/Istanbul"
+        currency: "TRY"
+        catalog: {
+            "Hello {0}": "{0}, merhaba"
+            "Total: {0}": "Toplam: {0, currency}"
+            "{0} files_one": "{0} dosya"
+            "{0} files_other": "{0} dosya"
+        }
+    })
+    name = "Ada"
+    $amount = $12345678901234567890.125
+    println(_("Hello ${name}"))
+    println(_("Total: ${$amount}"))
+    println(formatDate("2026-11-10T22:30:00Z"))
+    count = 2
+    println(_("${count} files", {
+        count: count
+    }))

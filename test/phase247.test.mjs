@@ -60,6 +60,9 @@ test("Phase 247 shares contexts between separately generated Lango runtimes", as
         await mkdir(path.join(target, "xmldom"), { recursive: true });
         await writeFile(path.join(target, "runtime.mjs"), runtimeSource());
         await cp(path.resolve("src/vendor/bignumber.mjs"), path.join(target, "bignumber.mjs"));
+        await cp(path.resolve("src/localization.mjs"), path.join(target, "localization.mjs"));
+        await mkdir(path.join(target, "vendor"), { recursive: true });
+        await cp(path.resolve("src/vendor/i18next.mjs"), path.join(target, "vendor/i18next.mjs"));
         await cp(path.resolve("src/vendor/xmldom"), path.join(target, "xmldom"), { recursive: true });
     }
 

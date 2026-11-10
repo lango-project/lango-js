@@ -11,6 +11,7 @@ test("Faz 218 exposes package CLI and host integration entrypoints", async () =>
         ".": "./src/compiler.mjs",
         "./runtime": "./src/runtime.mjs",
         "./database": "./src/database.mjs",
+        "./localization": "./src/localization.mjs",
     });
     const cli = await readFile("src/cli.mjs", "utf8");
     assert.match(cli, /^#!\/usr\/bin\/env node\n/);

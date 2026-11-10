@@ -128,6 +128,9 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
     }) + "\n",
   );
   await writeFile(path.join(directory, ".lango/runtime.mjs"), runtimeSource(decimalProfile));
+  await mkdir(path.join(directory, ".lango/vendor"), { recursive: true });
+  for (const name of ["localization.mjs", "vendor/i18next.mjs", "vendor/i18next.LICENSE"])
+    await writeFile(path.join(directory, ".lango", name), await readFile(new URL(`./${name}`, import.meta.url)));
   await writeFile(
     path.join(directory, ".lango/bignumber.mjs"),
     await readFile(new URL("./vendor/bignumber.mjs", import.meta.url), "utf8"),
@@ -1517,8 +1520,13 @@ function expr(source, line, parser) {
       value: expr(text.slice(1), line, parser),
     };
   const localize = /^_\((.*)\)$/.exec(text);
-  if (localize)
-    return { type: "translate", literal: literal(localize[1], line, parser) };
+  if (localize) {
+    const arguments_ = localize[1] === "" ? [] : splitTopLevel(localize[1]);
+    if (arguments_.length < 1 || arguments_.length > 2)
+      parser.fail(line, "LNG1275", "_() requires a string literal and optional translation options");
+    return { type: "translate", literal: literal(arguments_[0], line, parser),
+      options: arguments_[1] ? expr(arguments_[1], line, parser) : null };
+  }
   const decimal = /^\$\((.*)\)$/.exec(text);
   if (decimal) {
     const arguments_ = decimal[1] === "" ? [] : splitTopLevel(decimal[1]);
@@ -1963,6 +1971,9 @@ function validate(program, imports = []) {
     ["to_js_number", 1],
     ["import_module", 1],
     ["xml2obj", 1],
+    ["createI18n", [0, 1]],
+    ["formatNumber", [1, 2]],
+    ["formatDate", [1, 2]],
     ["start_trans", 0], ["commit_trans", 0], ["rollback_trans", 0], ["trans_state", 0],
   ]);
   const hostFunctions = new Set(["fetch", ...hostImportNames]);
@@ -2715,6 +2726,7 @@ function validate(program, imports = []) {
       node.literal
         .filter((part) => part.value)
         .forEach((part) => expressionReferences(part.value, references));
+      if (node.type === "translate") expressionReferences(node.options, references);
       return;
     }
     Object.values(node).forEach((value) => {
@@ -3657,6 +3669,9 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.decimal && "decimal as __decimal",
     flags.print && "println as __println",
     flags.translate && "translate as __translate",
+    flags.i18n && "createI18n as __createI18n",
+    flags.i18n && "formatNumber as __formatNumber",
+    flags.i18n && "formatDate as __formatDate",
     flags.xml && "xmlEscape as __xmlEscape",
     flags.xmlObject && "xml2obj as __xml2obj",
     flags.context && "contextGet as __contextGet",
@@ -4787,6 +4802,11 @@ function emitExpr(node, flags) {
     if (node.name === "import_module")
       return `import(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
   if (node.type === "call")
+    if (["createI18n", "formatNumber", "formatDate"].includes(node.name)) {
+      flags.i18n = true;
+      return `__${node.name}(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
+    }
+  if (node.type === "call")
     if (node.name === "xml2obj") {
       flags.xmlObject = true;
       return `__xml2obj(${node.arguments.map((item) => emitExpr(item, flags)).join(", ")})`;
@@ -4848,13 +4868,13 @@ function emitExpr(node, flags) {
   flags.translate = true;
   const template = node.literal
     .map(
-      (item, index) => `${item.text}${item.value === null ? "" : `{${index}}`}`,
+      (item, index) => `${item.text.replaceAll("{", "{{").replaceAll("}", "}}")}${item.value === null ? "" : `{${index}}`}`,
     )
     .join("");
   const values = node.literal
     .filter((item) => item.value)
     .map((item) => emitExpr(item.value, flags));
-  return `__translate(${JSON.stringify(template)}, [${values.join(", ")}])`;
+  return `__translate(${JSON.stringify(template)}, [${values.join(", ")}]${node.options ? `, ${emitExpr(node.options, flags)}` : ""})`;
 }
 function emitBoolean(node, flags) {
   flags.boolean = true;
