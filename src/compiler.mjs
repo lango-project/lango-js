@@ -1,6 +1,6 @@
 import { sqlBindings } from "./sql.mjs";
 import path from "node:path";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { Decimal, runtimeSource } from "./runtime.mjs";
 
 export class LangoError extends Error {
@@ -116,6 +116,7 @@ export async function buildFile(inputPath, outputPath, seen = new Set(), include
 
   await mkdir(path.join(directory, ".lango"), { recursive: true });
   await writeFile(outputPath, output, "utf8");
+  if (isEntryPoint && profile.executable) await chmod(outputPath, 0o755);
   await writeFile(
     `${outputPath}.map`,
     JSON.stringify({

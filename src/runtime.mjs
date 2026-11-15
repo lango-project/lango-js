@@ -69,6 +69,9 @@ globalThis[failureStore] = failedTransactions;
 ${sqlBindings.toString()}
 ${postgresQuery.toString()}
 export const DB = Object.freeze({ Active: "active", RollbackOnly: "rollback_only", Failed: "failed" });
+const loggingStore = Symbol.for("lango.logging");
+const logging = globalThis[loggingStore] ?? { verbose: false };
+globalThis[loggingStore] = logging;
 const contextStore = Symbol.for("lango.contexts");
 const contexts = globalThis[contextStore] ?? new Map();
 globalThis[contextStore] = contexts;
@@ -83,6 +86,8 @@ export class RuntimeConfigurationError extends Error {
 export function configure(options = {}) {
     if (options === null || typeof options !== "object" || Array.isArray(options))
         throw new RuntimeConfigurationError("runtime configuration must be an object");
+    if (options.verbose !== undefined && typeof options.verbose !== "boolean")
+        throw new RuntimeConfigurationError("runtime verbose must be boolean");
     const nextCatalog = options.catalog ?? {};
     const nextOutput = options.output ?? null;
     const nextDatabase = options.database_adapter ?? null;
@@ -104,6 +109,7 @@ export function configure(options = {}) {
     } catch (error) {
         throw new RuntimeConfigurationError(error.message);
     }
+    if (options.verbose !== undefined) logging.verbose = options.verbose;
     defaultI18n = nextI18n;
     output = nextOutput;
     if (database !== null) failedTransactions.delete(database);
@@ -310,7 +316,8 @@ export function println(value) {
 }
 
 const defaultLog = Object.freeze({
-    debug(value) { ${browser ? 'console.debug(String(value)); return null;' : 'return writeLog(process.stdout, "DEBUG", value);'} },
+    get verbose() { return logging.verbose || ${browser ? 'false' : 'process.env.LANGO_VERBOSE === "1"'}; },
+    debug(value) { if (!defaultLog.verbose) return null; ${browser ? 'console.debug(String(value)); return null;' : 'return writeLog(process.stdout, "DEBUG", value);'} },
     info(value) { ${browser ? 'console.info(String(value)); return null;' : 'return writeLog(process.stdout, "INFO", value);'} },
     warn(value) { ${browser ? 'console.warn(String(value)); return null;' : 'return writeLog(process.stderr, "WARN", value);'} },
     err(value) { ${browser ? 'console.error(String(value)); return null;' : 'return writeLog(process.stderr, "ERROR", value);'} },

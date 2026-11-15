@@ -37,10 +37,11 @@ const buildOptions = (arguments_) => {
 };
 const build = command === "build" && inputPath ? buildOptions(rest) : null;
 const runOptions = (arguments_, allowBuildDir = false) => {
-    const options = { database: null, catalog: null, buildDir: null, locale: undefined, timeZone: undefined, currency: undefined };
+    const options = { verbose: false, database: null, catalog: null, buildDir: null, locale: undefined, timeZone: undefined, currency: undefined };
     let index = 0;
-    while (["--database", "--catalog", "--locale", "--time-zone", "--currency"].includes(arguments_[index]) || (allowBuildDir && arguments_[index] === "--build-dir")) {
+    while (["--verbose", "--database", "--catalog", "--locale", "--time-zone", "--currency"].includes(arguments_[index]) || (allowBuildDir && arguments_[index] === "--build-dir")) {
         const option = arguments_[index];
+        if (option === "--verbose") { options.verbose = true; index += 1; continue; }
         const value = arguments_[index + 1];
         if (!value) return null;
         if (option === "--database") options.database = value;
@@ -122,7 +123,7 @@ if (command === "init" && inputPath && rest.length === 0) {
             : {};
         if (!catalog || Array.isArray(catalog) || typeof catalog !== "object")
             throw new Error("Lango run catalog must be a JSON object");
-        runtime.configure({ output: (value) => console.log(value), catalog, database_adapter: database, locale: options.locale, timeZone: options.timeZone, currency: options.currency });
+        runtime.configure({ verbose: options.verbose, output: (value) => console.log(value), catalog, database_adapter: database, locale: options.locale, timeZone: options.timeZone, currency: options.currency });
         await program.main(options.args);
     } catch (error) {
         console.error(displayError(error));
@@ -148,7 +149,7 @@ if (command === "init" && inputPath && rest.length === 0) {
             : {};
         if (!catalog || Array.isArray(catalog) || typeof catalog !== "object")
             throw new Error("Lango test catalog must be a JSON object");
-        runtime.configure({ output: (value) => console.log(value), catalog, database_adapter: database, locale: testOptions.locale, timeZone: testOptions.timeZone, currency: testOptions.currency });
+        runtime.configure({ verbose: testOptions.verbose, output: (value) => console.log(value), catalog, database_adapter: database, locale: testOptions.locale, timeZone: testOptions.timeZone, currency: testOptions.currency });
         let failures = 0;
         const seenTests = new Set();
         for (const test of program.__langoTests ?? []) {
@@ -156,7 +157,7 @@ if (command === "init" && inputPath && rest.length === 0) {
             seenTests.add(test.run);
             try {
                 program.__langoResetTests?.();
-                runtime.configure({ output: (value) => console.log(value), catalog, database_adapter: database, locale: testOptions.locale, timeZone: testOptions.timeZone, currency: testOptions.currency });
+                runtime.configure({ verbose: testOptions.verbose, output: (value) => console.log(value), catalog, database_adapter: database, locale: testOptions.locale, timeZone: testOptions.timeZone, currency: testOptions.currency });
                 await test.run();
                 console.log(`PASS ${test.name}`);
             } catch (error) {
@@ -181,6 +182,6 @@ if (command === "init" && inputPath && rest.length === 0) {
         process.exitCode = error instanceof LangoError ? 1 : 2;
     }
 } else {
-    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--target node|browser] [--executable] [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--database <sqlite-file>] [--catalog <catalog.json>] [--locale <tag>] [--time-zone <zone>] [--currency <code>] [-- args...]\n       node src/cli.mjs test <input.lango> [--build-dir <directory>] [--database <sqlite-file>] [--catalog <catalog.json>] [--locale <tag>] [--time-zone <zone>] [--currency <code>]\n       node src/cli.mjs format <input.lango>");
+    console.error("Usage: node src/cli.mjs init <directory>\n       node src/cli.mjs build <input.lango> --out <output.mjs> [--target node|browser] [--executable] [--decimal-division-scale <n>] [--decimal-division-rounding <EnumName>]\n       node src/cli.mjs run <input.lango> [--verbose] [--database <sqlite-file>] [--catalog <catalog.json>] [--locale <tag>] [--time-zone <zone>] [--currency <code>] [-- args...]\n       node src/cli.mjs test <input.lango> [--verbose] [--build-dir <directory>] [--database <sqlite-file>] [--catalog <catalog.json>] [--locale <tag>] [--time-zone <zone>] [--currency <code>]\n       node src/cli.mjs format <input.lango>");
     process.exitCode = 2;
 }

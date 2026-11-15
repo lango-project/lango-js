@@ -1161,3 +1161,27 @@ See [the language guide](design/guide.md#locale-contexts-and-formatting) and
 not install UI or client text catalogs; all user-visible texts remain application
 owned. Standalone catalog-file extraction and localized input parsing are not
 included in this change.
+
+
+## Verbose logging
+
+The default `context log` provides readonly `log.verbose?`. Debug output is off
+by default and enabled with `lango run main.lango --verbose`,
+`lango test tests.lango --verbose`, or `LANGO_VERBOSE=1` on Node. Info, warning,
+and error output is always enabled. Custom log contexts keep their own policy.
+
+```lango
+context log
+if log.verbose?
+    log.debug("Computing detailed diagnostics")
+```
+
+Generated runtime `configure({ verbose: true })` also enables debug output,
+including in browser builds. The setting is shared by compiled runtime copies
+within the same JavaScript realm. Each worker has its own realm; Node workers
+inherit `LANGO_VERBOSE` when started. The log property itself cannot be assigned.
+
+
+Executable builds (`--executable`) set executable permissions on the entry file,
+including after clean builds. This keeps linked npm command shims usable without
+relinking merely to restore execute permissions.

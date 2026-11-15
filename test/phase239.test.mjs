@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -20,7 +20,10 @@ main(args)
     assert.ok(emitted.startsWith("#!/usr/bin/env node\n"));
     assert.match(emitted, /configure\(\{ output: \(value\) => console\.log\(value\) \}\)/);
     assert.match(emitted, /await main\(process\.argv\.slice\(2\)\)/);
-    await chmod(output, 0o755);
+    if (process.platform !== "win32") assert.equal((await stat(output)).mode & 0o111, 0o111);
+    await rm(output);
+    await buildFile(input, output, new Set(), false, { executable: true });
+    if (process.platform !== "win32") assert.equal((await stat(output)).mode & 0o111, 0o111);
     const result = spawnSync(output, ["from-bin"], { encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stdout.trim(), "from-bin");

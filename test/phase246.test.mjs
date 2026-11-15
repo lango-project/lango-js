@@ -31,6 +31,7 @@ main(args)
     await writeFile(input, source);
     await buildFile(input, output);
     const program = await import(pathToFileURL(output).href);
+    const runtime = await import(pathToFileURL(path.join(directory, ".lango/runtime.mjs")).href);
 
     const stdout = [];
     const stderr = [];
@@ -40,11 +41,18 @@ main(args)
     process.stderr.write = (value) => { stderr.push(String(value)); return true; };
     try {
         const log = program.main([]);
+        runtime.configure({ verbose: false });
+        assert.equal(log.verbose, false);
+        assert.equal(log.debug("hidden"), null);
+        runtime.configure({ verbose: true });
+        assert.equal(log.verbose, true);
+        assert.throws(() => { log.verbose = false; }, TypeError);
         assert.equal(log.debug("debug"), null);
         assert.equal(log.info("info"), null);
         assert.equal(log.warn("warn"), null);
         assert.equal(log.err("error"), null);
     } finally {
+        runtime.configure({ verbose: false });
         process.stdout.write = originalStdout;
         process.stderr.write = originalStderr;
     }
