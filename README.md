@@ -1185,3 +1185,10 @@ inherit `LANGO_VERBOSE` when started. The log property itself cannot be assigned
 Executable builds (`--executable`) set executable permissions on the entry file,
 including after clean builds. This keeps linked npm command shims usable without
 relinking merely to restore execute permissions.
+
+
+Array literals may span physical lines, including when the opening `[` and the
+first element are on separate lines. Nested maps retain comma-free field lines;
+separate array elements with commas. Blank lines and comments are permitted
+inside the literal. The same continuation rules apply in assignments, returns,
+call arguments, and map field values.

@@ -478,7 +478,7 @@ class Parser {
         header[1] &&
         header[2] !== "main"
       )
-        this.fail(line, "LNG1103", "Faz 2 exports only main(args)");
+        this.fail(line, "LNG1103", "inline export declarations only support main(args); declare other exports separately");
       const owner =
         (staticMethodHeader ?? methodHeader)
           ? classes.find((item) => item.name === header[1])
@@ -1056,7 +1056,7 @@ class Parser {
       } else {
         const assignment = /^(\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*(?:\.\$?[A-Za-z_]\w*)*) = (.+)$/.exec(text);
         if (!assignment)
-          this.fail(line, "LNG1106", `unsupported Faz 2 statement: ${text}`);
+          this.fail(line, "LNG1106", `unsupported statement: ${text}`);
         body.push({
           type: "assign",
           name: assignment[1],
@@ -1153,8 +1153,9 @@ class Parser {
     }
   }
   continuedStatement(source, line, indent) {
-    let depth = curlyDelimiterDepth(source);
+    let depth = literalDelimiterDepth(source);
     while (depth > 0) {
+      this.blank();
       const next = this.peek();
       if (next === undefined || spaces(next) < indent)
         this.fail(line, "LNG1262", "unterminated multi-line expression");
@@ -1162,7 +1163,7 @@ class Parser {
       const startsField = /^(?:\$?[A-Za-z_][\w-]*|['"][^'"]+['"]): /.test(continuation);
       if (startsField && !/[{,]\s*$/.test(source)) source += ",";
       source += ` ${continuation}`;
-      depth = curlyDelimiterDepth(source);
+      depth = literalDelimiterDepth(source);
     }
     return source;
   }
@@ -1298,13 +1299,17 @@ function topLevelBinary(text, operators, rightAssociative = false) {
   return match;
 }
 
-function curlyDelimiterDepth(text) {
+function literalDelimiterDepth(text) {
   let depth = 0;
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
     if (character === "'" || character === '"') { index = skipString(text, index); continue; }
-    if (character === "{") depth += 1;
-    if (character === "}") depth -= 1;
+    if (character === "<" && /^<(?:[A-Za-z_]|!--)/.test(text.slice(index))) {
+      index = xmlSourceEnd(text, index) - 1;
+      continue;
+    }
+    if (character === "{" || character === "[") depth += 1;
+    if (character === "}" || character === "]") depth -= 1;
   }
   return depth;
 }
@@ -1729,7 +1734,7 @@ function expr(source, line, parser) {
   if (/^@{0,2}\$?[A-Za-z_]\w*\[(?:\d+|[A-Za-z_]\w*|['"][^'"]*['"])\]$/.test(text))
     return { type: "raw", value: text };
   if (/^(?:\$[A-Za-z_]\w*|@{0,2}\$?[A-Za-z_]\w*)$/.test(text)) return { type: "raw", value: text };
-  parser.fail(line, "LNG1108", `unsupported Faz 2 expression: ${text}`);
+  parser.fail(line, "LNG1108", `unsupported expression: ${text}`);
 }
 
 function xmlLiteral(source, line, parser) {
