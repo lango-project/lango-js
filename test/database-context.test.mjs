@@ -14,7 +14,6 @@ async function compiled(t, target = "node") {
     await writeFile(input, `export read()
 
 read()
-    context db
     rs = SQL
         select :amount::numeric as amount
     rs.amount = $12345678901234567890.123456789
@@ -32,7 +31,7 @@ read()
 }
 
 for (const target of ["node", "browser"])
-test(`${target} context db is shared across runtime copies, preserves Decimal and overrides fallback`, async t => {
+test(`${target} SQL uses the active database across runtime copies without context db, preserves Decimal and overrides fallback`, async t => {
     const a = await compiled(t, target), b = await compiled(t, target);
     let calls = 0;
     const adapter = {
