@@ -235,7 +235,7 @@ Manager:callback()
 This retains the original receiver even when the callback is invoked elsewhere.
 It does not expose a JavaScript caller's dynamic `this`. `@this`, `@property`,
 `@@property`, and protected properties also work without capture declarations.
-Outer locals and captured context bindings still require explicit `capture`.
+Outer locals require explicit `capture`; active contexts propagate automatically.
 
 ### Inheritance
 
@@ -671,15 +671,13 @@ producing `undefined`.
 Callbacks retain a selected translator through the normal context mechanism:
 
 ```lango
-context i18n
 return (name)
-    capture i18n
     return _("Hello ${name}")
 ```
 
 Nested and separately built modules see the active context. The catalog engine
-never changes a process-global current language. Without a captured context,
-a later callback uses the context active when called, or its runtime's default.
+never changes a process-global current language. A later Lango callback retains
+the active context from its creation site, independently of its caller.
 Host `configure` accepts `i18n` or the creation options above; it resets dynamic
 contexts and must not be used to change language for each request. JavaScript
 hosts can import `createI18n` from `@lango-project/lango-js/localization`.
@@ -1048,8 +1046,8 @@ return ()
 ```
 The same rule applies to nested callbacks and implicit method calls. Explicit
 member captures remain accepted for compatibility, but are unnecessary.
-Each nested closure declares its own captures of outer locals and context
-bindings. Local captures are shared bindings, so
+Each nested closure declares its own captures of ordinary outer locals.
+Active context bindings are retained automatically. Local captures are shared bindings, so
 a closure may change a captured local. A `for` loop gives each iteration its
 own captured item; a local declared outside a `loop` remains shared across its
 iterations. Put every `capture` at the start of the closure body. Missing or
@@ -1074,11 +1072,28 @@ In anywhere below the call stack, you can use this variable whenever you want:
 Context variables are read through their bare name and cannot be assigned with
 a normal assignment.
 
-Context is a synchronous dynamic stack. A nested `context name = value` shadows
-the previous value until its current function activation returns or throws;
-recursive and re-entrant calls get their own layer. A JavaScript API that calls
-a Lango callback synchronously can see the active context. Promise, timer, and
-event callbacks require an explicit capture of the needed context value.
+Context changes use a synchronous dynamic stack. A nested `context name = value`
+shadows the previous value until the function returns or throws. Every Lango
+callback automatically saves all active bindings when created and restores that
+environment while it runs, including callbacks passed to JavaScript, Promise
+clauses, timers, nested callbacks and event listeners. Objects retain identity;
+they are not copied. The caller's environment is restored even after a throw.
+Saved bindings take precedence. Contexts absent at creation can still be supplied
+by the caller, following the normal dynamic lookup rules.
+
+No declaration is needed merely to propagate a context to downstream functions.
+To refer to a context by name, declare it or use its visible enclosing binding.
+Ordinary local variables still require `capture`; explicit context captures remain
+accepted for compatibility. Capturing an environment does not extend the lifetime
+of resources such as a request database scope. Release long-lived listeners when
+finished so they do not retain old environments. Uninstrumented JavaScript async
+continuations are outside this propagation mechanism.
+
+Keep bare context declarations to the minimum needed for direct reads. `LNG1276`
+rejects an unused reader or a repeated declaration of an already visible context,
+including inside callbacks. A `capture` declaration alone is not a read. A nested
+callback's direct reference counts unless it shadows the binding. This rule does
+not reject `context name = value`, whose purpose can be supplying downstream code.
 
 You can only assign it inside the *context* statement. This creates a scoped
 value: all calls below the current stack frame use it, and leaving that frame
@@ -1137,17 +1152,17 @@ program outcome, while a detached Promise follows the host's normal unhandled-
 rejection behavior. Lango adds no cancellation or concurrency model beyond the
 JavaScript library in use.
 
-`context` does not automatically cross into a Promise callback. Capture a
-needed context value explicitly; the callback restores that captured value as
-an active context while it runs:
+Contexts cross Promise callbacks automatically, even when only a downstream
+function uses them:
 ```lango
-load()
-    context tenant
+load(pending)
+    return chain pending
+      then(response)
+        return audit(response)
 
-    fetch("/data").then((response)
-        capture tenant
-        audit(tenant, response)
-    )
+audit(response)
+    context tenant
+    return tenant.record(response)
 ```
 
 ## Explicit getter and setter properties

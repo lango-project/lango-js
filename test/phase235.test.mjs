@@ -13,7 +13,7 @@ main(args)
         response.end("Merhaba, Lango HTTP sunucusu!\\n")
     )
 `).javascript;
-    assert.match(output, /new http\.Server\(__withArity\(\(request, response\) => \{/);
+    assert.match(output, /new http\.Server\(__withArity\(__bindContexts\(\(request, response\) => \{/);
     assert.match(output, /response\.writeHead\(200, \{ "Content-Type": "text\/plain; charset=utf-8" \}\)/);
     assert.match(output, /response\.end\("Merhaba, Lango HTTP sunucusu!\\n"\)/);
 });

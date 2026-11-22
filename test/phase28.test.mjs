@@ -16,7 +16,7 @@ main(args)
         println(count)
     callback()
 `;
-    assert.match(compile(source).javascript, /let callback = \(\) =>/);
+    assert.match(compile(source).javascript, /let callback = __bindContexts\(\(\) =>/);
 
     const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase28-"));
     const outputPath = path.join(directory, "main.mjs");

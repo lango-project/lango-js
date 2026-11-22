@@ -14,8 +14,8 @@ test("Faz 103 lowers ordinary multiline Promise method chains", () => {
         println(error)
     )
 `).javascript;
-    assert.match(output, /client\.fetch\("\/data"\)\)\.then\(__withArity\(\(response\) =>/);
-    assert.match(output, /\.catch\(__withArity\(\(error\) =>/);
+    assert.match(output, /client\.fetch\("\/data"\)\)\.then\(__withArity\(__bindContexts\(\(response\) =>/);
+    assert.match(output, /\.catch\(__withArity\(__bindContexts\(\(error\) =>/);
 });
 
 test("Faz 103 accepts the host fetch callable used by Promise chains", () => {

@@ -278,10 +278,10 @@ compile-time dependency declaration; JavaScript's normal closure mechanism
 provides the runtime capture.
 
 `global` bindings, `context` bindings, and imports follow their own explicit
-access rules. Capturing an outer context binding remains explicit (D-013).
+access rules. Context environments propagate automatically (D-013, D-066).
 Within a class method, the receiver and its instance, static and protected
-properties are retained automatically (D-063). A missing required local or
-context capture is a compile-time error.
+properties are retained automatically (D-063). A missing required ordinary local
+capture is a compile-time error.
 
 Using `@property` retains the class instance on which the closure was
 created; it does not copy the property's current value. Using `@@property`
@@ -337,25 +337,22 @@ write them to stderr. `context log = value` replaces that logger for the normal
 dynamic scope. The replacement is an ordinary object and must provide the log
 methods the scoped code invokes.
 
-The context runtime is a synchronous dynamic binding stack. Each Lango function
-activation pushes its context changes and restores them with generated
-`try`/`finally` cleanup when that activation returns or throws. Recursive and
-re-entrant calls therefore create independent nested layers. A JavaScript API
-which invokes a Lango callback synchronously before the current call stack
-unwinds sees the active context. A callback invoked later by a Promise, timer,
-event, or another asynchronous mechanism sees no context from its registration
-site unless it explicitly captures one.
+The context runtime uses a synchronous dynamic binding stack. Function-local
+context changes are restored with generated try/finally cleanup. Callbacks retain
+the entire active environment at creation and restore it for each invocation,
+including when their context dependency is only in a downstream call. Binding
+values are references; saved bindings take precedence over the caller. A nested context wins
+locally, and the caller's original stacks are restored after return or throw.
 
-`capture name` has special behavior when `name` is an active context binding.
-The closure snapshots that binding when it is created, then temporarily restores
-it as an active context every time the closure runs. Its nested ordinary Lango
-calls can therefore declare `context name` normally. A later nested callback
-must capture the context again at its own asynchronous boundary. Capturing a
-context solely for a downstream Lango call is valid; it is not an unused capture.
+Visible enclosing context names may be read without capture. `context name`
+remains necessary to introduce an otherwise invisible name for direct access.
+Neither declaration nor capture is required merely to propagate an environment.
+Legacy `capture name` for context bindings remains supported. Ordinary local
+captures remain explicit. Retention does not extend resource lifetimes.
 
-This model needs neither Node `AsyncLocalStorage` nor a browser-specific
-propagation mechanism. It is the same on every JavaScript host and does not
-implicitly retain context through uninstrumented asynchronous JavaScript code.
+The mechanism is shared across generated runtime copies and works on Node and
+browser targets without AsyncLocalStorage. It wraps Lango callbacks, not arbitrary
+uninstrumented JavaScript asynchronous continuations. See D-066.
 
 ## D-014: JSON helpers use explicit conversion boundaries
 
@@ -1414,8 +1411,8 @@ class. This applies at every nesting level. Properties are read live, and the
 host caller's dynamic receiver never replaces the original receiver. A callback
 that does not use a receiver or member does not gain a receiver dependency.
 
-Outer local bindings and captured context bindings still require explicit
-`capture`; receiver retention does not propagate dynamic contexts. Member lookup,
+Ordinary outer local bindings still require explicit `capture`. Context
+environments propagate automatically under D-066. Member lookup,
 visibility and instance/static restrictions still apply. Explicit member captures
 remain accepted for compatibility, with the existing unused-capture checks.
 
@@ -1457,8 +1454,8 @@ localization adapter beside generated Node/browser runtimes. Generated programs
 need no installed i18next dependency. Host applications may also import the
 factory from the package's `/localization` subpath.
 
-`_()` resolves `context i18n`, with a runtime-default fallback. Explicit captures
-retain the translator in callbacks using the existing context restoration rules.
+`_()` resolves `context i18n`, with a runtime-default fallback. Callbacks
+automatically retain active translator contexts under D-066.
 Separate runtime copies share explicit contexts, not their default catalogs.
 Creation defaults are en/en for locale/fallbackLocale, UTC for timeZone and no
 currency. Language, currency and time zone are independent settings. Catalogs are
@@ -1484,3 +1481,50 @@ nonfinite numbers, missing referenced parameters and invalid preferences fail.
 CLI run/test accept locale/time-zone/currency flags while retaining flat catalog
 files. configure resets contexts and is a host setup operation, not a per-request
 language switch. See test/localization.test.mjs and examples/localization.
+
+
+## D-066: Callbacks retain their context environment automatically
+
+**Status:** Accepted and implemented
+
+Every Lango callback captures the top binding of every active context at its
+creation site, including unknown application-defined contexts. Invocation installs
+its saved bindings with fresh stack arrays, and restores the caller's stacks
+in a finally block. Context objects are shared references. This applies even when
+the callback body contains no context declaration or SQL and only a separately
+compiled callee consumes the context. Nested callbacks inherit their own creation
+site; explicit local context overrides remain scoped to that activation.
+
+Ordinary local variables retain explicit capture checks. Visible outer context
+bindings need no capture; direct name access without an enclosing binding still
+uses `context name`. Legacy context captures are accepted. No special db/log/i18n
+propagation rule exists. A context absent at creation can be supplied by the eventual caller, preserving
+normal dynamic injection into framework handlers. Default services retain their
+normal fallback behavior when no explicit binding exists.
+
+Context retention preserves references, not authorization validity or resource
+lifetimes. Server database scopes reject use after completion. Event listeners
+must be released to avoid retaining old request environments. Host JavaScript
+callbacks and async continuations are not rewritten; Lango callbacks passed to
+host libraries carry the environment in which they were created. Programs must
+be rebuilt to receive the new callback wrappers.
+
+
+## D-067: Reject unnecessary context readers
+
+**Status:** Accepted and implemented
+
+A bare `context name` introduces a name for direct access, not a propagation
+requirement. `LNG1276` rejects it when no expression reads its binding, including
+when only capture declarations or indirect calls mention the dependency. The
+same diagnostic rejects duplicate readers and readers redeclaring a visible
+context in a nested callback. Nested direct reads count toward the enclosing
+binding; parameters, locals, globals and explicit nested context bindings shadow
+it. Literal text and map keys are not reads. Functions, methods, tests, callback
+forms and Promise clauses use the same rule and report the declaration's line.
+
+`context name = value` remains valid without a direct read because creating or
+overriding an environment is an intentional effect for downstream consumers.
+Existing explicit context captures remain supported, but cannot justify an
+otherwise unused reader declaration. Prefer pure signatures, indirect context
+propagation, and the minimum visible context declarations required by the body.

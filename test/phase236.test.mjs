@@ -9,7 +9,7 @@ test("Faz 236 accepts a method callback closure after ordinary arguments", () =>
         throw error
     )
 `).javascript;
-    assert.match(output, /server\.on\("error", __withArity\(\(error\) => \{/);
+    assert.match(output, /server\.on\("error", __withArity\(__bindContexts\(\(error\) => \{/);
     assert.match(output, /throw error/);
 });
 

@@ -118,7 +118,7 @@ plural(count)
     });
 });
 
-test("captured localization contexts survive later callbacks and restore caller state on success and failure", async () => {
+test("automatic localization contexts survive later callbacks and restore caller state on success and failure", async () => {
     const source = `export callback(translator)
 export failing(translator)
 export plain()
@@ -126,13 +126,11 @@ export plain()
 callback(translator)
     context i18n = translator
     return (name)
-        capture i18n
         return _("Hello \${name}")
 
 failing(translator)
     context i18n = translator
     return ()
-        capture i18n
         throw _("Failure")
 
 plain()

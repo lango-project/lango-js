@@ -651,6 +651,22 @@ export function withArity(callback, requiredPositions, name) {
     };
 }
 
+// Capture the environment even when context use is hidden in a downstream call.
+// Each invocation uses fresh stack arrays and restores the caller synchronously.
+export function bindContexts(callback) {
+    const captured = new Map([...contexts].map(([name, stack]) => [name, stack.at(-1)]));
+    return function (...args) {
+        const previous = new Map(contexts);
+        for (const [name, value] of captured) contexts.set(name, [value]);
+        try {
+            return Reflect.apply(callback, this, args);
+        } finally {
+            contexts.clear();
+            for (const [name, stack] of previous) contexts.set(name, stack);
+        }
+    };
+}
+
 export function contextGet(name) {
     const stack = contexts.get(name);
     if ((!stack || stack.length === 0) && name === "log") return defaultLog;

@@ -30,7 +30,6 @@ setValue(name, value)
     }
 
 fill(input)
-    context log
     rows = [
         {
             ad: "Savas"

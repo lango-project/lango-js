@@ -25,9 +25,9 @@ test("automatic property captures still validate member names and method scope",
     rejects("callback()\n    return ()\n        return @this\n", "LNG1270");
 });
 
-test("outer locals and context bindings continue to require explicit capture", () => {
+test("outer locals require capture while context bindings are inherited", () => {
     rejects(method("    value = 3\n    return ()\n        return @count + value"), "LNG1210");
-    rejects(method("    context tenant\n    return ()\n        return tenant.id"), "LNG1210");
+    assert.doesNotThrow(() => compile(method("    context tenant\n    return ()\n        return tenant.id")));
     assert.doesNotThrow(() => compile(method("    context tenant\n    return ()\n        capture tenant\n        return @count + tenant.id")));
     rejects("callback()\n    _local = 3\n    return ()\n        return _local\n", "LNG1210");
 });

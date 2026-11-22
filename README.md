@@ -937,8 +937,8 @@ Faz 209 rejects dynamic non-numeric range bounds.
 Inside a class method, call another method as `prepare()`; instance and static
 methods resolve within their respective scopes. Use the readonly `@this` only
 when the receiver itself is needed. Callbacks automatically retain the receiver
-for method calls and member access; outer locals and captured context bindings
-still require `capture`. The former `this` and `this.method()` spellings produce migration
+for method calls and member access. Outer locals require `capture`; active
+contexts are inherited automatically. The former `this` and `this.method()` spellings produce migration
 diagnostics. See [the class guide](design/guide.md#public),
 [D-063](design/decisions.md#d-063-method-calls-have-an-implicit-receiver), and
 `examples/261-implicit-receiver` and `examples/262-automatic-receiver` for
@@ -985,9 +985,8 @@ Each callback's return value becomes the next result, and a returned Promise is
 adopted. An omitted return yields Lango null. Catch can recover or rethrow;
 finally waits for its returned Promise and preserves the earlier outcome unless
 cleanup fails. These are ordinary native Promise chains, without implicit await.
-Each clause has its own parameter/local scope. Outer bindings and context values
-retain the existing explicit capture rules; the current method receiver remains
-automatic. Put each capture on its own line at the start of the callback body.
+Each clause has its own parameter/local scope. Outer local bindings retain the explicit capture rules; active contexts and
+the current method receiver are retained automatically. Put each capture on its own line at the start of the callback body.
 The earlier inline-first-clause syntax remains supported.
 Malformed clause headers produce `LNG1273`. See `examples/chain-blocks/input.lango`.
 
@@ -1054,6 +1053,8 @@ names share a position; missing values are errors. Decimal bindings remain exact
 text. SQL dialects are not translated. Promise-returning adapters are rejected.
 
 Rebuild application modules with 0.1.13 or newer to use context-based SQL.
+SQL and transaction functions need neither `context db` nor `capture db`;
+the host supplies the scope and callbacks inherit it automatically.
 
 
 ## XML literals and kebab-case
@@ -1144,7 +1145,7 @@ date = formatDate("2026-11-10T22:30:00Z")
 percent styles, without first converting Decimal to Number. `formatDate` accepts
 Date, epoch milliseconds or ISO dates/zoned timestamps, with an explicit context
 time zone. Optional `_()` settings include count, context and formatParams.
-Use `capture i18n` to retain a context in callbacks. Runtime configure accepts the
+Callbacks automatically retain the active i18n context. Runtime configure accepts the
 same preferences or an i18n object; it is host setup and resets contexts.
 JavaScript hosts can import createI18n from `@lango-project/lango-js/localization`.
 
@@ -1192,3 +1193,49 @@ first element are on separate lines. Nested maps retain comma-free field lines;
 separate array elements with commas. Blank lines and comments are permitted
 inside the literal. The same continuation rules apply in assignments, returns,
 call arguments, and map field values.
+
+
+## Automatic callback contexts
+
+Every Lango callback retains all active context bindings when it is created.
+This applies to Promise clauses, timers, event listeners and callbacks passed to
+JavaScript libraries, including context use hidden inside downstream functions.
+A callback runs in its saved environment; the caller's environment is restored
+on return or throw. Context objects are shared references, not deep copies.
+Saved bindings take precedence; contexts absent at creation remain available
+from the dynamic caller, so frameworks can supply contexts to their handlers.
+
+```lango
+load(pending, logger)
+    context log = logger
+    return chain pending
+      then(value)
+        return save(value)
+
+save(value)
+    context log
+    log.info("Saving ${value}")
+    row = SQL
+        insert into items (value) values (:value)
+    row.value = value
+    row.execute()
+    return value
+```
+
+No context declaration is needed merely to forward a context. Direct name use
+still needs a visible binding: declare `context log` when reading `log`, unless
+it is already visible in the enclosing function. Ordinary outer locals still
+require `capture`. Existing explicit context captures remain supported.
+A nested context overrides its inherited binding locally. Resource lifetimes do
+not change: a callback retaining a closed database scope still fails on SQL use.
+Long-lived listeners retain context objects until released. Uninstrumented
+JavaScript async continuations do not gain Lango context propagation; a Lango
+callback carries the environment from its own creation site.
+
+
+Bare `context name` declarations are reserved for direct name access. The compiler
+reports `LNG1276` if the name is never read, is used only in `capture`, or is
+already visible from the enclosing callback scope. Remove the declaration when
+only a downstream function uses the context. A nested callback's direct read
+counts as use unless it shadows the binding. `context name = value` still creates
+or overrides an environment binding and is valid for indirect use alone.

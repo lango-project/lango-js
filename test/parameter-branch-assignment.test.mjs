@@ -27,7 +27,7 @@ required(value)
     return value
 
 scoped(options = null)
-    context log
+    context scope = null
     try
         if options == null
             options = 42

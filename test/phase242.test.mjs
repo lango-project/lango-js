@@ -10,5 +10,5 @@ main(args)
         response.end("ok")
     )
 `).javascript;
-    assert.match(output, /let server = new http\.Server\(__withArity\(\(request, response\) =>/);
+    assert.match(output, /let server = new http\.Server\(__withArity\(__bindContexts\(\(request, response\) =>/);
 });

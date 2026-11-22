@@ -3042,7 +3042,7 @@ function validate(program, imports = []) {
         );
         const captures = new Set(closure.captures);
         const automaticCaptures = new Set(needed.filter((name) =>
-          classScope && (name.startsWith("@") || name.startsWith("_")),
+          availableContexts.has(name) || (classScope && (name.startsWith("@") || name.startsWith("_"))),
         ));
         const contextCaptures = new Set(
           closure.captures.filter((name) => availableContexts.has(name)),
@@ -3063,7 +3063,7 @@ function validate(program, imports = []) {
             );
           const protectedMember = Boolean(classScope && name.startsWith("_"));
           const propertyCapture = name.startsWith("@") || protectedMember;
-          if (!propertyCapture && !contextCaptures.has(name) && !available.has(name))
+          if (!propertyCapture && !availableContexts.has(name) && !available.has(name))
             throw new LangoError(
               "LNG1212",
               closure.line,
@@ -3613,6 +3613,75 @@ function validate(program, imports = []) {
     primary.diagnostics = loopLevelDiagnostics;
     throw primary;
   }
+  validateContextUse(program);
+}
+
+function validateContextUse(program) {
+  const declarations = [];
+  const used = new Set();
+  const diagnostics = [];
+  const closure = node => Array.isArray(node?.parameters) && Array.isArray(node.body);
+  const inspectScope = (body, inherited = new Map(), parameters = [], captures = []) => {
+    const visible = new Map(inherited);
+    const locals = closureLocalNames(body, new Set(parameters.map(item => item.name)));
+    for (const name of captures) locals.delete(name);
+    for (const name of locals) visible.delete(name);
+    const own = [];
+    const setters = new Set();
+    const scan = value => {
+      if (!value || typeof value !== "object" || closure(value)) return;
+      if (Array.isArray(value)) { value.forEach(scan); return; }
+      if (value.type === "contextDeclare") own.push(value);
+      if (value.type === "contextSet") setters.add(value.name);
+      if (value.type === "globalDeclare") visible.delete(value.name);
+      Object.values(value).forEach(scan);
+    };
+    scan(body);
+    for (const name of setters) visible.set(name, null);
+    const ownNames = new Set();
+    for (const declaration of own) {
+      if (ownNames.has(declaration.name) || (visible.has(declaration.name) && !setters.has(declaration.name))) {
+        diagnostics.push(new LangoError("LNG1276", declaration.line,
+          `Unnecessary context declaration: ${declaration.name} is already visible; remove context ${declaration.name}`));
+        continue;
+      }
+      declarations.push(declaration);
+      ownNames.add(declaration.name);
+      visible.set(declaration.name, declaration);
+    }
+    const reference = name => {
+      const base = /^([A-Za-z_]\w*)/.exec(name ?? "")?.[1];
+      const declaration = visible.get(base);
+      if (declaration) used.add(declaration);
+    };
+    const visit = value => {
+      if (!value || typeof value !== "object") return;
+      if (Array.isArray(value)) { value.forEach(visit); return; }
+      if (closure(value)) {
+        value.parameters.forEach(parameter => visit(parameter.defaultValue));
+        inspectScope(value.body, visible, value.parameters, value.captures ?? []);
+        return;
+      }
+      if (value.type === "contextDeclare" || value.type === "globalDeclare") return;
+      if (value.type === "raw") reference(value.value);
+      if (["methodCall", "namespaceMethodCall", "index", "indexAssign"].includes(value.type) && typeof value.receiver === "string")
+        reference(value.receiver);
+      if (["call", "increment", "add"].includes(value.type)) reference(value.name ?? value.target);
+      if (value.type === "assign" && /[.\[]/.test(value.name)) reference(value.name);
+      Object.entries(value).filter(([key]) => key !== "captures").forEach(([, child]) => visit(child));
+    };
+    visit(body);
+  };
+  for (const fn of [...program.functions, ...program.tests, ...program.classes.flatMap(item => item.methods)])
+    inspectScope(fn.body, new Map(), fn.parameters ?? []);
+  for (const declaration of declarations)
+    if (!used.has(declaration)) diagnostics.push(new LangoError("LNG1276", declaration.line,
+      `Unused context declaration: ${declaration.name}; remove context ${declaration.name}. Contexts propagate automatically`));
+  if (diagnostics.length) {
+    const [primary] = diagnostics;
+    primary.diagnostics = diagnostics;
+    throw primary;
+  }
 }
 
 function emit(program, moduleImports = [], includeTests = false) {
@@ -3683,6 +3752,7 @@ function emit(program, moduleImports = [], includeTests = false) {
     flags.context && "contextGet as __contextGet",
     flags.context && "contextSet as __contextSet",
     flags.context && "contextRestore as __contextRestore",
+    flags.contextCallback && "bindContexts as __bindContexts",
     flags.json && "fromJson as __fromJson",
     flags.json && "toJson as __toJson",
     flags.reflection && "getClass as __getClass",
@@ -4439,6 +4509,19 @@ function emitChain(node, depth, flags) {
     .map((step) => `.${step.name}(${emitClosure(step, depth, flags)})`)
     .join("")}`;
 }
+function closureLocalNames(body, names = new Set()) {
+  for (const node of body) {
+    if (node.type === "assign" || node.type === "closureAssign") names.add(node.name);
+    if (node.type === "closureAssign") continue;
+    if (node.type === "for") names.add(node.item);
+    if (node.type === "forObject") { names.add(node.key); names.add(node.value); }
+    if (node.catchName) names.add(node.catchName);
+    [node.thenBody, node.elseBody, node.tryBody, node.catchBody, node.finallyBody,
+      node.body, ...(node.cases?.map(item => item.body) ?? [])]
+      .filter(Boolean).forEach(child => closureLocalNames(child, names));
+  }
+  return names;
+}
 function emitClosure(node, depth, flags) {
   const parameters = node.parameters
     .map((item) =>
@@ -4456,7 +4539,11 @@ function emitClosure(node, depth, flags) {
   const priorGlobalNames = flags.globalNames;
   const priorArrayBindings = flags.arrayBindings;
   const contextCaptures = node.captures.filter((name) => priorContextNames?.has(name));
+  const shadowedNames = closureLocalNames(node.body,
+    new Set(node.parameters.map(parameter => parameter.name)));
+  for (const name of node.captures) shadowedNames.delete(name);
   const contextNames = new Set([
+    ...[...(priorContextNames ?? [])].filter(name => !shadowedNames.has(name)),
     ...collectContextNames(node.body),
     ...contextCaptures,
   ]);
@@ -4480,6 +4567,8 @@ function emitClosure(node, depth, flags) {
     .map((parameter, index) => (parameter.defaultValue === null ? index : null))
     .filter((index) => index !== null);
   const wrap = (value) => {
+    flags.contextCallback = true;
+    value = `__bindContexts(${value})`;
     if (!requiredPositions.length) return value;
     flags.closureArity = true;
     return `__withArity(${value}, [${requiredPositions.join(", ")}], "closure")`;

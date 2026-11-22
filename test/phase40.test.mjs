@@ -6,14 +6,13 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-test("Faz 40 requires a closure to declare a context it reads", async () => {
-    assert.throws(
+test("Faz 40 allows a closure to read an inherited context", async () => {
+    assert.doesNotThrow(
         () => compile(`main(args)
     context tenant = "Ada"
     callback = ()
         println(tenant)
 `),
-        /LNG1210.*MissingCapture: tenant/,
     );
 
     const directory = await mkdtemp(path.join(os.tmpdir(), "lango-phase40-"));
